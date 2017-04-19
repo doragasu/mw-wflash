@@ -15,6 +15,7 @@ Once the bootloader is flashed to the cartridge, insert the cart in the console 
  - Detect the WiFi hardware and firmware version.
  - Join a previously configured Access Point (e.g. a WiFi router).
  - Obtain the configured IP address and print it on the screen.
+ - Open a TCP server socket on the displayed IP and configured port (1989 by default).
  - Print the "READY!" prompt.
 
 Once you see the ready prompt, use a wflash client (such as mw-wf-cli) to remotely burn ROMs. To do this you will need the IP displayed on the screen. The default port number is `1989`.
