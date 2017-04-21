@@ -85,7 +85,6 @@ int SfCycle(void) {
 	WfBuf *in;
 	uint16_t len, lenTmp;
 	int ch;
-	int i;
 	uint32_t entry;
 
 	// Receive data
@@ -134,8 +133,6 @@ int SfCycle(void) {
 								WF_HEADLEN == len) {
 							in->cmd.data[0] = FlashGetManId();
 							FlashGetDevId(in->cmd.data + 1);
-							for (i = 0; i < 4; i++) in->cmd.data[i] =
-								in->cmd.data[i];
 							in->cmd.cmd = WF_CMD_OK;
 							in->cmd.len = ByteSwapWord(4);
 							MwSend(WF_CHANNEL, in->data, WF_HEADLEN + 4);

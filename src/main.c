@@ -133,9 +133,7 @@ int main(void) {
 		// Bind port 1989 for command server
 		MwTcpBind(WF_CHANNEL, WFLASH_PORT);
 		// Wait until we have a client connection
-		if (WaitUserInteraction()) {
-			continue;
-		}
+		if (WaitUserInteraction());
 		// Got client connection!!!
 		SfInit();
 		// Run command parser
