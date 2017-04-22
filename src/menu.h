@@ -75,6 +75,8 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 #define MENU_COLOR_CONTEXT_L	VDP_TXT_COL_CYAN
 /// Right context string line color
 #define MENU_COLOR_CONTEXT_R	VDP_TXT_COL_MAGENTA
+/// Color definition for the pager field
+#define MENU_COLOR_PAGER		VDP_TXT_COL_CYAN
 /// Unselected item color
 #define MENU_COLOR_ITEM			VDP_TXT_COL_WHITE
 /// Selected item color

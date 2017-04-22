@@ -80,7 +80,7 @@ void VdpInit(void) {
 	// - No interlace
 	VdpRegWrite(VDP_REG_MODE4, 0x81);
 	// Horizontal scroll data address
-	VdpRegWrite(VDP_REG_HSCROLL, 0x00);
+	VdpRegWrite(VDP_REG_HSCROLL, VDP_HSCROLL_ADDR>>10);
 	// Set auto-increment to 2
 	VdpRegWrite(VDP_REG_INCR, 0x02);
 	// Set plane sizes to 128x32 cells
@@ -104,7 +104,7 @@ void VdpInit(void) {
 	VDP_DATA_PORT_W = VDP_COLOR_CYAN;
 	VDP_DATA_PORT_W = VDP_COLOR_MAGENTA;
 
-	// Set vertical scroll to 0
+	// Set  scroll to 0
 	VDP_DATA_PORT_W = 0;
 	VdpRamRwPrep(VDP_VSRAM_WR, 0);
 	VDP_DATA_PORT_W = 0;

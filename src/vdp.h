@@ -84,6 +84,9 @@
 #define VDP_WIN_ADDR		0x8000
 /** \} */
 
+/// Horizontal scroll address en VRAM
+#define VDP_HSCROLL_ADDR	0xA000
+
 /** \addtogroup VdpTextColors VdpTextColors
  *  \brief Available text colors, to use with
  *         VdpDrawText() and VdpDrawHex() calls.
