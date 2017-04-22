@@ -28,7 +28,8 @@ static char cmdBuf[WFLASH_BUFLEN];
 /// Sets background to RED, prints message and loops forever
 void Panic(char msg[]) {
 	VdpRamWrite(VDP_CRAM_WR, 0x00, VDP_COLOR_RED);
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_CYAN, msg);
+	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_CYAN,
+			SF_LINE_MAXCHARS, msg);
 	MwModuleReset();
 	while(1);
 }
@@ -68,13 +69,17 @@ int WaitApJoin(void) {
 	// Obtain IP address and print it
 	i = stat->cfg;
 	if (MwIpCfgGet(i, &ip) != MW_OK) Panic("COULD NOT GET IP!");
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 2, VDP_TXT_COL_WHITE, "IP:");
+	VdpDrawText(VDP_PLANEA_ADDR, 1, 2, VDP_TXT_COL_WHITE,
+			SF_LINE_MAXCHARS, "IP:");
 	i = 5 + VdpDrawDec(VDP_PLANEA_ADDR, 5, 2, VDP_TXT_COL_CYAN, ip->addr>>24);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE, ".");
+	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE,
+			SF_LINE_MAXCHARS, ".");
 	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 2, VDP_TXT_COL_CYAN, ip->addr>>16);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE, ".");
+	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE,
+			SF_LINE_MAXCHARS, ".");
 	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 2, VDP_TXT_COL_CYAN, ip->addr>>8);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE, ".");
+	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE,
+			SF_LINE_MAXCHARS, ".");
 	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 2, VDP_TXT_COL_CYAN, ip->addr);
 
 	return 0;
@@ -101,12 +106,15 @@ int MegaWifiInit(void){
 		return -1;
 	}
 	// Draw detected RTOS version
-	VdpDrawText(VDP_PLANEA_ADDR, 12, 1, VDP_TXT_COL_WHITE, "- MW RTOS");
+	VdpDrawText(VDP_PLANEA_ADDR, 12, 1, VDP_TXT_COL_WHITE,
+			SF_LINE_MAXCHARS, "- MW RTOS");
 	i = 22 + VdpDrawDec(VDP_PLANEA_ADDR, 22, 1, VDP_TXT_COL_CYAN, verMajor);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 1, VDP_TXT_COL_WHITE, ".");
+	VdpDrawText(VDP_PLANEA_ADDR, i++, 1, VDP_TXT_COL_WHITE,
+			SF_LINE_MAXCHARS, ".");
 	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 1, VDP_TXT_COL_CYAN, verMinor) + 1;
 	ToUpper(variant);
-	VdpDrawText(VDP_PLANEA_ADDR, i, 1, VDP_TXT_COL_CYAN, variant);
+	VdpDrawText(VDP_PLANEA_ADDR, i, 1, VDP_TXT_COL_CYAN,
+			SF_LINE_MAXCHARS, variant);
 
 	return 0;
 }
@@ -119,7 +127,8 @@ void Init(void) {
 	GpInit();
 
 	// Print program version
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_WHITE, "WFLASH 0.1");
+	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_WHITE,
+			SF_LINE_MAXCHARS, "WFLASH 0.1");
 	// Initialize MegaWiFi
 	if (MegaWifiInit()) Panic("MEGAWIFI?");
 }
@@ -128,12 +137,13 @@ void Init(void) {
 int main(void) {
 	// Initialization
 	Init();
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA, "READY!");
+	VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,
+			SF_LINE_MAXCHARS, "READY!");
 	while (1) {
 		// Bind port 1989 for command server
 		MwTcpBind(WF_CHANNEL, WFLASH_PORT);
 		// Wait until we have a client connection
-		if (WaitUserInteraction());
+		WaitUserInteraction();
 		// Got client connection!!!
 		SfInit();
 		// Run command parser
@@ -142,7 +152,7 @@ int main(void) {
 		MwTcpDisconnect(WF_CHANNEL);
 		VdpLineClear(VDP_PLANEA_ADDR, 3);
 		VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,
-				"DISCONNECTED!");
+				SF_LINE_MAXCHARS, "DISCONNECTED!");
 	}
 	return 0;
 }

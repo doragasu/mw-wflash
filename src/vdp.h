@@ -15,6 +15,14 @@
 
 #include <stdint.h>
 
+// Screen width in pixels
+#define VDP_SCREEN_WIDTH_PX		320
+// Screen height in pixels
+#define VDP_SCREEN_HEIGHT_PX	224
+
+// Number of tiles per horizontal plane line
+#define VDP_PLANE_HTILES		128
+
 /** \addtogroup VdpIoPortAddr VdpIoPortAddr
  *  \brief Addresses for the VDP IO ports
  *  \{ */
@@ -211,10 +219,11 @@ void VdpLineClear(uint16_t planeAddr, uint8_t line);
  * \param[in] x         Horizontal text coordinate.
  * \param[in] y         Vertical text coordinate.
  * \param[in] txtColor  Text colour (see VdpTextColors).
+ * \param[in] maxChars	Maximum number of characters to write
  * \param[in] text      Null terminated text to write to the plane.
  ****************************************************************************/
 void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
-		char text[]);
+		uint8_t maxChars, char text[]);
 
 /************************************************************************//**
  * Draws an 8-bit hexadecimal number on a plane.

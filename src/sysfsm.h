@@ -14,6 +14,9 @@
 
 #include <stdint.h>
 
+/// Maximum number of characters to draw per line
+#define SF_LINE_MAXCHARS	(VDP_SCREEN_WIDTH_PX/8 - 1)
+
 /// Entry point address is stored at the beginning of the NOTES section of
 /// the cartridge header
 #define SF_ENTRY_POINT_ADDR	(*((uint32_t*)0x1C8))

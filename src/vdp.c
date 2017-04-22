@@ -45,8 +45,6 @@ static inline void VdpRegWrite(uint8_t reg, uint16_t value) {
  * VDP Initialization. Call this function once before using this module.
  ****************************************************************************/
 void VdpInit(void) {
-	// Clear VRAM
-	VdpVRamClear(0, 32768);
 	// Mode 1:
 	// - No 8 left pixels blank
 	// - No HINT
@@ -85,11 +83,15 @@ void VdpInit(void) {
 	VdpRegWrite(VDP_REG_HSCROLL, 0x00);
 	// Set auto-increment to 2
 	VdpRegWrite(VDP_REG_INCR, 0x02);
-	// Set plane sizes to 64x64 cells
-	VdpRegWrite(VDP_REG_PSIZE, 0x11);
+	// Set plane sizes to 128x32 cells
+	VdpRegWrite(VDP_REG_PSIZE, 0x13);
 	// Window H and V positions
 	VdpRegWrite(VDP_REG_WIN_HPOS, 0x00);
 	VdpRegWrite(VDP_REG_WIN_VPOS, 0x00);
+
+	// Clear VRAM
+	VdpVRamClear(0, 32768);
+
 	// Load font three times, to be able to use three different colors
 	VdpFontLoad(font, fontChars, 0, 1, 0);
 	VdpFontLoad(font, fontChars, fontChars * 32, 2, 0);
@@ -119,18 +121,19 @@ void VdpInit(void) {
  * \param[in] x         Horizontal text coordinate.
  * \param[in] y         Vertical text coordinate.
  * \param[in] txtColor  Text colour (see VdpTextColors).
+ * \param[in] maxChars	Maximum number of characters to write
  * \param[in] text      Null terminated text to write to the plane.
  ****************************************************************************/
 void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
-		char text[]) {
+		uint8_t maxChars, char text[]) {
 	uint16_t offset;
 	uint16_t i;
 
 	// Calculate nametable offset and prepare VRAM writes
-	offset = planeAddr + 2 *(x + y * 64);
+	offset = planeAddr + 2 *(x + y * 128);
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
 
-	for (i = 0; text[i]; i++) {
+	for (i = 0; text[i] && (i < maxChars); i++) {
 		VDP_DATA_PORT_W = text[i] - ' ' + txtColor;
 	}
 }

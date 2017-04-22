@@ -164,7 +164,8 @@ int SfCycle(void) {
 							(sizeof(WfMemRange) == ByteSwapWord(in->cmd.len))) {
 							VdpLineClear(VDP_PLANEA_ADDR, 3);
 							VdpDrawText(VDP_PLANEA_ADDR, 1, 3,
-									VDP_TXT_COL_MAGENTA, "ERASING...");
+									VDP_TXT_COL_MAGENTA, SF_LINE_MAXCHARS,
+									"ERASING...");
 							if (!FlashRangeErase(ByteSwapDWord(
 									in->cmd.mem.addr), ByteSwapDWord(
 										in->cmd.mem.len))) {
@@ -186,7 +187,8 @@ int SfCycle(void) {
 							// Acknowledge command and transition to
 							// WF_DATA_WAIT
 							VdpDrawText(VDP_PLANEA_ADDR, 1, 3,
-									VDP_TXT_COL_MAGENTA, "PROGRAM:");
+									VDP_TXT_COL_MAGENTA, SF_LINE_MAXCHARS,
+									"PROGRAM:");
 							VdpDrawHex(VDP_PLANEA_ADDR, 10, 3,
 									VDP_TXT_COL_MAGENTA, in->cmd.data[2]);
 							VdpDrawHex(VDP_PLANEA_ADDR, 12, 3,
@@ -258,7 +260,7 @@ int SfCycle(void) {
 				switch (SfWrite(in, lenTmp)) {
 					case -1: // Error
 						VdpDrawText(VDP_PLANEA_ADDR, 1, 4, VDP_TXT_COL_MAGENTA,
-								"ERROR!");
+								SF_LINE_MAXCHARS, "ERROR!");
 	
 					case 1:	 // Finished
 						d.s = WF_IDLE;

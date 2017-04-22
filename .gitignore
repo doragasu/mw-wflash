@@ -1,0 +1,6 @@
+src/tmp
+*.elf
+*.bin
+src/wflash
+*.o
+*.vim
