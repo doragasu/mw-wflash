@@ -23,7 +23,7 @@ const MenuItem rootItem[MENU_ROOT_ITEMS] = { {
 };
 
 const MenuEntry rootMenu = {
-	MENU_STR("WFLASH_BOOTLOADER"),
+	MENU_STR("WFLASH BOOTLOADER"),
 	MENU_STR("LEFT CONTEXT"),
 	rootItem,
 	NULL,

@@ -58,7 +58,7 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 /// Line in which to draw menu pages information
 #define MENU_LINE_PAGER			(MENU_LINE_CONTEXT - 1)
 /// First usable line to draw menu items
-#define MENU_LINE_ITEM_FIRST	(MENU_LINE_TITLE + 2)
+#define MENU_LINE_ITEM_FIRST	(MENU_LINE_TITLE + 3)
 /// Last usable line to draw menu items
 #define MENU_LINE_ITEM_LAST		(MENU_LINE_PAGER - 2)
 /// Number of lines available to draw menu items

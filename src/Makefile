@@ -13,6 +13,7 @@ LD      = ld
 OBJCOPY = objcopy
 MDMA   ?= $(HOME)/src/github/mw-mdma-cli/mdma
 PREFIX ?= /opt/toolchains/gen/m68k-elf/bin/m68k-elf-
+EMU ?= gens
 OBJDIR  = tmp
 
 CSRCS = $(wildcard *.c) $(wildcard mw/*.c)
@@ -28,6 +29,10 @@ cart: head.bin tail.bin
 	@$(MDMA) -s 0x1FF000
 	@$(MDMA) -Vf head.bin
 	@$(MDMA) -Vf tail.bin:0x1FF000
+
+.PHONY: emu
+emu: $(TARGET).bin
+	gens $<
 
 $(TARGET): $(TARGET).bin
 	dd if=$< of=$@ bs=8k conv=sync

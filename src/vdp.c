@@ -130,7 +130,7 @@ void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	uint16_t i;
 
 	// Calculate nametable offset and prepare VRAM writes
-	offset = planeAddr + 2 *(x + y * 128);
+	offset = planeAddr + 2 *(x + y * VDP_PLANE_HTILES);
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
 
 	for (i = 0; text[i] && (i < maxChars); i++) {
@@ -153,7 +153,7 @@ void VdpDrawHex(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	uint8_t tmp;
 
 	// Calculate nametable offset and prepare VRAM writes
-	offset = planeAddr + 2 * (x + y * 64);
+	offset = planeAddr + 2 * (x + y * VDP_PLANE_HTILES);
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
 
 	// Write hex byte
@@ -194,7 +194,7 @@ uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	uint8_t tmp, i = 0;
 
 	// Calculate nametable offset and prepare VRAM writes
-	offset = planeAddr + 2 * (x + y * 64);
+	offset = planeAddr + 2 * (x + y * VDP_PLANE_HTILES);
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
 
 	// Compute digits and write decimal number
@@ -266,7 +266,7 @@ void VdpLineClear(uint16_t planeAddr, uint8_t line) {
 	int8_t i;
 
 	// Calculate nametable offset and prepare VRAM writes
-	start = planeAddr + 2 * (line * 64);
+	start = planeAddr + 2 * (line * VDP_PLANE_HTILES);
 	VdpRamRwPrep(VDP_VRAM_WR, start);
 
 	// Clear 32 characters (30 should be enough but just in case)

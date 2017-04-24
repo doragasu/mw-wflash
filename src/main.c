@@ -139,7 +139,6 @@ void Init(void) {
 	// Initialize menu system
 	ms.string = ver;
 	MenuInit(&rootMenu, ms);
-	while(1);
 }
 
 /// Entry point

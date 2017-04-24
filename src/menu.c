@@ -49,7 +49,7 @@ uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin) {
 	switch (align) {
 		case MENU_H_ALIGN_CENTER:
 			return mStr.length + margin >= MENU_LINE_CHARS_TOTAL?margin:
-				((MENU_LINE_CHARS_TOTAL - mStr.length)>>1) - 1;
+				(MENU_LINE_CHARS_TOTAL - mStr.length)>>1;
 
 		case MENU_H_ALIGN_RIGHT:
 			return mStr.length + margin >= MENU_LINE_CHARS_TOTAL?margin:
@@ -66,8 +66,9 @@ void MenuClearLines(uint8_t first, uint8_t last) {
 	uint16_t addr;
 
 	// Clear 64 characters out of the 128, line by line
-	for (line = first, addr = VDP_PLANEA_ADDR + md.menuXPos + first *
-		VDP_PLANE_HTILES; line <= last; line++, addr += VDP_PLANE_HTILES) {
+	for (line = first, addr = VDP_PLANEA_ADDR + md.menuXPos * 2 + first *
+		(VDP_PLANE_HTILES<<1); line <= last; line++,
+		addr += VDP_PLANE_HTILES<<1) {
 		VdpVRamClear(addr, MENU_SEPARATION_CHR);
 	}
 }
@@ -93,13 +94,15 @@ void MenuDrawPage(void) {
 			i == md.selItem[md.level]?MENU_COLOR_ITEM_SEL:MENU_COLOR_ITEM,
 			MENU_LINE_CHARS_TOTAL, m->item[i].caption.string);
 	}
-	// Draw page number and total
-	VdpDrawDec(VDP_PLANEA_ADDR, md.menuXPos + MENU_LINE_CHARS_TOTAL - 
-		m->margin - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER, m->pages + 1);
-	VdpDrawText(VDP_PLANEA_ADDR, md.menuXPos + MENU_LINE_CHARS_TOTAL - 
-		m->margin - 2, MENU_LINE_PAGER, MENU_COLOR_PAGER, 1, "/");
-	VdpDrawDec(VDP_PLANEA_ADDR, md.menuXPos + MENU_LINE_CHARS_TOTAL - 
-		m->margin - 3, MENU_LINE_PAGER, MENU_COLOR_PAGER, m->pages + 1);
+	// Draw page number and total, if number of pages greater than 1
+	if (m->pages > 1) {
+		VdpDrawDec(VDP_PLANEA_ADDR, md.menuXPos + MENU_LINE_CHARS_TOTAL - 
+			m->margin - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER, m->pages + 1);
+		VdpDrawText(VDP_PLANEA_ADDR, md.menuXPos + MENU_LINE_CHARS_TOTAL - 
+			m->margin - 2, MENU_LINE_PAGER, MENU_COLOR_PAGER, 1, "/");
+		VdpDrawDec(VDP_PLANEA_ADDR, md.menuXPos + MENU_LINE_CHARS_TOTAL - 
+			m->margin - 3, MENU_LINE_PAGER, MENU_COLOR_PAGER, m->pages + 1);
+	}
 }
 
 void MenuXScroll(uint8_t direction) {
@@ -141,7 +144,7 @@ void MenuDraw(uint8_t direction) {
 	// X-scroll plane to show drawn menu
 	MenuXScroll(direction);
 	// Advance page counter
-	md.menuXPos ^= (MENU_SEPARATION_CHR * 2);
+	md.menuXPos ^= MENU_SEPARATION_CHR;
 	// Clear screen zone that has been hidden
 	MenuClearLines(0, MENU_NLINES_TOTAL);
 }
@@ -160,7 +163,7 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	// Set scroll to second half, for the screen to be moved to the
 	// first half when the first menu is drawn
 //	md.xScroll = MENU_SEPARATION_CHR * 8;
-	md.menuXPos = MENU_SEPARATION_CHR * 2;
+	md.menuXPos = MENU_SEPARATION_CHR;
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, md.xScroll);
 
 	// Draw root menu
