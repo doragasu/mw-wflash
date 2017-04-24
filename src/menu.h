@@ -128,5 +128,7 @@ typedef struct {
 	};
 } MenuEntry;
 
+void MenuInit(const MenuEntry *root, MenuString rContext);
+
 #endif /*_MENU_H_*/
 

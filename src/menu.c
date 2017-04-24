@@ -22,21 +22,21 @@
 #define MENU_SCROLL_DIR_RIGHT	1
 
 /// Number of characters horizontally separating each menu
-#define MENU_SEPARATION_CHR		64
+#define MENU_SEPARATION_CHR		(VDP_PLANE_HTILES/2)
 /// Number of pixels separating each menu
 #define MENU_SEPARATION_PX		(MENU_SEPARATION_CHR*8)
 
 typedef struct {
-	MenuEntry *root;		///< Root menu entry
-	MenuEntry *current;		///< Current menu entry
-	uint16_t xScroll;		///< Scroll value, X axis
-	int16_t  scrollDelta;	///< Amount to scroll on next step
-	int8_t   scrollStep;	///< Scroll step
+	const MenuEntry *root;		///< Root menu entry
+	const MenuEntry *current;	///< Current menu entry
+	uint16_t xScroll;			///< Scroll value, X axis
+	int16_t  scrollDelta;		///< Amount to scroll on next step
+	int8_t   scrollStep;		///< Scroll step
 	/// Reserve space for the rContext string
 	char rConStr[MENU_LINE_CHARS_TOTAL];
-	MenuString rContext;	///< Right context string (bottom line)
-	int8_t menuXPos;		///< X coord. of menu start (0 or 64)
-	uint8_t level;			///< Current menu level
+	MenuString rContext;		///< Right context string (bottom line)
+	int8_t menuXPos;			///< X coord. of menu start (0 or 64)
+	uint8_t level;				///< Current menu level
 	/// Selected item, for each menu level
 	uint8_t selItem[MENU_NLEVELS];
 	/// Selected menu item page
@@ -44,22 +44,6 @@ typedef struct {
 } Menu;
 
 Menu md;
-
-void MenuInit(MenuEntry *root, MenuString rContext) {
-	// Zero module data
-	memset((void*)&md, 0, sizeof(Menu));
-	// Set string to point to string data
-	md.rContext.string = md.rConStr;
-	// Set root and curren menu entries
-	md.root = root;
-	md.current = root;
-	// Set context string
-	strncpy(md.rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
-	md.rContext = rContext;
-	// Set scroll to second half, for the screen to be moved to the
-	// first half when the first menu is drawn
-	md.xScroll = MENU_SEPARATION_CHR * 8;
-}
 
 uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin) {
 	switch (align) {
@@ -90,7 +74,7 @@ void MenuClearLines(uint8_t first, uint8_t last) {
 
 void MenuDrawPage(void) {
 	// Current menu
-	MenuEntry *m = md.current;
+	const MenuEntry *m = md.current;
 	// Loop control
 	uint8_t i;
 	// Line to draw text in
@@ -127,7 +111,7 @@ void MenuXScroll(uint8_t direction) {
 		VdpVBlankWait();
 		// Compute and write new scroll value, taking into account direction
 		md.xScroll += direction == MENU_SCROLL_DIR_LEFT?
-			md.scrollDelta:-md.scrollDelta;
+			-md.scrollDelta:md.scrollDelta;
 		VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, md.xScroll);
 		// Prepare next delta value
 		md.scrollDelta = (md.scrollDelta * MENU_SCROLL_FACTOR)>>
@@ -140,7 +124,7 @@ void MenuXScroll(uint8_t direction) {
 /// outside of the screen, when it switches menu.
 void MenuDraw(uint8_t direction) {
 	// Current menu entry
-	MenuEntry *m = md.current;
+	const MenuEntry *m = md.current;
 
 	// Draw title string out of screen
 	VdpDrawText(VDP_PLANEA_ADDR, md.menuXPos + MenuStrAlign(m->title,
@@ -160,5 +144,25 @@ void MenuDraw(uint8_t direction) {
 	md.menuXPos ^= MENU_SEPARATION_CHR;
 	// Clear screen zone that has been hidden
 	MenuClearLines(0, MENU_NLINES_TOTAL);
+}
+
+void MenuInit(const MenuEntry *root, MenuString rContext) {
+	// Zero module data
+	memset((void*)&md, 0, sizeof(Menu));
+	// Set string to point to string data
+	md.rContext.string = md.rConStr;
+	// Set root and curren menu entries
+	md.root = root;
+	md.current = root;
+	// Set context string
+	strncpy(md.rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
+	md.rContext = rContext;
+	// Set scroll to second half, for the screen to be moved to the
+	// first half when the first menu is drawn
+	md.xScroll = MENU_SEPARATION_CHR * 8;
+	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, md.xScroll);
+
+	// Draw root menu
+	MenuDraw(MENU_SCROLL_DIR_LEFT);
 }
 

@@ -4,7 +4,8 @@
 TARGET  = wflash
 CFLAGS  = -Os -Wall -m68000 -ffunction-sections
 AFLAGS  = --register-prefix-optional -m68000
-LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
+#LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
+LFLAGS  = -T $(LFILE) -Wl,-gc-sections
 LFILE   = mdbasic.ld
 CC      = gcc
 AS      = as

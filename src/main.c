@@ -15,6 +15,7 @@
 #include "cmds.h"
 #include "gamepad.h"
 #include "mw/megawifi.h"
+#include "wf-menu.h"
 
 /// Length of the wflash buffer
 #define WFLASH_BUFLEN	WF_MAX_DATALEN
@@ -125,12 +126,20 @@ void Init(void) {
 	VdpInit();
 	// Initialize gamepad
 	GpInit();
+	// MegaWiFi version menu
+	char ver[20];
+	// MenuString for menu system initialization
+	MenuString ms;
 
 	// Print program version
 	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_WHITE,
 			SF_LINE_MAXCHARS, "WFLASH 0.1");
 	// Initialize MegaWiFi
-	if (MegaWifiInit()) Panic("MEGAWIFI?");
+//	if (MegaWifiInit()) Panic("MEGAWIFI?");
+	// Initialize menu system
+	ms.string = ver;
+	MenuInit(&rootMenu, ms);
+	while(1);
 }
 
 /// Entry point
