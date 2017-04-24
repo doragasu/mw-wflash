@@ -35,7 +35,7 @@ typedef struct {
 	/// Reserve space for the rContext string
 	char rConStr[MENU_LINE_CHARS_TOTAL];
 	MenuString rContext;		///< Right context string (bottom line)
-	int8_t menuXPos;			///< X coord. of menu start (0 or 64)
+	uint8_t menuXPos;			///< X coord. of menu start (0 or 64)
 	uint8_t level;				///< Current menu level
 	/// Selected item, for each menu level
 	uint8_t selItem[MENU_NLEVELS];
@@ -141,7 +141,7 @@ void MenuDraw(uint8_t direction) {
 	// X-scroll plane to show drawn menu
 	MenuXScroll(direction);
 	// Advance page counter
-	md.menuXPos ^= MENU_SEPARATION_CHR;
+	md.menuXPos ^= (MENU_SEPARATION_CHR * 2);
 	// Clear screen zone that has been hidden
 	MenuClearLines(0, MENU_NLINES_TOTAL);
 }
@@ -159,7 +159,8 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	md.rContext = rContext;
 	// Set scroll to second half, for the screen to be moved to the
 	// first half when the first menu is drawn
-	md.xScroll = MENU_SEPARATION_CHR * 8;
+//	md.xScroll = MENU_SEPARATION_CHR * 8;
+	md.menuXPos = MENU_SEPARATION_CHR * 2;
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, md.xScroll);
 
 	// Draw root menu

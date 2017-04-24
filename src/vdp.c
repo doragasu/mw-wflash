@@ -84,7 +84,7 @@ void VdpInit(void) {
 	// Set auto-increment to 2
 	VdpRegWrite(VDP_REG_INCR, 0x02);
 	// Set plane sizes to 128x32 cells
-	VdpRegWrite(VDP_REG_PSIZE, 0x13);
+	VdpRegWrite(VDP_REG_PSIZE, 0x03);
 	// Window H and V positions
 	VdpRegWrite(VDP_REG_WIN_HPOS, 0x00);
 	VdpRegWrite(VDP_REG_WIN_VPOS, 0x00);
