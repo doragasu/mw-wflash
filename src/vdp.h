@@ -100,8 +100,13 @@
 /** \} */
 
 #define VDP_DMA_68K			(0x00<<6)
-#define VDP_DMA_FILL		(0x01<<6)
+#define VDP_DMA_FILL		(0x02<<6)
 #define VDP_DMA_COPY		(0x03<<6)
+
+// CD1,CD0,0,0,0,0,1,0,0,CD2,0,0,0,0
+#define VDP_DMA_MEM_VRAM	0x4080
+#define VDP_DMA_MEM_CRAM	0xC080
+#define VDP_DMA_MEM_VSRAM	0x4090
 
 /// RAM types managed by the VDP.
 enum {
@@ -262,6 +267,12 @@ uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
  * Waits until the beginning of the next VBLANK cycle.
  ****************************************************************************/
 void VdpVBlankWait(void);
+
+void VdpDmaVRamCopy(uint16_t src, uint16_t dst, uint16_t len);
+
+void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t fill);
+
+#define VdpDmaWait()	while(VDP_CTRL_PORT_W & 0x2)
 
 #endif /*_VDP_H_*/
 

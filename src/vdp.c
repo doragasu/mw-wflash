@@ -33,7 +33,7 @@ const uint16_t cdMask[VDP_RAM_TYPE_MAX] = {
  * \param[in] reg   Register number (using VdpReg enumerate recommended).
  * \param[in] value Value to write to the VDP register.
  ****************************************************************************/
-static inline void VdpRegWrite(uint8_t reg, uint16_t value) {
+static inline void VdpRegWrite(uint8_t reg, uint8_t value) {
 	if (reg >= VDP_REG_MAX) return;
 	vdpRegShadow[reg] = value;
 
@@ -54,7 +54,7 @@ void VdpInit(void) {
 	// - DMA disabled
 	// - 224 lines
 	// - Megadrive mode
-	VdpRegWrite(VDP_REG_MODE2, 0x04);
+	VdpRegWrite(VDP_REG_MODE2, 0x14);
 	// Name table for PLANE A set to 0x2000
 	VdpRegWrite(VDP_REG_PLANEA_NT, VDP_PLANEA_ADDR>>10);
 	// Name table for WINDOW set to 0x6000
@@ -110,7 +110,7 @@ void VdpInit(void) {
 	VDP_DATA_PORT_W = 0;
 
 	// Enable display
-	VdpRegWrite(VDP_REG_MODE2, 0x44);
+	VdpRegWrite(VDP_REG_MODE2, 0x54);
 }
 
 /************************************************************************//**
@@ -260,18 +260,57 @@ void VdpFontLoad(const uint32_t font[], uint8_t chars, uint16_t addr,
 	}
 }
 
-void VdpDmaCopy(uint16_t src, uint16_t dst, uint16_t len) {
+void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem) {
 	uint32_t cmd;	// Command word
 
 	// Write transfer length
+	VdpRegWrite(VDP_REG_DMALEN1, wLen);
+	VdpRegWrite(VDP_REG_DMALEN2, wLen>>8);
+	// Write source
+	VdpRegWrite(VDP_REG_DMASRC1, src);
+	VdpRegWrite(VDP_REG_DMASRC2, src>>8);
+	VdpRegWrite(VDP_REG_DMASRC3, src>>16);
+	// Write command and start DMA
+	cmd = (dst>>14) | (mem & 0xFF) | (((dst & 0x3FFF) | (mem & 0xFF00))<<16);
+	VDP_CTRL_PORT_DW = cmd;
+}
+
+void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t fill) {
+	uint32_t cmd;	// Command word
+
+	// Set auto-increment to 1 byte
+	VdpRegWrite(VDP_REG_INCR, 0x01);
+	// Write transfer length
 	VdpRegWrite(VDP_REG_DMALEN1, len);
-	VdpRegWrite(VDP_REG_DMALEN1, len>>8);
+	VdpRegWrite(VDP_REG_DMALEN2, len>>8);
+	// Enable DMA fill
+	VdpRegWrite(VDP_REG_DMASRC3, VDP_DMA_FILL);
+	// Write destination address
+	cmd = (dst>>14) | VDP_DMA_FILL | (((dst & 0x7FFF) | 0x4000)<<16);
+	VDP_CTRL_PORT_DW = cmd;
+	// Write fill data
+	VDP_DATA_PORT_W = fill;
+	// Restore auto-increment
+	VdpRegWrite(VDP_REG_INCR, 0x02);
+}
+
+void VdpDmaVRamCopy(uint16_t src, uint16_t dst, uint16_t len) {
+	uint32_t cmd;	// Command word
+
+	// Set auto-increment to 1 byte
+	VdpRegWrite(VDP_REG_INCR, 0x01);
+	// Write transfer length
+	VdpRegWrite(VDP_REG_DMALEN1, len);
+	VdpRegWrite(VDP_REG_DMALEN2, len>>8);
 	// Write source
 	VdpRegWrite(VDP_REG_DMASRC1, src);
 	VdpRegWrite(VDP_REG_DMASRC2, src>>8);
 	VdpRegWrite(VDP_REG_DMASRC3, VDP_DMA_COPY);
 	// Write destination and start transfer
-	
+	cmd = (dst>>14) | VDP_DMA_COPY | ((dst & 0x3FFF)<<16);
+	VDP_CTRL_PORT_DW = cmd;
+	// Restore auto-increment
+	VdpRegWrite(VDP_REG_INCR, 0x02);
 }
 
 void VdpLineClear(uint16_t planeAddr, uint8_t line) {
