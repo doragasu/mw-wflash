@@ -99,6 +99,10 @@
 #define VDP_TXT_COL_MAGENTA	0xC0
 /** \} */
 
+#define VDP_DMA_68K			(0x00<<6)
+#define VDP_DMA_FILL		(0x01<<6)
+#define VDP_DMA_COPY		(0x03<<6)
+
 /// RAM types managed by the VDP.
 enum {
 	VDP_VRAM_RD = 0,	///< VRAM read

@@ -10,8 +10,6 @@
 
 /// Initial value for quadratic scroll
 #define MENU_SCROLL_DELTA_INIT	75
-/// Number of steps to scroll a complete menu screen
-#define MENU_SCROLL_NSTEPS		21
 /// Scroll factor (fixed point value, using MENU_SCROLL_SHIFT)
 #define MENU_SCROLL_FACTOR		7
 /// Number of right shifts for the MENU_SCROLL_FACTOR fixed point value
@@ -22,9 +20,16 @@
 #define MENU_SCROLL_DIR_RIGHT	1
 
 /// Number of characters horizontally separating each menu
-#define MENU_SEPARATION_CHR		(VDP_PLANE_HTILES/2)
+#define MENU_SEPARATION_CHR		(VDP_SCREEN_WIDTH_PX/8)
 /// Number of pixels separating each menu
-#define MENU_SEPARATION_PX		(MENU_SEPARATION_CHR*8)
+#define MENU_SEPARATION_PX		VDP_SCREEN_WIDTH_PX
+
+/// Number of steps to scroll a complete menu screen
+const uint8_t scrDelta[] = {
+	1, 1, 2, 2, 3, 5, 6, 7, 9, 11, 13, 16, 18, 21, 25, 28, 32, 36, 40, 44
+};
+
+#define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
 
 typedef struct {
 	const MenuEntry *root;		///< Root menu entry
@@ -106,6 +111,7 @@ void MenuDrawPage(void) {
 }
 
 void MenuXScroll(uint8_t direction) {
+	int8_t i;
 	// Scrolling loop
 	for (md.scrollStep = MENU_SCROLL_NSTEPS - 1,
 		 md.scrollDelta = MENU_SCROLL_DELTA_INIT;
@@ -114,11 +120,11 @@ void MenuXScroll(uint8_t direction) {
 		VdpVBlankWait();
 		// Compute and write new scroll value, taking into account direction
 		md.xScroll += direction == MENU_SCROLL_DIR_LEFT?
-			-md.scrollDelta:md.scrollDelta;
+			-scrDelta[md.scrollStep]:scrDelta[md.scrollStep];
 		VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, md.xScroll);
-		// Prepare next delta value
-		md.scrollDelta = (md.scrollDelta * MENU_SCROLL_FACTOR)>>
-			MENU_SCROLL_SHIFT;
+	}
+	// Copy menu to the zone that has been hidden
+	for (i = MENU_NLINES_TOTAL - 1; i >= 0; i--) {
 	}
 }
 

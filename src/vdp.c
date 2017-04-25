@@ -40,7 +40,6 @@ static inline void VdpRegWrite(uint8_t reg, uint16_t value) {
 	VDP_CTRL_PORT_W = 0x8000 | (reg<<8) | value;
 }
 
-
 /************************************************************************//**
  * VDP Initialization. Call this function once before using this module.
  ****************************************************************************/
@@ -259,6 +258,20 @@ void VdpFontLoad(const uint32_t font[], uint8_t chars, uint16_t addr,
 			VDP_DATA_PORT_DW = scratch;
 		}
 	}
+}
+
+void VdpDmaCopy(uint16_t src, uint16_t dst, uint16_t len) {
+	uint32_t cmd;	// Command word
+
+	// Write transfer length
+	VdpRegWrite(VDP_REG_DMALEN1, len);
+	VdpRegWrite(VDP_REG_DMALEN1, len>>8);
+	// Write source
+	VdpRegWrite(VDP_REG_DMASRC1, src);
+	VdpRegWrite(VDP_REG_DMASRC2, src>>8);
+	VdpRegWrite(VDP_REG_DMASRC3, VDP_DMA_COPY);
+	// Write destination and start transfer
+	
 }
 
 void VdpLineClear(uint16_t planeAddr, uint8_t line) {
