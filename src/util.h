@@ -42,6 +42,8 @@ static inline void ToUpper(char str[]) {
 	}
 }
 
+uint8_t Byte2UnsStr(uint8_t num, char str[4]);
+
 #endif //_UTIL_H_
 
 

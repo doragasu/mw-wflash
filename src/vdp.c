@@ -10,6 +10,7 @@
  ****************************************************************************/
 #include "vdp.h"
 #include "font.h"
+#include "util.h"
 
 /// VDP shadow register values.
 static uint8_t vdpRegShadow[VDP_REG_MAX];
@@ -190,33 +191,15 @@ void VdpVRamClear(uint16_t addr, uint16_t wlen) {
 uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 		uint8_t num) {
 	uint16_t offset;
-	uint8_t tmp, i = 0;
+	uint8_t len, i;
+	char str[4];
 
 	// Calculate nametable offset and prepare VRAM writes
 	offset = planeAddr + 2 * (x + y * VDP_PLANE_HTILES);
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
 
-	// Compute digits and write decimal number
-	// On 3 digit numbers, first one can only be 1 or 2. Take advantage of
-	// this to avoid division (TODO test if this is really faster).
-	if (num > 199) {
-		VDP_DATA_PORT_W = txtColor + 0x10 + 2;
-		num -= 200;
-		i++;
-	} else if (num > 99) {
-		VDP_DATA_PORT_W = txtColor + 0x10 + 1;
-		num -= 100;
-		i++;
-	}
-	tmp = num / 10;
-	num %= 10;
-
-	if (tmp || i) {
-		VDP_DATA_PORT_W = txtColor + 0x10 + tmp;
-		i++;
-	}
-	VDP_DATA_PORT_W = txtColor + 0x10 + num;
-	i++;
+	len = Byte2UnsStr(num, str);
+	for (i = 0; i < len; i++) VDP_DATA_PORT_W = txtColor + 0x10 - '0' + str[i];
 
 	return i;
 }

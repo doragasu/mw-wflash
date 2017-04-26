@@ -10,8 +10,7 @@
 #define MENU_ENTRY_NUMS(numItems, spacing)	(numItems),(spacing), \
 	MENU_ITEM_NLINES/(spacing),(numItems)/(MENU_ITEM_NLINES/(spacing))
 
-#define MENU_ROOT_ITEMS		2
-const MenuItem rootItem[MENU_ROOT_ITEMS] = { {
+const MenuItem rootItem[] = { {
 		MENU_STR("START"),
 		NULL,
 		{1, 1}
@@ -21,6 +20,7 @@ const MenuItem rootItem[MENU_ROOT_ITEMS] = { {
 		{1, 1}
 	}
 };
+#define MENU_ROOT_ITEMS	(sizeof(rootItem)/sizeof(MenuItem))
 
 const MenuEntry rootMenu = {
 	MENU_STR("WFLASH BOOTLOADER"),

@@ -16,6 +16,8 @@
 #include "gamepad.h"
 #include "mw/megawifi.h"
 #include "wf-menu.h"
+#include "menu.h"
+#include <string.h>
 
 /// Length of the wflash buffer
 #define WFLASH_BUFLEN	WF_MAX_DATALEN
@@ -26,7 +28,13 @@
 /// Command buffer
 static char cmdBuf[WFLASH_BUFLEN];
 
+/// Status string buffer
+static char statBuf[16];
+/// Status string
+static MenuString statStr = {statBuf, 0};
+
 /// Sets background to RED, prints message and loops forever
+/// \todo scroll to the origin before drawing
 void Panic(char msg[]) {
 	VdpRamWrite(VDP_CRAM_WR, 0x00, VDP_COLOR_RED);
 	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_CYAN,
@@ -67,21 +75,22 @@ int WaitApJoin(void) {
 
 	if (stat == NULL) return -1;
 
-	// Obtain IP address and print it
+	// Obtain IP address and fill status info with result
 	i = stat->cfg;
-	if (MwIpCfgGet(i, &ip) != MW_OK) Panic("COULD NOT GET IP!");
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 2, VDP_TXT_COL_WHITE,
-			SF_LINE_MAXCHARS, "IP:");
-	i = 5 + VdpDrawDec(VDP_PLANEA_ADDR, 5, 2, VDP_TXT_COL_CYAN, ip->addr>>24);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE,
-			SF_LINE_MAXCHARS, ".");
-	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 2, VDP_TXT_COL_CYAN, ip->addr>>16);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE,
-			SF_LINE_MAXCHARS, ".");
-	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 2, VDP_TXT_COL_CYAN, ip->addr>>8);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 2, VDP_TXT_COL_WHITE,
-			SF_LINE_MAXCHARS, ".");
-	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 2, VDP_TXT_COL_CYAN, ip->addr);
+	if (MwIpCfgGet(i, &ip) != MW_OK) {
+		strcpy(statBuf, "DISCONNECTED!");
+		statStr.length = 13;
+		return -1;
+	}
+	i =  Byte2UnsStr(ip->addr>>24, statBuf);
+	statBuf[i++] = '.';
+	i += Byte2UnsStr(ip->addr>>16, statBuf + i);
+	statBuf[i++] = '.';
+	i += Byte2UnsStr(ip->addr>>8, statBuf + i);
+	statBuf[i++] = '.';
+	i += Byte2UnsStr(ip->addr, statBuf + i);
+	statBuf[i] = '\0';
+	statStr.length = i;
 
 	return 0;
 }
@@ -92,7 +101,7 @@ int MegaWifiInit(void){
 	char *variant;
 
 	// Initialize MegaWiFi
-	MwInit(cmdBuf, WFLASH_BUFLEN);
+//	MwInit(cmdBuf, WFLASH_BUFLEN);
 	// Wait a bit and take module out of resest
 	VdpVBlankWait();
 	VdpVBlankWait();
@@ -131,15 +140,17 @@ void Init(void) {
 	// MenuString for menu system initialization
 	MenuString ms;
 
+//	statStr.string = statBuf;
+//	statStr.length = 0;
+
 	// Print program version
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_WHITE,
-			SF_LINE_MAXCHARS, "WFLASH 0.1");
+//	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_WHITE,
+//			SF_LINE_MAXCHARS, "WFLASH 0.1");
 	// Initialize MegaWiFi
-//	if (MegaWifiInit()) Panic("MEGAWIFI?");
+	if (MegaWifiInit()) Panic("MEGAWIFI?");
 	// Initialize menu system
 	ms.string = ver;
 	MenuInit(&rootMenu, ms);
-	while(1);
 }
 
 /// Entry point

@@ -56,7 +56,7 @@ SECTIONS
   } > ram
 
   .data 0xFF0000 + SIZEOF(.text) :
-  AT ( ADDR (.text) + SIZEOF (.text))
+  AT ( ADDR (.text.boot) + SIZEOF (.text.boot) + SIZEOF (.text))
   {
     *(.data .data.*)
     _edata = .;
