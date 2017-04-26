@@ -27,9 +27,10 @@ all: $(TARGET)
 .PHONY: cart
 cart: head.bin tail.bin
 	@$(MDMA) -s 0
+	@$(MDMA) -s 0x1FE000
 	@$(MDMA) -s 0x1FF000
 	@$(MDMA) -Vf head.bin
-	@$(MDMA) -Vf tail.bin:0x1FF000
+	@$(MDMA) -Vf tail.bin:0x1FE000
 
 .PHONY: emu
 emu: $(TARGET).bin
@@ -42,7 +43,8 @@ head.bin: $(TARGET)
 	dd if=$< of=$@ bs=512 count=1
 
 tail.bin: $(TARGET)
-	dd if=$< of=$@ bs=8k skip=511 conv=sync
+#	dd if=$< of=$@ bs=16k skip=255 conv=sync
+	dd if=$< of=$@ bs=8k skip=510 conv=sync
 
 $(TARGET).bin: $(TARGET).elf
 	$(PREFIX)$(OBJCOPY) -O binary $< $@

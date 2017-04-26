@@ -80,7 +80,7 @@ int WaitApJoin(void) {
 	if (MwIpCfgGet(i, &ip) != MW_OK) {
 		strcpy(statBuf, "DISCONNECTED!");
 		statStr.length = 13;
-		return -1;
+		return 0;
 	}
 	i =  Byte2UnsStr(ip->addr>>24, statBuf);
 	statBuf[i++] = '.';
