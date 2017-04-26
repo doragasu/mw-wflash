@@ -43,8 +43,8 @@ head.bin: $(TARGET)
 	dd if=$< of=$@ bs=512 count=1
 
 tail.bin: $(TARGET)
-#	dd if=$< of=$@ bs=16k skip=255 conv=sync
-	dd if=$< of=$@ bs=8k skip=510 conv=sync
+	dd if=$< of=$@ bs=16k skip=255 conv=sync
+#	dd if=$< of=$@ bs=8k skip=510 conv=sync
 
 $(TARGET).bin: $(TARGET).elf
 	$(PREFIX)$(OBJCOPY) -O binary $< $@

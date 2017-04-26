@@ -55,7 +55,7 @@ void VdpInit(void) {
 	// - DMA disabled
 	// - 224 lines
 	// - Megadrive mode
-	VdpRegWrite(VDP_REG_MODE2, 0x14);
+	VdpRegWrite(VDP_REG_MODE2, 0x04);
 	// Name table for PLANE A set to 0x2000
 	VdpRegWrite(VDP_REG_PLANEA_NT, VDP_PLANEA_ADDR>>10);
 	// Name table for WINDOW set to 0x6000
@@ -90,6 +90,10 @@ void VdpInit(void) {
 	VdpRegWrite(VDP_REG_WIN_VPOS, 0x00);
 
 	// Clear VRAM
+	/// \bug I do not know why, but VRam Fill does not work. Maybe you
+	/// have to wait until configuration is somehow applied.
+//	VdpDmaVRamFill(0, 0xFFFF, 0);
+//	VdpDmaWait();
 	VdpVRamClear(0, 32768);
 
 	// Load font three times, to be able to use three different colors
@@ -110,6 +114,8 @@ void VdpInit(void) {
 	VDP_DATA_PORT_W = 0;
 	VDP_DATA_PORT_W = 0;
 
+	// Set auto-increment to 2
+	VdpRegWrite(VDP_REG_INCR, 0x02);
 	// Enable display
 	VdpRegWrite(VDP_REG_MODE2, 0x54);
 }

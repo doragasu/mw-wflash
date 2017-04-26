@@ -20,7 +20,8 @@ const MenuItem rootItem[] = { {
 		{1, 1}
 	}
 };
-#define MENU_ROOT_ITEMS	(sizeof(rootItem)/sizeof(MenuItem))
+#define MENU_ROOT_ITEMS	2
+//#define MENU_ROOT_ITEMS	(sizeof(rootItem)/sizeof(MenuItem))
 
 const MenuEntry rootMenu = {
 	MENU_STR("WFLASH BOOTLOADER"),

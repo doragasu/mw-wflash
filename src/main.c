@@ -101,7 +101,7 @@ int MegaWifiInit(void){
 	char *variant;
 
 	// Initialize MegaWiFi
-//	MwInit(cmdBuf, WFLASH_BUFLEN);
+	MwInit(cmdBuf, WFLASH_BUFLEN);
 	// Wait a bit and take module out of resest
 	VdpVBlankWait();
 	VdpVBlankWait();
@@ -147,7 +147,7 @@ void Init(void) {
 //	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_WHITE,
 //			SF_LINE_MAXCHARS, "WFLASH 0.1");
 	// Initialize MegaWiFi
-	if (MegaWifiInit()) Panic("MEGAWIFI?");
+//	if (MegaWifiInit()) Panic("MEGAWIFI?");
 	// Initialize menu system
 	ms.string = ver;
 	MenuInit(&rootMenu, ms);
@@ -155,6 +155,7 @@ void Init(void) {
 
 /// Entry point
 int main(void) {
+	uint16_t scratch;
 	// Initialization
 	Init();
 	VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,
