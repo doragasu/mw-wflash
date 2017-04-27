@@ -69,6 +69,22 @@ void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset) {
 	}
 }
 
+void MenuStatStrSet(MenuString statStr) {
+	// Current menu entry
+	const MenuEntry *m = md.current;
+
+	memcpy(md.rContext.string, statStr.string, statStr.length);
+	md.rContext.length = statStr.length;
+	// Redraw context string
+	MenuClearLines(MENU_LINE_CONTEXT, MENU_LINE_CONTEXT, 0);
+	VdpDrawText(VDP_PLANEA_ADDR, m->margin, MENU_LINE_CONTEXT,
+			MENU_COLOR_CONTEXT_L, MENU_LINE_CHARS_TOTAL,
+			m->lContext.string);
+	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(md.rContext, MENU_H_ALIGN_RIGHT,
+			m->margin), MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R,
+			MENU_LINE_CHARS_TOTAL, md.rContext.string);
+}
+
 /// \param[in] chrOff Character offset in plane to draw menu
 void MenuDrawPage(uint8_t chrOff) {
 	// Current menu
@@ -161,6 +177,8 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	memset((void*)&md, 0, sizeof(Menu));
 	// Set string to point to string data
 	md.rContext.string = md.rConStr;
+	memcpy(md.rConStr, rContext.string, rContext.length);
+	md.rContext.length = rContext.length;
 	// Set root and curren menu entries
 	md.root = root;
 	md.current = root;

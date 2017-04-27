@@ -2,6 +2,25 @@
  * \brief Menu implementation. This menu allows to define menu data
  * structures, and alow allows to display them and handle options.
  *
+ * To use this module, the program must define a menu structure with at the
+ * very minimum a root MenuEntry, containing several MenuItem structures.
+ *
+ * The MenuEntry structure can partially automate menu navigation:
+ * - UP/DOWN: Change selected option.
+ * - LEFT/RIGHT: Change page (when there are several menu pages).
+ * - A: Choses selected options.
+ * - C: Goes back in the menu tree.
+ *
+ * When an option is chosen, depending on how the menu structure has been
+ * defined, the following actions will be performed:
+ * - MenuItem callback is called.
+ * - Transition to the next MenuEntry is performed.
+ *
+ * When doing a MenuEntry transition, depending on how the menu structure
+ * has been defined, the following actions will be performed:
+ * - Exit callback of the exiting MenuEntry is executed.
+ * - Entry callback of the entering MenuEntry is executed.
+ *
  * \author	Jesús Alonso (doragasu)
  * \date	2017
  ****************************************************************************/
@@ -103,8 +122,9 @@ typedef struct {
 /// \note All menu items from a single menu entry, must be declared
 /// in a single MenuItem array.
 typedef struct {
-	const MenuString caption;			///< Menu item text
-	const void *next;					///< Next MenuEntry (if item accepted)
+	const MenuString caption;	///< Menu item text
+	const void *next;			///< Next MenuEntry (if item accepted)
+	const MenuCb cb;			///< Callback to run if option chosen
 	const struct {
 		uint8_t selectable:1;	///< Selectable item
 		uint8_t enabled:1;		///< Enabled item
@@ -129,6 +149,8 @@ typedef struct {
 } MenuEntry;
 
 void MenuInit(const MenuEntry *root, MenuString rContext);
+
+void MenuStatStrSet(MenuString statStr);
 
 #endif /*_MENU_H_*/
 

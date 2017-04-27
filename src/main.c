@@ -28,11 +28,6 @@
 /// Command buffer
 static char cmdBuf[WFLASH_BUFLEN];
 
-/// Status string buffer
-static char statBuf[16];
-/// Status string
-static MenuString statStr = {statBuf, 0};
-
 /// Sets background to RED, prints message and loops forever
 /// \todo scroll to the origin before drawing
 void Panic(char msg[]) {
@@ -64,7 +59,10 @@ int WaitApJoin(void) {
 	MwIpCfg *ip;
 	uint8_t i;
 	int8_t loop;
+	char statBuf[16];
+	MenuString statStr;
 
+	statStr.string = statBuf;
 	// Poll status each 100 ms	
 	do {
 		for (loop = 5; loop > 0; loop--) VdpVBlankWait();
@@ -80,6 +78,7 @@ int WaitApJoin(void) {
 	if (MwIpCfgGet(i, &ip) != MW_OK) {
 		strcpy(statBuf, "DISCONNECTED!");
 		statStr.length = 13;
+		MenuStatStrSet(statStr);
 		return 0;
 	}
 	i =  Byte2UnsStr(ip->addr>>24, statBuf);
@@ -131,31 +130,17 @@ int MegaWifiInit(void){
 
 /// Global initialization
 void Init(void) {
+	const MenuString str = {"IDLE", 4};
 	// Initialize VDP
 	VdpInit();
 	// Initialize gamepad
 	GpInit();
-	// MegaWiFi version menu
-	char ver[20];
-	// MenuString for menu system initialization
-	MenuString ms;
-
-//	statStr.string = statBuf;
-//	statStr.length = 0;
-
-	// Print program version
-//	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_WHITE,
-//			SF_LINE_MAXCHARS, "WFLASH 0.1");
-	// Initialize MegaWiFi
-//	if (MegaWifiInit()) Panic("MEGAWIFI?");
 	// Initialize menu system
-	ms.string = ver;
-	MenuInit(&rootMenu, ms);
+	WfMenuInit(str);
 }
 
 /// Entry point
 int main(void) {
-	uint16_t scratch;
 	// Initialization
 	Init();
 	VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,

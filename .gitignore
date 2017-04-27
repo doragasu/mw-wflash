@@ -5,3 +5,4 @@ src/wflash
 *.o
 *.vim
 octave-workspace
+*.swp
