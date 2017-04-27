@@ -34,7 +34,7 @@ typedef struct {
 	uint8_t level;				///< Current menu level
 	/// Selected item, for each menu level
 	uint8_t selItem[MENU_NLEVELS];
-	/// Selected menu item page
+	/// Selected menu item page (minus 1)
 	uint8_t selPage[MENU_NLEVELS];
 } Menu;
 
@@ -48,7 +48,7 @@ uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin) {
 
 		case MENU_H_ALIGN_RIGHT:
 			return mStr.length + margin >= MENU_LINE_CHARS_TOTAL?margin:
-				MENU_LINE_CHARS_TOTAL - margin - mStr.length - 1;
+				MENU_LINE_CHARS_TOTAL - margin - mStr.length;
 
 		case MENU_H_ALIGN_LEFT:
 		default:
@@ -73,16 +73,15 @@ void MenuStatStrSet(MenuString statStr) {
 	// Current menu entry
 	const MenuEntry *m = md.current;
 
-	memcpy(md.rContext.string, statStr.string, statStr.length);
+	memcpy(md.rContext.string, statStr.string, statStr.length + 1);
 	md.rContext.length = statStr.length;
 	// Redraw context string
 	MenuClearLines(MENU_LINE_CONTEXT, MENU_LINE_CONTEXT, 0);
 	VdpDrawText(VDP_PLANEA_ADDR, m->margin, MENU_LINE_CONTEXT,
-			MENU_COLOR_CONTEXT_L, MENU_LINE_CHARS_TOTAL,
-			m->lContext.string);
+			MENU_COLOR_CONTEXT_L, statStr.length, m->lContext.string);
 	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(md.rContext, MENU_H_ALIGN_RIGHT,
 			m->margin), MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R,
-			MENU_LINE_CHARS_TOTAL, md.rContext.string);
+			statStr.length, md.rContext.string);
 }
 
 /// \param[in] chrOff Character offset in plane to draw menu
@@ -97,20 +96,21 @@ void MenuDrawPage(uint8_t chrOff) {
 	uint8_t pageItems;
 
 	// Get the number of items to draw on current page
-	pageItems = md.selPage[md.level] == m->pages - 1?m->nItems -
-		(m->entPerPage * m->pages - 1):m->entPerPage;
+	pageItems = md.selPage[md.level] == m->pages?m->nItems -
+		(m->entPerPage * m->pages):m->entPerPage;
 	// Draw menu items in page
 	for (i = 0, line = MENU_LINE_ITEM_FIRST; i < pageItems; i++,
 			line += m->spacing) {
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
 			m->item[i].caption, m->align, m->margin), line,
 			i == md.selItem[md.level]?MENU_COLOR_ITEM_SEL:MENU_COLOR_ITEM,
-			MENU_LINE_CHARS_TOTAL, m->item[i].caption.string);
+			m->item[i].caption.length, m->item[i].caption.string);
 	}
 	// Draw page number and total, if number of pages greater than 1
-	if (m->pages > 1) {
+	if (m->pages > 0) {
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
-			m->margin - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER, m->pages + 1);
+			m->margin - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER,
+			md.selPage[md.level] + 1);
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
 			m->margin - 2, MENU_LINE_PAGER, MENU_COLOR_PAGER, 1, "/");
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
@@ -155,14 +155,14 @@ void MenuDraw(uint8_t direction) {
 	// Draw title string out of screen
 	VdpDrawText(VDP_PLANEA_ADDR, offset + MenuStrAlign(m->title,
 			MENU_H_ALIGN_CENTER, 0), MENU_LINE_TITLE, MENU_COLOR_TITLE,
-			MENU_LINE_CHARS_TOTAL, m->title.string);
+			m->title.length, m->title.string);
 	// Draw context strings
 	VdpDrawText(VDP_PLANEA_ADDR, offset + m->margin,
-			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_L, MENU_LINE_CHARS_TOTAL,
+			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_L, m->lContext.length,
 			m->lContext.string);
 	VdpDrawText(VDP_PLANEA_ADDR, offset +
 			MenuStrAlign(md.rContext, MENU_H_ALIGN_RIGHT, m->margin),
-			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R, MENU_LINE_CHARS_TOTAL,
+			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R, md.rContext.length,
 			md.rContext.string);
 	// Draw page (including selected item)
 	MenuDrawPage(offset);
@@ -177,7 +177,7 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	memset((void*)&md, 0, sizeof(Menu));
 	// Set string to point to string data
 	md.rContext.string = md.rConStr;
-	memcpy(md.rConStr, rContext.string, rContext.length);
+	memcpy(md.rConStr, rContext.string, rContext.length + 1);
 	md.rContext.length = rContext.length;
 	// Set root and curren menu entries
 	md.root = root;

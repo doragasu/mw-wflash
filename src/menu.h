@@ -141,7 +141,7 @@ typedef struct {
 	const int8_t nItems;		///< Number of menu entries
 	const uint8_t spacing;		///< Line spacing between options
 	const uint8_t entPerPage;	///< Maximum entries per page
-	const uint8_t pages;		///< Number of entry pages
+	const uint8_t pages;		///< Number of entry pages minus 1
 	const uint8_t margin;		///< Margin for left/right aligned entries
 	const struct {
 		MenuHAlign align:2;		/// Alignment for items
