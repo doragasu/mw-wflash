@@ -221,6 +221,11 @@ void VdpVRamClear(uint16_t addr, uint16_t wlen);
  *
  * \param[in] planeAddr Address in VRAM of the plane to clear.
  * \param[in] line      Line number to clear.
+ *
+ * \warning This function starts the DMA fill but does not wait for the fill
+ * operation to complete. During fill operation, only VDP status register,
+ * H/V counter and PSG registers can be accessed. If you need to access any
+ * other VDP register, call VdpDmaWait() first.
  ****************************************************************************/
 void VdpLineClear(uint16_t planeAddr, uint8_t line);
 
@@ -268,10 +273,39 @@ uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
  ****************************************************************************/
 void VdpVBlankWait(void);
 
+/************************************************************************//**
+ * Copies from VRAM to VRAM a specified region.
+ *
+ * \param[in] src Start VRAM memory address to copy.
+ * \param[in] dst Destination VRAM address of the copy operation.
+ * \param[in] len Length in bytes of the zone to copy.
+ *
+ * \warning This function starts the DMA copy but does not wait for the copy
+ * operation to complete. During copy operation, only VDP status register,
+ * H/V counter and PSG registers can be accessed. If you need to access any
+ * other VDP register, call VdpDmaWait() first.
+ ****************************************************************************/
 void VdpDmaVRamCopy(uint16_t src, uint16_t dst, uint16_t len);
 
+/************************************************************************//**
+ * Fills specified VRAM region
+ *
+ * \param[in] dst  Start VRAM memory address to fill.
+ * \param[in] len  Length in bytes of the VRAM zone to fill.
+ * \param[in] fill Byte to write to the filled zone.
+ *
+ * \warning This function starts the DMA fill but does not wait for the fill
+ * operation to complete. During fill operation, only VDP status register,
+ * H/V counter and PSG registers can be accessed. If you need to access any
+ * other VDP register, call VdpDmaWait() first.
+ ****************************************************************************/
 void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t fill);
 
+/************************************************************************//**
+ * Waits until there is no DMA operation in progress. Useful only for VRAM
+ * DMA copy and VRAM DMA fill operations, since 68k to VRAM copy freezes the
+ * processor.
+ ****************************************************************************/
 #define VdpDmaWait()	while(VDP_CTRL_PORT_W & 0x2)
 
 #endif /*_VDP_H_*/

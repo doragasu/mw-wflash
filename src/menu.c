@@ -75,6 +75,7 @@ void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset) {
 		(VDP_PLANE_HTILES<<1); line <= last; line++,
 		addr += VDP_PLANE_HTILES<<1) {
 		VdpDmaVRamFill(addr, MENU_SEPARATION_CHR * 2, 0);
+		// Wait for DMA completion and set increment to 2
 		VdpDmaWait();
 	}
 }
