@@ -81,7 +81,7 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 /// Last usable line to draw menu items
 #define MENU_LINE_ITEM_LAST		(MENU_LINE_PAGER - 2)
 /// Number of lines available to draw menu items
-#define MENU_ITEM_NLINES		(MENU_LINE_ITEM_FIRST-MENU_LINE_ITEM_LAST+1)
+#define MENU_ITEM_NLINES		(MENU_LINE_ITEM_LAST-MENU_LINE_ITEM_FIRST+1)
 /// Default margin
 #define MENU_DEF_LEFT_MARGIN	1
 /** \} */
@@ -151,6 +151,10 @@ typedef struct {
 void MenuInit(const MenuEntry *root, MenuString rContext);
 
 void MenuStatStrSet(MenuString statStr);
+
+void MenuButtonAction(uint8_t input);
+
+void MenuForceLoad(MenuEntry *me);
 
 #endif /*_MENU_H_*/
 

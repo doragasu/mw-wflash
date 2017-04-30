@@ -141,25 +141,32 @@ void Init(void) {
 
 /// Entry point
 int main(void) {
+	uint8_t pad;
 	// Initialization
 	Init();
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,
-			SF_LINE_MAXCHARS, "READY!");
 	while (1) {
-		// Bind port 1989 for command server
-		MwTcpBind(WF_CHANNEL, WFLASH_PORT);
-		// Wait until we have a client connection
-		WaitUserInteraction();
-		// Got client connection!!!
-		SfInit();
-		// Run command parser
-		while (!SfCycle());
-		/// Error or socket disconnected
-		MwTcpDisconnect(WF_CHANNEL);
-		VdpLineClear(VDP_PLANEA_ADDR, 3);
-		VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,
-				SF_LINE_MAXCHARS, "DISCONNECTED!");
+		/// \todo 1. Parse communications events.
+		// 2. Wait for VBlank.
+		VdpVBlankWait();
+		// 3. Read controller and perform non-menu related actions.
+		pad = GpPressed();
+		// 4. Perform menu related actions.
+		MenuButtonAction(pad);
+		VdpDrawHex(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_CYAN, pad);
+
 	}
+//	while (1) { // Bind port 1989 for command server MwTcpBind(WF_CHANNEL, WFLASH_PORT); // Wait until we have a client connection
+//		WaitUserInteraction();
+//		// Got client connection!!!
+//		SfInit();
+//		// Run command parser
+//		while (!SfCycle());
+//		/// Error or socket disconnected
+//		MwTcpDisconnect(WF_CHANNEL);
+//		VdpLineClear(VDP_PLANEA_ADDR, 3);
+//		VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,
+//				SF_LINE_MAXCHARS, "DISCONNECTED!");
+//	}
 	return 0;
 }
 

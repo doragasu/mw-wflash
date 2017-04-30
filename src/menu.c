@@ -6,6 +6,7 @@
  * \date	2017
  ****************************************************************************/
 #include "menu.h"
+#include "gamepad.h"
 #include <string.h>
 
 /// Scroll direction to the left
@@ -24,6 +25,12 @@ const uint8_t scrDelta[] = {
 };
 
 #define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
+
+/// Returns the number of items on current page
+#define MenuNumPageItems()	(md.selPage[md.level] == md.current->pages? \
+		md.current->nItems - (md.current->entPerPage * md.current->pages): \
+		md.current->entPerPage)
+
 
 typedef struct {
 	const MenuEntry *root;		///< Root menu entry
@@ -94,27 +101,32 @@ void MenuDrawPage(uint8_t chrOff) {
 	uint8_t line;
 	// Number of items to draw in this page
 	uint8_t pageItems;
+	// Number of the item to draw
+	uint8_t item;
 
+	// Clear previously drawn items
+	MenuClearLines(MENU_LINE_ITEM_FIRST, MENU_LINE_ITEM_LAST, chrOff);
 	// Get the number of items to draw on current page
-	pageItems = md.selPage[md.level] == m->pages?m->nItems -
-		(m->entPerPage * m->pages):m->entPerPage;
+	pageItems = MenuNumPageItems();
+	// Keep selected item unless it points to a non existing option
+	if (md.selItem[md.level] >= pageItems) md.selItem[md.level] = pageItems - 1;
 	// Draw menu items in page
-	for (i = 0, line = MENU_LINE_ITEM_FIRST; i < pageItems; i++,
-			line += m->spacing) {
+	for (i = 0, line = MENU_LINE_ITEM_FIRST, item = md.selPage[md.level]
+			* m->entPerPage; i < pageItems; i++, line += m->spacing, item++) {
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
-			m->item[i].caption, m->align, m->margin), line,
+			m->item[item].caption, m->align, m->margin), line,
 			i == md.selItem[md.level]?MENU_COLOR_ITEM_SEL:MENU_COLOR_ITEM,
-			m->item[i].caption.length, m->item[i].caption.string);
+			m->item[item].caption.length, m->item[item].caption.string);
 	}
 	// Draw page number and total, if number of pages greater than 1
 	if (m->pages > 0) {
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
-			m->margin - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER,
-			md.selPage[md.level] + 1);
+			m->margin - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER, m->pages + 1);
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
 			m->margin - 2, MENU_LINE_PAGER, MENU_COLOR_PAGER, 1, "/");
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
-			m->margin - 3, MENU_LINE_PAGER, MENU_COLOR_PAGER, m->pages + 1);
+			m->margin - 3, MENU_LINE_PAGER, MENU_COLOR_PAGER,
+			md.selPage[md.level] + 1);
 	}
 }
 
@@ -189,5 +201,83 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 
 	// Draw root menu
 	MenuDraw(MENU_SCROLL_DIR_LEFT);
+}
+
+/// Advances page number to the next one (but does not draw the page)
+static inline void MenuNextPage(void) {
+	md.selPage[md.level]++;
+	if (md.selPage[md.level] > md.current->pages) md.selPage[md.level] = 0;
+}
+
+/// Sets page number to the previous one (but does not draw the page)
+static inline void MenuPrevPage(void) {
+	md.selPage[md.level] = md.selPage[md.level]?md.selPage[md.level] - 1:
+		md.current->pages;
+}
+
+static inline void MenuDrawCurrentItem(uint8_t txtColor) {
+	uint8_t line, item;
+	const MenuEntry *m = md.current;
+
+	line = MENU_LINE_ITEM_FIRST + md.selItem[md.level] *
+		md.current->spacing;
+	item = md.selItem[md.level] + md.selPage[md.level] *
+		md.current->entPerPage;
+	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(m->item[item].caption, m->align,
+			m->margin), line, txtColor, m->item[item].caption.length,
+			m->item[item].caption.string);
+}
+
+void MenuButtonAction(uint8_t input) {
+	uint8_t tmp;
+
+	input = ~input;
+	// Parse buttons before movement
+	if (input & GP_A_MASK) {
+		// Accept selected menu option
+		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "A");
+	} else if (input & GP_C_MASK) {
+		// Go back one menu level
+		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "C");
+	} else if (input & GP_UP_MASK) {
+		// Go up a menu item
+		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "U");
+		if (md.selItem[md.level]) {
+			// Draw currently selected item with non-selected color
+			MenuDrawCurrentItem(MENU_COLOR_ITEM);
+			// Draw previous item with selected color
+			md.selItem[md.level]--;
+			MenuDrawCurrentItem(MENU_COLOR_ITEM_SEL);
+		} else {
+			// Go to previous page and select last item
+			MenuPrevPage();
+			md.selItem[md.level] = MenuNumPageItems() - 1;
+			MenuDrawPage(0);
+		}
+	} else if (input & GP_DOWN_MASK) {
+		// Go down a menu item
+		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "D");
+		tmp = MenuNumPageItems() - 1;
+		if (md.selItem[md.level] < tmp) {
+			// Draw currently selected item with non-selected color
+			MenuDrawCurrentItem(MENU_COLOR_ITEM);
+			// Draw next item with selected color
+			md.selItem[md.level]++;
+			MenuDrawCurrentItem(MENU_COLOR_ITEM_SEL);
+		} else {
+			// Advance to next page, and select first item
+			MenuNextPage();
+			md.selItem[md.level] = 0;
+			MenuDrawPage(0);
+		}
+	} else if (input & GP_LEFT_MASK) {
+		// Change to previous page
+		MenuPrevPage();
+		MenuDrawPage(0);
+	} else if (input & GP_RIGHT_MASK) {
+		// Change to next page
+		MenuNextPage();
+		MenuDrawPage(0);
+	}
 }
 

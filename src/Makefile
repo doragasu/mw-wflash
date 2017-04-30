@@ -34,7 +34,7 @@ cart: head.bin tail.bin
 
 .PHONY: emu
 emu: $(TARGET).bin
-	$(EMU) $< &
+	@$(EMU) $< 2>/dev/null &
 
 $(TARGET): $(TARGET).bin
 	dd if=$< of=$@ bs=8k conv=sync
