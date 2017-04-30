@@ -3,15 +3,54 @@
 
 #define MENU_STR(string)	{string, sizeof(string) - 1}
 
+#define MENU_NITEMS(menuItems)	(sizeof(menuItems)/sizeof(MenuItem))
+
 /// Helper to fill entry data in MenuEntry structure
 /// (nItems, spacing, entPerPage, pages)
 #define MENU_ENTRY_NUMS(numItems, spacing)	(numItems),(spacing), \
 	MENU_ITEM_NLINES/(spacing),(numItems)/(MENU_ITEM_NLINES/(spacing))
 
+const MenuItem lA1Item[] = { {
+	MENU_STR("LA1 TEST1"),
+		NULL,
+		NULL,
+		{1, 1}
+	},{
+	MENU_STR("LA1 TEST2"),
+		NULL,
+		NULL,
+		{1, 1}
+	},{
+	MENU_STR("LA1 TEST3"),
+		NULL,
+		NULL,
+		{1, 1}
+	},{
+	MENU_STR("LA1 TEST4"),
+		NULL,
+		NULL,
+		{1, 1}
+	}
+};
+
+#define MENU_LA1_ITEMS	(sizeof(lA1Item)/sizeof(MenuItem))
+
+const MenuEntry lA1Entry = {
+	MENU_STR("LEVEL A-1 MENU"),		// Title
+	MENU_STR("LA1 CONTEXT"),		// Left context
+	lA1Item,						// Item
+	NULL,							// cbEntry
+	NULL,							// cbExit
+	// nItems, spacing, entPerPage, pages
+	MENU_ENTRY_NUMS(MENU_NITEMS(lA1Item), 3),
+	1,								// margin
+	{MENU_H_ALIGN_CENTER}			// align
+};
+
 const MenuItem rootItem[] = { {
 		MENU_STR("START"),			///< Caption
+		&lA1Entry,					///< Next
 		NULL,						///< Callback
-		NULL,						///< Next
 		{1, 1}						///< Selectable, Enabled
 	}, {
 		MENU_STR("CONFIGURATION"),
@@ -85,8 +124,6 @@ const MenuItem rootItem[] = { {
 		{1, 1}
 	}
 };
-//#define MENU_ROOT_ITEMS	1
-//#define MENU_ROOT_ITEMS	2
 #define MENU_ROOT_ITEMS	(sizeof(rootItem)/sizeof(MenuItem))
 
 const MenuEntry rootMenu = {
@@ -96,7 +133,7 @@ const MenuEntry rootMenu = {
 	NULL,							// cbEntry
 	NULL,							// cbExit
 	// nItems, spacing, entPerPage, pages
-	MENU_ENTRY_NUMS(MENU_ROOT_ITEMS, 2), // nItems, spacing
+	MENU_ENTRY_NUMS(MENU_NITEMS(rootItem), 2),
 	1,								// margin
 	{MENU_H_ALIGN_CENTER}			// align
 };

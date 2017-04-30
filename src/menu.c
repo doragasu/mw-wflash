@@ -26,15 +26,18 @@ const uint8_t scrDelta[] = {
 
 #define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
 
+#define MenuGetCurrentItemNum()		(md.selItem[md.level] + \
+		md.selPage[md.level] * md.me[md.level]->entPerPage)
+
 /// Returns the number of items on current page
-#define MenuNumPageItems()	(md.selPage[md.level] == md.current->pages? \
-		md.current->nItems - (md.current->entPerPage * md.current->pages): \
-		md.current->entPerPage)
+#define MenuNumPageItems()	(md.selPage[md.level] == md.me[md.level]->pages? \
+		md.me[md.level]->nItems - (md.me[md.level]->entPerPage * \
+		md.me[md.level]->pages):md.me[md.level]->entPerPage)
 
 
 typedef struct {
-	const MenuEntry *root;		///< Root menu entry
-	const MenuEntry *current;	///< Current menu entry
+	/// Menu entry for each menu level
+	const MenuEntry *me[MENU_NLEVELS];
 	/// Reserve space for the rContext string
 	char rConStr[MENU_LINE_CHARS_TOTAL];
 	MenuString rContext;		///< Right context string (bottom line)
@@ -78,7 +81,7 @@ void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset) {
 
 void MenuStatStrSet(MenuString statStr) {
 	// Current menu entry
-	const MenuEntry *m = md.current;
+	const MenuEntry *m = md.me[md.level];
 
 	memcpy(md.rContext.string, statStr.string, statStr.length + 1);
 	md.rContext.length = statStr.length;
@@ -94,7 +97,7 @@ void MenuStatStrSet(MenuString statStr) {
 /// \param[in] chrOff Character offset in plane to draw menu
 void MenuDrawPage(uint8_t chrOff) {
 	// Current menu
-	const MenuEntry *m = md.current;
+	const MenuEntry *m = md.me[md.level];
 	// Loop control
 	uint8_t i;
 	// Line to draw text in
@@ -159,7 +162,7 @@ void MenuXScroll(uint8_t direction) {
 /// outside of the screen, when it switches menu.
 void MenuDraw(uint8_t direction) {
 	// Current menu entry
-	const MenuEntry *m = md.current;
+	const MenuEntry *m = md.me[md.level];
 	uint16_t offset;
 
 	offset = direction == MENU_SCROLL_DIR_LEFT?MENU_SEPARATION_CHR:
@@ -192,8 +195,7 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	memcpy(md.rConStr, rContext.string, rContext.length + 1);
 	md.rContext.length = rContext.length;
 	// Set root and curren menu entries
-	md.root = root;
-	md.current = root;
+	md.me[0] = root;
 	// Set context string
 	strncpy(md.rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
 	md.rContext = rContext;
@@ -206,23 +208,22 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 /// Advances page number to the next one (but does not draw the page)
 static inline void MenuNextPage(void) {
 	md.selPage[md.level]++;
-	if (md.selPage[md.level] > md.current->pages) md.selPage[md.level] = 0;
+	if (md.selPage[md.level] > md.me[md.level]->pages)
+		md.selPage[md.level] = 0;
 }
 
 /// Sets page number to the previous one (but does not draw the page)
 static inline void MenuPrevPage(void) {
 	md.selPage[md.level] = md.selPage[md.level]?md.selPage[md.level] - 1:
-		md.current->pages;
+		md.me[md.level]->pages;
 }
 
 static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 	uint8_t line, item;
-	const MenuEntry *m = md.current;
+	const MenuEntry *m = md.me[md.level];
 
-	line = MENU_LINE_ITEM_FIRST + md.selItem[md.level] *
-		md.current->spacing;
-	item = md.selItem[md.level] + md.selPage[md.level] *
-		md.current->entPerPage;
+	line = MENU_LINE_ITEM_FIRST + md.selItem[md.level] * m->spacing;
+	item = md.selItem[md.level] + md.selPage[md.level] * m->entPerPage;
 	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(m->item[item].caption, m->align,
 			m->margin), line, txtColor, m->item[item].caption.length,
 			m->item[item].caption.string);
@@ -230,18 +231,31 @@ static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 
 void MenuButtonAction(uint8_t input) {
 	uint8_t tmp;
+	const MenuEntry *m = md.me[md.level];
 
 	input = ~input;
 	// Parse buttons before movement
 	if (input & GP_A_MASK) {
 		// Accept selected menu option
 		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "A");
+		tmp = MenuGetCurrentItemNum();
+		if (m->item[tmp].next) {
+			md.me[md.level + 1] = m->item[tmp].next;
+			// Level up!
+			md.level++;
+			md.selItem[md.level] = 0;
+			md.selPage[md.level] = 0;
+			MenuDraw(MENU_SCROLL_DIR_LEFT);
+		}
 	} else if (input & GP_C_MASK) {
 		// Go back one menu level
 		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "C");
+		if (md.level) {
+			md.level--;
+			MenuDraw(MENU_SCROLL_DIR_RIGHT);
+		}
 	} else if (input & GP_UP_MASK) {
 		// Go up a menu item
-		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "U");
 		if (md.selItem[md.level]) {
 			// Draw currently selected item with non-selected color
 			MenuDrawCurrentItem(MENU_COLOR_ITEM);
@@ -256,7 +270,6 @@ void MenuButtonAction(uint8_t input) {
 		}
 	} else if (input & GP_DOWN_MASK) {
 		// Go down a menu item
-		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "D");
 		tmp = MenuNumPageItems() - 1;
 		if (md.selItem[md.level] < tmp) {
 			// Draw currently selected item with non-selected color
