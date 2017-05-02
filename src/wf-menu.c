@@ -14,7 +14,7 @@ char editableStr[32] = "Edit me!";
 
 const MenuEntry editTest = {
 	MENU_TYPE_OSK_QWERTY,			// Item list type
-	5,								// Margin
+	1,								// Margin
 	MENU_STR("EDIT MENU TEST"),		// Title
 	MENU_STR(stdContext),			// Left context
 	NULL,							// cbEntry
@@ -29,7 +29,7 @@ const MenuEntry editTest = {
 
 const MenuItem lA1Item[] = { {
 	MENU_STR("LA1 TEST1"),
-		NULL,
+		&editTest,
 		NULL,
 		{1, 1}
 	},{

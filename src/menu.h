@@ -87,11 +87,13 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 /// Line to draw the field name on the on screen keyboard menus
 #define MENU_LINE_OSK_FIELD		(MENU_LINE_TITLE + 3)
 /// Line to draw the field data on the on screen keyboard menus
-#define MENU_LINE_OSK_DATA		(MENU_LINE_OSK_CAPTION + 2)
+#define MENU_LINE_OSK_DATA		(MENU_LINE_OSK_FIELD + 2)
 /// Line to draw the upper line of the on screen keyboard
 #define MENU_LINE_OSK_KEYBOARD	(MENU_LINE_OSK_DATA + 3)
-/// Default margin
+/// Default left margin
 #define MENU_DEF_LEFT_MARGIN	1
+/// Default right margin
+#define MENU_DEF_RIGHT_MARGIN	1
 /** \} */
 
 /** \addtogroup MenuColor Color definitions for the menu
@@ -109,7 +111,9 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 /// Selected item color
 #define MENU_COLOR_ITEM_SEL		VDP_TXT_COL_MAGENTA
 /// Color to draw the field name on the on screen keyboard menus
-#define MENU_COLOR_OSK_FIELD	VDP_TXT_COL_MAGENTA
+#define MENU_COLOR_OSK_FIELD	VDP_TXT_COL_WHITE
+/// Color to draw the field name on the on screen keyboard menus
+#define MENU_COLOR_OSK_DATA		VDP_TXT_COL_CYAN
 /** \} */
 
 /// Supported alignment for menu items

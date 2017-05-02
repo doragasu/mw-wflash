@@ -184,12 +184,13 @@ void MenuDrawItemPage(uint8_t chrOff) {
 	// Draw page number and total, if number of pages greater than 1
 	if (m->item.pages > 0) {
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
-			m->margin - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER,
+			MENU_DEF_RIGHT_MARGIN - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER,
 			m->item.pages + 1);
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
-			m->margin - 2, MENU_LINE_PAGER, MENU_COLOR_PAGER, 1, "/");
+			MENU_DEF_RIGHT_MARGIN - 2, MENU_LINE_PAGER, MENU_COLOR_PAGER, 1,
+			"/");
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
-			m->margin - 3, MENU_LINE_PAGER, MENU_COLOR_PAGER,
+			MENU_DEF_RIGHT_MARGIN - 3, MENU_LINE_PAGER, MENU_COLOR_PAGER,
 			md.selPage[md.level] + 1);
 	}
 }
@@ -235,9 +236,15 @@ void DrawOsk(uint16_t offset) {
 	const MenuEntry *m = md.me[md.level];
 
 	// Draw the field name to edit
-	VdpDrawText(VDP_PLANEA_ADDR, offset + MenuStrAlign(m->keyb.fieldName,
-			MENU_H_ALIGN_CENTER, 0), MENU_LINE_OSK_FIELD, MENU_COLOR_OSK_FIELD,
-			m->keyb.fieldName.length, m->keyb.fieldName.string);
+	VdpDrawText(VDP_PLANEA_ADDR, offset + m->margin, MENU_LINE_OSK_FIELD,
+			MENU_COLOR_OSK_FIELD, m->keyb.fieldName.length,
+			m->keyb.fieldName.string);
+
+	// Draw the field data to edit, centered with respect to the maximum
+	// size of the data string.
+	VdpDrawText(VDP_PLANEA_ADDR, offset + ((MENU_LINE_CHARS_TOTAL -
+			m->keyb.maxLen)>>1), MENU_LINE_OSK_DATA, MENU_COLOR_OSK_DATA,
+			m->keyb.fieldData.length, m->keyb.fieldData.string);
 }
 
 /************************************************************************//**
@@ -265,11 +272,11 @@ void MenuDraw(uint8_t direction) {
 			MENU_H_ALIGN_CENTER, 0), MENU_LINE_TITLE, MENU_COLOR_TITLE,
 			m->title.length, m->title.string);
 	// Draw context strings
-	VdpDrawText(VDP_PLANEA_ADDR, offset + m->margin,
+	VdpDrawText(VDP_PLANEA_ADDR, offset + MENU_DEF_LEFT_MARGIN,
 			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_L, m->lContext.length,
 			m->lContext.string);
-	VdpDrawText(VDP_PLANEA_ADDR, offset +
-			MenuStrAlign(md.rContext, MENU_H_ALIGN_RIGHT, m->margin),
+	VdpDrawText(VDP_PLANEA_ADDR, offset + MenuStrAlign(md.rContext,
+			MENU_H_ALIGN_RIGHT, MENU_DEF_RIGHT_MARGIN),
 			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R, md.rContext.length,
 			md.rContext.string);
 	// Depending on menu type, draw menu page contents
