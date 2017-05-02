@@ -102,17 +102,20 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 #define MENU_COLOR_ITEM_SEL		VDP_TXT_COL_MAGENTA
 /** \} */
 
-#define MENU_EDITABLE_NO		0
-#define MENU_EDITABLE_QWERTY	1
-#define MENU_EDITABLE_NUMERIC	2
-#define MENU_EDITABLE_IP		3
-
 /// Supported alignment for menu items
 typedef enum {
 	MENU_H_ALIGN_CENTER = 0,	///< Center align (default)
 	MENU_H_ALIGN_LEFT,			///< Left align
 	MENU_H_ALIGN_RIGHT			///< Right align
 } MenuHAlign;
+
+/// Suported On Screen Keyboard types
+typedef enum {
+	MENU_TYPE_ITEM = 0,			///< Item list menu
+	MENU_TYPE_OSK_QWERTY,		///< QWERTY-like keyboard
+	MENU_TYPE_OSK_NUMERIC,		///< Numeric only keyboard
+	MENU_TYPE_OSK_IPV4			///< IPv4 address entry keyboard
+} MenuType;
 
 /// Macro to help filling MenuString structures
 #define MENU_STR(string)	{(char*)(string), sizeof(string) - 1}
@@ -127,32 +130,59 @@ typedef struct {
 /// \note All menu items from a single menu entry, must be declared
 /// in a single MenuItem array.
 typedef struct {
-	MenuString caption;	///< Menu item text
-	void *next;			///< Next MenuEntry (if item accepted)
-	MenuCb cb;			///< Callback to run if option chosen
+	MenuString caption;			///< Menu item text (editable)
+	const void *next;			///< Next MenuEntry (if item accepted)
+	const MenuCb cb;			///< Callback to run if option chosen
 	struct {
 		uint8_t selectable:1;	///< Selectable item
-		uint8_t editable:2;		///< Editable item
 		uint8_t enabled:1;		///< Enabled item
 	} flags;					///< Menu item flags
 } MenuItem;
 
-/// Menu Entry.
+/// Private items for item list Menu Entres.
 typedef struct {
-	const MenuString title;		///< Menu entry title string
-	const MenuString lContext;	///< Left context string (bottom line)
 	const MenuItem *item;		///< Pointer to Menu Item array
-	const MenuCb entry;			///< Callback for menu entry
-	const MenuCb exit;			///< Callback for menu exit
 	const int8_t nItems;		///< Number of menu entries
 	const uint8_t spacing;		///< Line spacing between options
 	const uint8_t entPerPage;	///< Maximum entries per page
 	const uint8_t pages;		///< Number of entry pages minus 1
-	const uint8_t margin;		///< Margin for left/right aligned entries
 	const struct {
-		MenuHAlign align:2;		/// Alignment for items
+		MenuHAlign align:2;		///< Alignment for items
+	};
+} MenuItemEntry;
+
+
+/// Private items for On Screen Keyboard Menu Entries
+typedef struct {
+	const MenuString fieldName;	///< Field name
+	MenuString fieldData;		///< Editable field data
+	const uint8_t maxLen;		///< Maximum length of fieldData string
+	const uint8_t lineLen;		///< Maximum line length
+} MenuOskEntry;
+
+/// Menu entry, supporting the different menu entry types that can be used.
+typedef struct {
+	const uint8_t type;			///< Menu type
+	const uint8_t margin;		///< Margin
+	const MenuString title;		///< Menu title
+	const MenuString lContext;	///< Left context string (bottom line)
+	const MenuCb entry;			///< Callback for menu entry
+	const MenuCb exit;			///< Callback for menu exit
+	union {
+		MenuItemEntry item;		///< Item list entries
+		MenuOskEntry keyb;		///< On screen keyboard entries
 	};
 } MenuEntry;
+
+// Test for string initializations
+//#define NULL ((void*)0)
+//MenuEntry test = {
+////	.type = 1, .margin = 2, .title = {"TEST STR", 8}, .lContext = {"CONTEXT", 7},
+//	1, 2, {"TEST STR", 8}, {"CONTEXT", 7}, NULL, NULL,
+//	.item = {NULL, 0, 0, 0, 0, {0}}
+//};
+
+
 
 void MenuInit(const MenuEntry *root, MenuString rContext);
 
