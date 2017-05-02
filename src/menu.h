@@ -174,20 +174,34 @@ typedef struct {
 	};
 } MenuEntry;
 
-// Test for string initializations
-//#define NULL ((void*)0)
-//MenuEntry test = {
-////	.type = 1, .margin = 2, .title = {"TEST STR", 8}, .lContext = {"CONTEXT", 7},
-//	1, 2, {"TEST STR", 8}, {"CONTEXT", 7}, NULL, NULL,
-//	.item = {NULL, 0, 0, 0, 0, {0}}
-//};
+/************************************************************************//**
+ * Module initialization. Call this function before using any other one from
+ * this module. This function initialzes the menu subsystem and displays the
+ * root menu.
+ *
+ * \param[in] root    Pointer to the root menu entry.
+ * \param[in] statStr MenuString with the status text to display in the right
+ *                     context string space.
+ ****************************************************************************/
+void MenuInit(const MenuEntry *root, MenuString statStr);
 
-
-
-void MenuInit(const MenuEntry *root, MenuString rContext);
-
+/************************************************************************//**
+ * Sets the status text to display in the right context string space.
+ *
+ * \param[in] statStr MenuString with the status text to display in the right
+ *                     context string space.
+ ****************************************************************************/
 void MenuStatStrSet(MenuString statStr);
 
+/************************************************************************//**
+ * Obtains the buttons pressed as input, and performs the corresponding
+ * actions depending on the button press (item change, menu change, callback
+ * execution, etc.).
+ *
+ * \param[in] input Menu actions, as obtained from a call to GpPressed().
+ *
+ * \todo Currently working only for MENU_TYPE_ITEM menus.
+ ****************************************************************************/
 void MenuButtonAction(uint8_t input);
 
 void MenuForceLoad(MenuEntry *me);

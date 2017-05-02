@@ -61,7 +61,7 @@ const char qwerty[2 * MENU_QWERTY_ROWS][MENU_QWERTY_COLS] = {{
 		md.me[md.level]->item.nItems - (md.me[md.level]->item.entPerPage * \
 		md.me[md.level]->item.pages):md.me[md.level]->item.entPerPage)
 
-
+/// Dynamic data structure needed to display the menus
 typedef struct {
 	/// Menu entry for each menu level
 	const MenuEntry *me[MENU_NLEVELS];
@@ -69,14 +69,27 @@ typedef struct {
 	char rConStr[MENU_LINE_CHARS_TOTAL];
 	MenuString rContext;		///< Right context string (bottom line)
 	uint8_t level;				///< Current menu level
-	/// Selected item, for each menu level
+	/// Selected item, for each menu level. On keyboard menus, it holds
+	/// the cursor position.
 	uint8_t selItem[MENU_NLEVELS];
-	/// Selected menu item page (minus 1)
+	/// Selected menu item page (minus 1). On keyb
 	uint8_t selPage[MENU_NLEVELS];
 } Menu;
 
-Menu md;
+/// Dynamic data needed to display the menus
+static Menu md;
 
+/************************************************************************//**
+ * Compute line character position needed for requested horizontal alignment.
+ *
+ * \param[in] mStr   MenuString type text to align.
+ * \param[in] align  Requested alignment.
+ * \param[in] margin Margin to apply to left and right alignments (ignored
+ *                   for center aligned strings).
+ *
+ * \return The horizontal position of the start of the string, for it to be
+ * horizontal aligned as requested.
+ ****************************************************************************/
 uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin) {
 	switch (align) {
 		case MENU_H_ALIGN_CENTER:
@@ -93,6 +106,14 @@ uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin) {
 	}
 }
 
+
+/************************************************************************//**
+ * Clears requested lines of the screen. Each line is 40 characters wide.
+ *
+ * \param[in] first  First line to clear.
+ * \param[in] last   Last line to clear.
+ * \param[in] offset Horizontal plane offset of the screen.
+ ****************************************************************************/
 void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset) {
 	int8_t line;
 	uint16_t addr;
@@ -107,6 +128,12 @@ void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset) {
 	}
 }
 
+/************************************************************************//**
+ * Sets the status text to display in the right context string space.
+ *
+ * \param[in] statStr MenuString with the status text to display in the right
+ *                     context string space.
+ ****************************************************************************/
 void MenuStatStrSet(MenuString statStr) {
 	// Current menu entry
 	const MenuEntry *m = md.me[md.level];
@@ -122,8 +149,12 @@ void MenuStatStrSet(MenuString statStr) {
 			statStr.length, md.rContext.string);
 }
 
-/// \param[in] chrOff Character offset in plane to draw menu
-void MenuDrawPage(uint8_t chrOff) {
+/************************************************************************//**
+ * Draw requested item page.
+ *
+ * \param[in] chrOff Character offset in plane to draw menu
+ ****************************************************************************/
+void MenuDrawItemPage(uint8_t chrOff) {
 	// Current menu
 	const MenuEntry *m = md.me[md.level];
 	// Loop control
@@ -163,6 +194,13 @@ void MenuDrawPage(uint8_t chrOff) {
 	}
 }
 
+/************************************************************************//**
+ * Scroll the menu to the left/right for the new menu to be displayed.
+ *
+ * \param[in] direction Either MENU_SCROLL_DIR_LEFT (to scroll the menu to
+ *            the left) or MENU_SCROLL_DIR_RIGHT (to scroll the menu to the
+ *            right).
+ ****************************************************************************/
 void MenuXScroll(uint8_t direction) {
 	int8_t i;
 	uint16_t addr, xScroll, offset;
@@ -210,13 +248,22 @@ void MenuDraw(uint8_t direction) {
 			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R, md.rContext.length,
 			md.rContext.string);
 	// Draw page (including selected item)
-	MenuDrawPage(offset);
+	MenuDrawItemPage(offset);
 	// X-scroll plane to show drawn menu
 	MenuXScroll(direction);
 	// Clear screen zone that has been hidden
 	MenuClearLines(0, MENU_NLINES_TOTAL, offset);
 }
 
+/************************************************************************//**
+ * Module initialization. Call this function before using any other one from
+ * this module. This function initialzes the menu subsystem and displays the
+ * root menu.
+ *
+ * \param[in] root     Pointer to the root menu entry.
+ * \param[in] rContext MenuString with the text to display in the right
+ *                     context string.
+ ****************************************************************************/
 void MenuInit(const MenuEntry *root, MenuString rContext) {
 	// Zero module data
 	memset((void*)&md, 0, sizeof(Menu));
@@ -248,6 +295,7 @@ static inline void MenuPrevPage(void) {
 		md.me[md.level]->item.pages;
 }
 
+/// Draws current item on the menu screen
 static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 	uint8_t line, item;
 	const MenuEntry *m = md.me[md.level];
@@ -260,6 +308,15 @@ static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 			m->item.item[item].caption.string);
 }
 
+/************************************************************************//**
+ * Obtains the buttons pressed as input, and performs the corresponding
+ * actions depending on the button press (item change, menu change, callback
+ * execution, etc.).
+ *
+ * \param[in] input Menu actions, as obtained from a call to GpPressed().
+ *
+ * \todo Currently working only for MENU_TYPE_ITEM menus.
+ ****************************************************************************/
 void MenuButtonAction(uint8_t input) {
 	uint8_t tmp;
 	const MenuEntry *m = md.me[md.level];
@@ -295,7 +352,7 @@ void MenuButtonAction(uint8_t input) {
 			// Go to previous page and select last item
 			MenuPrevPage();
 			md.selItem[md.level] = MenuNumPageItems() - 1;
-			MenuDrawPage(0);
+			MenuDrawItemPage(0);
 		}
 	} else if (input & GP_DOWN_MASK) {
 		// Go down a menu item
@@ -310,16 +367,16 @@ void MenuButtonAction(uint8_t input) {
 			// Advance to next page, and select first item
 			MenuNextPage();
 			md.selItem[md.level] = 0;
-			MenuDrawPage(0);
+			MenuDrawItemPage(0);
 		}
 	} else if (input & GP_LEFT_MASK) {
 		// Change to previous page
 		MenuPrevPage();
-		MenuDrawPage(0);
+		MenuDrawItemPage(0);
 	} else if (input & GP_RIGHT_MASK) {
 		// Change to next page
 		MenuNextPage();
-		MenuDrawPage(0);
+		MenuDrawItemPage(0);
 	}
 }
 
