@@ -24,6 +24,32 @@ const uint8_t scrDelta[] = {
 	1, 1, 2, 2, 3, 5, 6, 7, 9, 11, 13, 16, 18, 21, 25, 28, 32, 36, 40, 44
 };
 
+/// Number of rows of the QWERTY menu
+#define MENU_QWERTY_ROWS		4
+/// Number of columns of the QWERTY menu
+#define MENU_QWERTY_COLS		11
+
+/// Alphanumeric menu definition
+const char qwerty[2 * MENU_QWERTY_ROWS][MENU_QWERTY_COLS] = {{
+		'1','2','3','4','5','6','7','8','9','0','-'
+	},{
+		'Q','W','E','R','T','Y','U','I','O','P','['
+	},{
+		'A','S','D','F','G','H','J','K','L',';','\'',
+	},{
+		'Z','X','C','V','B','N','M',',','.','/','+'
+	},{
+		'!','@','#','$','%','^','&','*','(',')','_'
+	},{
+		'q','w','e','r','t','y','u','i','o','p',']'
+	},{
+		'a','s','d','f','g','h','j','k','l',':','"'
+	},{
+		'z','x','c','v','b','n','m','<','>','?','='
+	}
+};
+
+/// Obtains the number of scroll steps for the menu scroll function
 #define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
 
 #define MenuGetCurrentItemNum()		(md.selItem[md.level] + \
@@ -238,7 +264,6 @@ void MenuButtonAction(uint8_t input) {
 	// Parse buttons before movement
 	if (input & GP_A_MASK) {
 		// Accept selected menu option
-		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "A");
 		tmp = MenuGetCurrentItemNum();
 		if (m->item[tmp].next) {
 			md.me[md.level + 1] = m->item[tmp].next;
@@ -248,9 +273,8 @@ void MenuButtonAction(uint8_t input) {
 			md.selPage[md.level] = 0;
 			MenuDraw(MENU_SCROLL_DIR_LEFT);
 		}
-	} else if (input & GP_C_MASK) {
+	} else if (input & GP_B_MASK) {
 		// Go back one menu level
-		VdpDrawText(VDP_PLANEA_ADDR, 4, 1,MENU_COLOR_CONTEXT_R, 1, "C");
 		if (md.level) {
 			md.level--;
 			MenuDraw(MENU_SCROLL_DIR_RIGHT);

@@ -152,8 +152,6 @@ int main(void) {
 		pad = GpPressed();
 		// 4. Perform menu related actions.
 		MenuButtonAction(pad);
-		VdpDrawHex(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_CYAN, pad);
-
 	}
 //	while (1) { // Bind port 1989 for command server MwTcpBind(WF_CHANNEL, WFLASH_PORT); // Wait until we have a client connection
 //		WaitUserInteraction();

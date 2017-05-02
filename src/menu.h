@@ -102,6 +102,11 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 #define MENU_COLOR_ITEM_SEL		VDP_TXT_COL_MAGENTA
 /** \} */
 
+#define MENU_EDITABLE_NO		0
+#define MENU_EDITABLE_QWERTY	1
+#define MENU_EDITABLE_NUMERIC	2
+#define MENU_EDITABLE_IP		3
+
 /// Supported alignment for menu items
 typedef enum {
 	MENU_H_ALIGN_CENTER = 0,	///< Center align (default)
@@ -110,7 +115,7 @@ typedef enum {
 } MenuHAlign;
 
 /// Macro to help filling MenuString structures
-#define MENU_STR(string)	{string, sizeof(string) - 1}
+#define MENU_STR(string)	{(char*)(string), sizeof(string) - 1}
 
 /// String definition for menus, including its properties
 typedef struct {
@@ -122,11 +127,12 @@ typedef struct {
 /// \note All menu items from a single menu entry, must be declared
 /// in a single MenuItem array.
 typedef struct {
-	const MenuString caption;	///< Menu item text
-	const void *next;			///< Next MenuEntry (if item accepted)
-	const MenuCb cb;			///< Callback to run if option chosen
-	const struct {
+	MenuString caption;	///< Menu item text
+	void *next;			///< Next MenuEntry (if item accepted)
+	MenuCb cb;			///< Callback to run if option chosen
+	struct {
 		uint8_t selectable:1;	///< Selectable item
+		uint8_t editable:2;		///< Editable item
 		uint8_t enabled:1;		///< Enabled item
 	} flags;					///< Menu item flags
 } MenuItem;
