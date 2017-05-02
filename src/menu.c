@@ -225,9 +225,34 @@ void MenuXScroll(uint8_t direction) {
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, 0);
 }
 
-/// \note The function assumes the screen half in which it will draw the
-/// menu, is already clear. It also clears the screen half that falls
-/// outside of the screen, when it switches menu.
+/************************************************************************//**
+ * Draws the currently active On Screen Keyboard.
+ *
+ * \param[in] offset Character offset in which to draw the menu
+ ****************************************************************************/
+void DrawOsk(uint16_t offset) {
+	// Current menu entry
+	const MenuEntry *m = md.me[md.level];
+
+	// Draw the field name to edit
+	VdpDrawText(VDP_PLANEA_ADDR, offset + MenuStrAlign(m->keyb.fieldName,
+			MENU_H_ALIGN_CENTER, 0), MENU_LINE_OSK_FIELD, MENU_COLOR_OSK_FIELD,
+			m->keyb.fieldName.length, m->keyb.fieldName.string);
+}
+
+/************************************************************************//**
+ * Draws the menu set on the current menu level. The menu is drawn out fo the
+ * visible screen, and the plane is scrolled on the specified direction for
+ * the new menu to appear.
+ *
+ * \param[in] direction Either MENU_SCROLL_DIR_LEFT (to scroll the menu to
+ *            the left) or MENU_SCROLL_DIR_RIGHT (to scroll the menu to the
+ *            right).
+ *
+ * \note The function assumes the screen half in which it will draw the
+ * menu, is already clear. It also clears the screen half that falls
+ * outside of the screen, when it switches menus.
+ ****************************************************************************/
 void MenuDraw(uint8_t direction) {
 	// Current menu entry
 	const MenuEntry *m = md.me[md.level];
@@ -247,8 +272,22 @@ void MenuDraw(uint8_t direction) {
 			MenuStrAlign(md.rContext, MENU_H_ALIGN_RIGHT, m->margin),
 			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R, md.rContext.length,
 			md.rContext.string);
-	// Draw page (including selected item)
-	MenuDrawItemPage(offset);
+	// Depending on menu type, draw menu page contents
+	switch (m->type) {
+		case MENU_TYPE_ITEM:
+			// Draw page (including selected item)
+			MenuDrawItemPage(offset);
+			break;
+
+		case MENU_TYPE_OSK_QWERTY:
+		case MENU_TYPE_OSK_NUMERIC:
+		case MENU_TYPE_OSK_IPV4:
+			DrawOsk(offset);
+
+		default:
+			break;
+	}
+
 	// X-scroll plane to show drawn menu
 	MenuXScroll(direction);
 	// Clear screen zone that has been hidden

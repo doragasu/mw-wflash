@@ -36,6 +36,8 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 #ifndef MENU_NLEVELS
 /// Number of nested menu levels. Should be overriden by application
 /// before including this file.
+/// \warning Setting this to a value lower than needed will cause mass
+/// destruction!
 #define MENU_NLEVELS	4
 #endif
 
@@ -82,6 +84,12 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 #define MENU_LINE_ITEM_LAST		(MENU_LINE_PAGER - 2)
 /// Number of lines available to draw menu items
 #define MENU_ITEM_NLINES		(MENU_LINE_ITEM_LAST-MENU_LINE_ITEM_FIRST+1)
+/// Line to draw the field name on the on screen keyboard menus
+#define MENU_LINE_OSK_FIELD		(MENU_LINE_TITLE + 3)
+/// Line to draw the field data on the on screen keyboard menus
+#define MENU_LINE_OSK_DATA		(MENU_LINE_OSK_CAPTION + 2)
+/// Line to draw the upper line of the on screen keyboard
+#define MENU_LINE_OSK_KEYBOARD	(MENU_LINE_OSK_DATA + 3)
 /// Default margin
 #define MENU_DEF_LEFT_MARGIN	1
 /** \} */
@@ -100,6 +108,8 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 #define MENU_COLOR_ITEM			VDP_TXT_COL_WHITE
 /// Selected item color
 #define MENU_COLOR_ITEM_SEL		VDP_TXT_COL_MAGENTA
+/// Color to draw the field name on the on screen keyboard menus
+#define MENU_COLOR_OSK_FIELD	VDP_TXT_COL_MAGENTA
 /** \} */
 
 /// Supported alignment for menu items
