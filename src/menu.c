@@ -29,8 +29,49 @@ const uint8_t scrDelta[] = {
 /// Number of columns of the QWERTY menu
 #define MENU_OSK_QWERTY_COLS		11
 
+/// Obtains the number of scroll steps for the menu scroll function
+#define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
+
+#define MenuGetCurrentItemNum()		(md.selItem[md.level] + \
+		md.selPage[md.level] * md.me[md.level]->item.entPerPage)
+
+/// Returns the number of items on current page
+#define MenuNumPageItems()	\
+		(md.selPage[md.level] == md.me[md.level]->item.pages? \
+		md.me[md.level]->item.nItems - (md.me[md.level]->item.entPerPage * \
+		md.me[md.level]->item.pages):md.me[md.level]->item.entPerPage)
+
+/// Coordinates of selected keyboard item
+typedef struct {
+	uint8_t caps:1;
+	uint8_t row:3;		///< Keyboard row
+	uint8_t col:4;		///< Keyboard column
+} MenuOskCoord;
+
+/// Dynamic data structure needed to display the menus
+typedef struct {
+	/// Menu entry for each menu level
+	const MenuEntry *me[MENU_NLEVELS];
+	/// Reserve space for the rContext string
+	char rConStr[MENU_LINE_CHARS_TOTAL];
+	MenuString rContext;		///< Right context string (bottom line)
+	uint8_t level;				///< Current menu level
+	/// Selected item, for each menu level. On keyboard menus, it holds
+	/// the cursor position.
+	uint8_t selItem[MENU_NLEVELS];
+	/// Selected menu item page (minus 1). On Qwerty keyboards, it holds
+	/// the CAPS status.
+	uint8_t selPage[MENU_NLEVELS];
+	/// Coordinates of selected keyboard item
+	MenuOskCoord coord;
+} Menu;
+
+/// Dynamic data needed to display the menus
+static Menu md;
+
 /// Alphanumeric menu definition
 const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
+	//   0   1   2   3   4   5   6   7   8   9  10
 		'1','2','3','4','5','6','7','8','9','0','-'
 	},{
 		'Q','W','E','R','T','Y','U','I','O','P','['
@@ -49,39 +90,38 @@ const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 	}
 };
 
-const char *qwertyFunc[] = {"SUPR", "<", ">", "BACK", "OK"};
+/// Reverse keyboard lookup table, to get QWERTY keyboard coordinates from
+/// the ascii character (subtracting the ' ' character and indexing in this
+/// table
+const MenuOskCoord qwertyRev[] = {
+	// SP       !         "        #        $        &        '         (
+	{0,4,0}, {1,0,0}, {1,2,10},{1,0,2}, {1,0,3}, {1,0,4}, {1,0,6}, {0,2,10},
+	// (        )        *         +        ,        -         .        /
+	{1,0,8}, {1,0,9}, {1,0,7}, {0,3,10},{0,3,7}, {0,0,10},{0,3,8}, {0,3,9},
+	// @        A        B        C        D        E        F        G
+	{1,0,1}, {0,2,0}, {0,3,4}, {0,3,2}, {0,2,2}, {0,1,2}, {0,2,3}, {0,2,4},
+	// H        I        J        K        L        M        N        O
+	{0,2,5}, {0,1,7}, {0,2,6}, {0,2,7}, {0,2,8}, {0,3,6}, {0,3,5}, {0,1,8},
+	// P        Q        R        S        T        U        V        W
+	{0,1,9}, {0,1,0}, {0,1,3}, {0,2,1}, {0,1,4}, {0,1,6}, {0,3,3}, {0,1,1},
+	// X        Y        Z        [         \\        ]      ^        _
+	{0,3,1}, {0,1,5}, {0,3,0}, {1,7,15},{1,7,15},{1,7,15},{1,0,5}, {1,0,10},
+	// `        a        b        c        d        e        f        g
+	{1,7,15},{1,2,0}, {1,3,4}, {1,3,2}, {1,2,2}, {1,1,2}, {1,2,3}, {1,2,4},
+	// h        i        j        k        l        m        n        o
+	{1,2,5}, {1,1,7}, {1,2,6}, {1,2,7}, {1,2,8}, {1,3,6}, {1,3,5}, {1,1,8},
+	// p        q        r        s        t        u        v        w
+	{1,1,9}, {1,1,0}, {1,1,3}, {1,2,1}, {1,1,4}, {1,1,6}, {1,3,3}, {1,1,1},
+	// x        y        z        {        |        }        ~       CUR
+	{1,3,1}, {1,1,5}, {1,3,0}, {1,7,15},{1,7,15},{1,7,15},{1,7,15},{1,7,15}
+};
+
+#define MENU_OSK_SPECIAL_FUNCS		5
+const char qwertyFunc[MENU_OSK_SPECIAL_FUNCS][4] = {
+	"BACK", "DEL", " <-", " ->", "DONE"
+};
 
 const char qwertySpace[] = "[SPACE]";
-
-/// Obtains the number of scroll steps for the menu scroll function
-#define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
-
-#define MenuGetCurrentItemNum()		(md.selItem[md.level] + \
-		md.selPage[md.level] * md.me[md.level]->item.entPerPage)
-
-/// Returns the number of items on current page
-#define MenuNumPageItems()	\
-		(md.selPage[md.level] == md.me[md.level]->item.pages? \
-		md.me[md.level]->item.nItems - (md.me[md.level]->item.entPerPage * \
-		md.me[md.level]->item.pages):md.me[md.level]->item.entPerPage)
-
-/// Dynamic data structure needed to display the menus
-typedef struct {
-	/// Menu entry for each menu level
-	const MenuEntry *me[MENU_NLEVELS];
-	/// Reserve space for the rContext string
-	char rConStr[MENU_LINE_CHARS_TOTAL];
-	MenuString rContext;		///< Right context string (bottom line)
-	uint8_t level;				///< Current menu level
-	/// Selected item, for each menu level. On keyboard menus, it holds
-	/// the cursor position.
-	uint8_t selItem[MENU_NLEVELS];
-	/// Selected menu item page (minus 1). On keyb
-	uint8_t selPage[MENU_NLEVELS];
-} Menu;
-
-/// Dynamic data needed to display the menus
-static Menu md;
 
 /************************************************************************//**
  * Compute line character position needed for requested horizontal alignment.
@@ -258,19 +298,24 @@ void DrawOsk(uint16_t offset) {
 			// Draw QWERTY OSK
 			for (i = 0; i < MENU_OSK_QWERTY_ROWS; i++) {
 				for (j = 0; j < MENU_OSK_QWERTY_COLS; j++) {
-					VdpDrawText(VDP_PLANEA_ADDR, offset - 6 +
+					VdpDrawText(VDP_PLANEA_ADDR, offset - 3 +
 						((MENU_LINE_CHARS_TOTAL - 2*MENU_OSK_QWERTY_COLS)>>1) +
 						2 * j, MENU_LINE_OSK_KEYS + 2 * i, MENU_COLOR_ITEM, 1,
 						(char*)&qwerty[i][j]);
 				}
 			}
 			VdpDrawText(VDP_PLANEA_ADDR, offset +
-					((sizeof(qwertySpace) - 1)) - 6 +
+					((sizeof(qwertySpace) - 1)) - 3 +
 					((MENU_LINE_CHARS_TOTAL - 2*MENU_OSK_QWERTY_COLS)>>1) ,
 					MENU_LINE_OSK_KEYS + 2 * MENU_OSK_QWERTY_ROWS,
 					MENU_COLOR_ITEM, sizeof(qwertySpace) - 1,
 					(char*)qwertySpace);
 			// Draw special keys
+			for (i = 0; i < MENU_OSK_SPECIAL_FUNCS; i++) {
+				VdpDrawText(VDP_PLANEA_ADDR, offset + 2*MENU_OSK_QWERTY_COLS +
+						+ 6 + 2, MENU_LINE_OSK_KEYS + 2 * i,
+						MENU_COLOR_ITEM, 4, (char*)qwertyFunc[i]);
+			}
 			break;
 
 		case MENU_TYPE_OSK_NUMERIC:

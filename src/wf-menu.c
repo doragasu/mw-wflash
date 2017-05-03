@@ -9,6 +9,7 @@
 	MENU_ITEM_NLINES/(spacing),(numItems)/(MENU_ITEM_NLINES/(spacing))
 
 const char stdContext[] = "[A]ccept, [B]ack";
+const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
 
 char editableStr[32] = "Edit me!";
 
@@ -16,7 +17,7 @@ const MenuEntry editTest = {
 	MENU_TYPE_OSK_QWERTY,			// Item list type
 	1,								// Margin
 	MENU_STR("EDIT MENU TEST"),		// Title
-	MENU_STR(stdContext),			// Left context
+	MENU_STR(oskQwertyContext),		// Left context
 	NULL,							// cbEntry
 	NULL,							// cbExit
 	.keyb = {
