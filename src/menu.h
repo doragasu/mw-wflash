@@ -85,11 +85,11 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 /// Number of lines available to draw menu items
 #define MENU_ITEM_NLINES		(MENU_LINE_ITEM_LAST-MENU_LINE_ITEM_FIRST+1)
 /// Line to draw the field name on the on screen keyboard menus
-#define MENU_LINE_OSK_FIELD		(MENU_LINE_TITLE + 3)
+#define MENU_LINE_OSK_FIELD		(MENU_LINE_TITLE + 5)
 /// Line to draw the field data on the on screen keyboard menus
-#define MENU_LINE_OSK_DATA		(MENU_LINE_OSK_FIELD + 2)
+#define MENU_LINE_OSK_DATA		(MENU_LINE_OSK_FIELD + 3)
 /// Line to draw the upper line of the on screen keyboard
-#define MENU_LINE_OSK_KEYBOARD	(MENU_LINE_OSK_DATA + 3)
+#define MENU_LINE_OSK_KEYS		(MENU_LINE_OSK_DATA + 5)
 /// Default left margin
 #define MENU_DEF_LEFT_MARGIN	1
 /// Default right margin

@@ -25,12 +25,12 @@ const uint8_t scrDelta[] = {
 };
 
 /// Number of rows of the QWERTY menu
-#define MENU_QWERTY_ROWS		4
+#define MENU_OSK_QWERTY_ROWS		4
 /// Number of columns of the QWERTY menu
-#define MENU_QWERTY_COLS		11
+#define MENU_OSK_QWERTY_COLS		11
 
 /// Alphanumeric menu definition
-const char qwerty[2 * MENU_QWERTY_ROWS][MENU_QWERTY_COLS] = {{
+const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 		'1','2','3','4','5','6','7','8','9','0','-'
 	},{
 		'Q','W','E','R','T','Y','U','I','O','P','['
@@ -48,6 +48,10 @@ const char qwerty[2 * MENU_QWERTY_ROWS][MENU_QWERTY_COLS] = {{
 		'z','x','c','v','b','n','m','<','>','?','='
 	}
 };
+
+const char *qwertyFunc[] = {"SUPR", "<", ">", "BACK", "OK"};
+
+const char qwertySpace[] = "[SPACE]";
 
 /// Obtains the number of scroll steps for the menu scroll function
 #define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
@@ -232,6 +236,8 @@ void MenuXScroll(uint8_t direction) {
  * \param[in] offset Character offset in which to draw the menu
  ****************************************************************************/
 void DrawOsk(uint16_t offset) {
+	uint8_t i, j;
+
 	// Current menu entry
 	const MenuEntry *m = md.me[md.level];
 
@@ -245,6 +251,35 @@ void DrawOsk(uint16_t offset) {
 	VdpDrawText(VDP_PLANEA_ADDR, offset + ((MENU_LINE_CHARS_TOTAL -
 			m->keyb.maxLen)>>1), MENU_LINE_OSK_DATA, MENU_COLOR_OSK_DATA,
 			m->keyb.fieldData.length, m->keyb.fieldData.string);
+
+	// Draw the on screen keyboard
+	switch (m->type) {
+		case MENU_TYPE_OSK_QWERTY:
+			// Draw QWERTY OSK
+			for (i = 0; i < MENU_OSK_QWERTY_ROWS; i++) {
+				for (j = 0; j < MENU_OSK_QWERTY_COLS; j++) {
+					VdpDrawText(VDP_PLANEA_ADDR, offset - 6 +
+						((MENU_LINE_CHARS_TOTAL - 2*MENU_OSK_QWERTY_COLS)>>1) +
+						2 * j, MENU_LINE_OSK_KEYS + 2 * i, MENU_COLOR_ITEM, 1,
+						(char*)&qwerty[i][j]);
+				}
+			}
+			VdpDrawText(VDP_PLANEA_ADDR, offset +
+					((sizeof(qwertySpace) - 1)) - 6 +
+					((MENU_LINE_CHARS_TOTAL - 2*MENU_OSK_QWERTY_COLS)>>1) ,
+					MENU_LINE_OSK_KEYS + 2 * MENU_OSK_QWERTY_ROWS,
+					MENU_COLOR_ITEM, sizeof(qwertySpace) - 1,
+					(char*)qwertySpace);
+			// Draw special keys
+			break;
+
+		case MENU_TYPE_OSK_NUMERIC:
+			break;
+
+		case MENU_TYPE_OSK_IPV4:
+			break;
+
+	}
 }
 
 /************************************************************************//**
