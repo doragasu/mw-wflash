@@ -208,13 +208,11 @@ void MenuInit(const MenuEntry *root, MenuString statStr);
 void MenuStatStrSet(MenuString statStr);
 
 /************************************************************************//**
- * Obtains the buttons pressed as input, and performs the corresponding
- * actions depending on the button press (item change, menu change, callback
- * execution, etc.).
+ * Obtains the changes of buttons pressed as input, and performs the
+ * corresponding actions depending on the button press (item change, menu
+ * change, callback execution, etc.).
  *
- * \param[in] input Menu actions, as obtained from a call to GpPressed().
- *
- * \todo Currently working only for MENU_TYPE_ITEM menus.
+ * \param[in] input Key press changes, as obtained by GpPressed() function.
  ****************************************************************************/
 void MenuButtonAction(uint8_t input);
 
