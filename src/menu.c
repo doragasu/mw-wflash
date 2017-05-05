@@ -64,6 +64,8 @@ typedef struct {
 	uint8_t selPage[MENU_NLEVELS];
 	/// Coordinates of selected keyboard item
 	MenuOskCoord coord;
+	char strBuf[MENU_STR_MAX_LEN + 1];
+	MenuString str;
 } Menu;
 
 /// Dynamic data needed to display the menus
@@ -116,13 +118,21 @@ const MenuOskCoord qwertyRev[80] = {
 	{1,3,1}, {1,1,5}, {1,3,0}, {1,7,15},{1,7,15},{1,7,15},{1,7,15},{1,7,15}
 };
 
-/// Number of special function keys
-#define MENU_OSK_SPECIAL_FUNCS		5
-/// 
-const char qwertyFunc[MENU_OSK_SPECIAL_FUNCS][4] = {
+typedef enum {
+	MENU_OSK_FUNC_CANCEL = 0,	///< Cancel edit
+	MENU_OSK_FUNC_DEL,			///< Delete character
+	MENU_OSK_FUNC_LEFT,			///< Move to left
+	MENU_OSK_FUNC_RIGHT,		///< Move to right
+	MENU_OSK_FUNC_DONE,			///< Done edit
+	MENU_OSK_NUM_FUNCS			///< Number of special function keys
+} MenuOskSpecialFuncs;
+
+/// Special function key labels
+const char qwertyFunc[MENU_OSK_NUM_FUNCS][4] = {
 	"BACK", "DEL", " <-", " ->", "DONE"
 };
 
+/// Space key label
 const char qwertySpace[] = "[SPACE]";
 
 /************************************************************************//**
@@ -272,6 +282,24 @@ void MenuXScroll(uint8_t direction) {
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, 0);
 }
 
+/// Draws the current key on the edit field, with the plane offset and
+/// color indicated
+void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
+	// Current menu entry
+	const MenuEntry *m = md.me[md.level];
+	char c;
+
+	// Check if we are in a special key
+	if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 16 * 6 - 1;
+//	if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 0x7F - ' ';
+	else if (md.coord.row == MENU_OSK_QWERTY_ROWS) c = ' ';
+	else c = qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col];
+	// Draw the selected key with corresponding color
+	VdpDrawText(VDP_PLANEA_ADDR, offset + ((MENU_LINE_CHARS_TOTAL -
+			m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
+			textColor, 1, &c);
+}
+
 /************************************************************************//**
  * Draws the currently active On Screen Keyboard.
  *
@@ -293,7 +321,9 @@ void MenuDrawOsk(uint16_t offset) {
 	// size of the data string.
 	VdpDrawText(VDP_PLANEA_ADDR, offset + ((MENU_LINE_CHARS_TOTAL -
 			m->keyb.maxLen)>>1), MENU_LINE_OSK_DATA, MENU_COLOR_OSK_DATA,
-			m->keyb.fieldData.length, m->keyb.fieldData.string);
+			md.str.length, md.str.string);
+	// Draw the selected key with corresponding color
+	MenuOskDrawEditKey(offset, MENU_COLOR_ITEM_SEL);
 
 	// Draw the on screen keyboard
 	switch (m->type) {
@@ -322,7 +352,7 @@ void MenuDrawOsk(uint16_t offset) {
 					color, sizeof(qwertySpace) - 1,
 					(char*)qwertySpace);
 			// Draw special keys
-			for (i = 0; i < MENU_OSK_SPECIAL_FUNCS; i++) {
+			for (i = 0; i < MENU_OSK_NUM_FUNCS; i++) {
 				if (md.coord.col == MENU_OSK_QWERTY_COLS && md.coord.row == i)
 					color = MENU_COLOR_ITEM_SEL;
 				else color = MENU_COLOR_ITEM;
@@ -381,6 +411,16 @@ void MenuDraw(uint8_t direction) {
 			break;
 
 		case MENU_TYPE_OSK_QWERTY:
+			// Copy string, place cursor at the end, and enter menu
+			MenuStringCopy(&md.str, &m->keyb.fieldData);
+			md.selItem[md.level] = md.str.length;
+			// Select the "DONE" item
+			md.coord.caps = 0;
+			md.coord.row = MENU_OSK_QWERTY_ROWS;
+			md.coord.col = MENU_OSK_QWERTY_COLS;
+			MenuDrawOsk(offset);
+			break;
+
 		case MENU_TYPE_OSK_NUMERIC:
 		case MENU_TYPE_OSK_IPV4:
 			MenuDrawOsk(offset);
@@ -417,6 +457,8 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	strncpy(md.rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
 	md.rContext = rContext;
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, 0);
+	// Initialize temp string
+	md.str.string = md.strBuf;
 
 	// Draw root menu
 	MenuDraw(MENU_SCROLL_DIR_LEFT);
@@ -436,6 +478,11 @@ static inline void MenuPrevPage(void) {
 }
 
 /// Draws current item on the menu screen
+/************************************************************************//**
+ * Draw current item for MENU_TYPE_ITEM menus, with specified color.
+ *
+ * \param[in] txtColor Color used to draw the item.
+ ****************************************************************************/
 static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 	uint8_t line, item;
 	const MenuEntry *m = md.me[md.level];
@@ -448,6 +495,12 @@ static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 			m->item.item[item].caption.string);
 }
 
+/************************************************************************//**
+ * Perform menu actions for a MENU_TYPE_ITEM menu, depending in the pressed
+ * key.
+ *
+ * \param[in] input Input key changes.
+ ****************************************************************************/
 void MenuItemAction(uint8_t input) {
 	uint8_t tmp;
 	const MenuEntry *m = md.me[md.level];
@@ -510,6 +563,11 @@ void MenuItemAction(uint8_t input) {
 	}
 }
 
+/************************************************************************//**
+ * Draw current QWERTY OSK key, in specified color.
+ *
+ * \param[in] color Color used to draw the current key.
+ ****************************************************************************/
 static inline void MenuOskQwertyDrawCurrent(uint8_t color) {
 	uint8_t i;
 	// Determine if we have to draw a special key
@@ -534,11 +592,28 @@ static inline void MenuOskQwertyDrawCurrent(uint8_t color) {
 	}
 }
 
+void MenuAddChar(char c) {
+	
+}
+
+void MenuOskQwertyKeyPress(void) {
+	// Find if a special key has been pressed
+	if (md.coord.col == MENU_OSK_QWERTY_COLS) {
+		switch (md.coord.row) {
+		}
+	} else if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
+		// Space pressed
+		MenuAddChar(' ');
+	} else {
+		// Normal character pressed
+		MenuAddChar(qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col]);
+	}
+}
+
 /// Menu navigation through QWERTY virtual keyboard
 void MenuOskQwertyActions(uint8_t input) {
-	const MenuEntry *m = md.me[md.level];
-
 	if (input & GP_A_MASK) {
+		MenuOskQwertyKeyPress();
 	} else if (input & GP_B_MASK) {
 	} else if (input & GP_C_MASK) {
 		md.coord.caps ^= 1;
@@ -550,6 +625,8 @@ void MenuOskQwertyActions(uint8_t input) {
 		// Decrement row and draw key as selected.
 		md.coord.row = md.coord.row?md.coord.row - 1:MENU_OSK_QWERTY_ROWS;
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 	} else if (input & GP_DOWN_MASK) {
 		// Draw current key with not selected color
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM);
@@ -557,6 +634,8 @@ void MenuOskQwertyActions(uint8_t input) {
 		md.coord.row = md.coord.row == MENU_OSK_QWERTY_ROWS?0:
 			md.coord.row + 1;
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 	} else if (input & GP_LEFT_MASK) {
 		// Draw current key with not selected color
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM);
@@ -570,6 +649,8 @@ void MenuOskQwertyActions(uint8_t input) {
 			md.coord.col = md.coord.col?md.coord.col - 1:MENU_OSK_QWERTY_COLS;
 		}
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 	} else if (input & GP_RIGHT_MASK) {
 		// Draw current key with not selected color
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM);
@@ -584,6 +665,8 @@ void MenuOskQwertyActions(uint8_t input) {
 				md.coord.col + 1;
 		}
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 	}
 }
 
@@ -614,5 +697,17 @@ void MenuButtonAction(uint8_t input) {
 		case MENU_TYPE_OSK_IPV4:
 			break;
 	}
+}
+
+/************************************************************************//**
+ * Copy a MenuString.
+ *
+ * \param[out] dst Destination MenuString.
+ * \param[in]  src Source string.
+ ****************************************************************************/
+void MenuStringCopy(MenuString *dst, const MenuString *src) {
+	memcpy(dst->string, src->string, src->length);
+	dst->length = src->length;
+	dst->string[dst->length] = '\0';
 }
 

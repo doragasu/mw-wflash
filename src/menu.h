@@ -116,6 +116,8 @@ typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
 #define MENU_COLOR_OSK_DATA		VDP_TXT_COL_CYAN
 /** \} */
 
+#define MENU_STR_MAX_LEN	32
+
 /// Supported alignment for menu items
 typedef enum {
 	MENU_H_ALIGN_CENTER = 0,	///< Center align (default)
@@ -217,6 +219,14 @@ void MenuStatStrSet(MenuString statStr);
 void MenuButtonAction(uint8_t input);
 
 void MenuForceLoad(MenuEntry *me);
+
+/************************************************************************//**
+ * Copy a MenuString.
+ *
+ * \param[out] dst Destination MenuString.
+ * \param[in]  src Source string.
+ ****************************************************************************/
+void MenuStringCopy(MenuString *dst, const MenuString *src);
 
 #endif /*_MENU_H_*/
 
