@@ -43,7 +43,7 @@ const uint8_t scrDelta[] = {
 
 /// Coordinates of selected keyboard item
 typedef struct {
-	uint8_t caps:1;
+	uint8_t caps:1;		///< Set to 1 to toggle caps key
 	uint8_t row:3;		///< Keyboard row
 	uint8_t col:4;		///< Keyboard column
 } MenuOskCoord;
@@ -290,8 +290,7 @@ void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 	char c;
 
 	// Check if we are in a special key
-	if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 16 * 6 - 1;
-//	if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 0x7F - ' ';
+	if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 0x7F;
 	else if (md.coord.row == MENU_OSK_QWERTY_ROWS) c = ' ';
 	else c = qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col];
 	// Draw the selected key with corresponding color
@@ -593,7 +592,21 @@ static inline void MenuOskQwertyDrawCurrent(uint8_t color) {
 }
 
 void MenuAddChar(char c) {
-	
+	const MenuEntry *m = md.me[md.level];
+
+	// If we are at the end of the string, and there is room, add the
+	// character. If not at the end of the string, edit current caracter
+	// and advance one position.
+	if (md.selItem[md.level] == md.str.length) {
+		if (md.selItem[md.level] < m->keyb.maxLen) {
+			/// \todo check if last position, and move to "DONE" in that case
+			md.str.string[md.selItem[md.level]++] = qwerty[md.coord.caps * 8 +
+				md.coord.row][md.coord.col];
+			md.str.length = md.selItem[md.level];
+		}
+	} else {
+		// We are in the middle of the string, advance to next character
+	}
 }
 
 void MenuOskQwertyKeyPress(void) {
