@@ -95,11 +95,15 @@ const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 /// Reverse keyboard lookup table, to get QWERTY keyboard coordinates from
 /// the ascii character (subtracting the ' ' character and indexing in this
 /// table
-const MenuOskCoord qwertyRev[80] = {
+const MenuOskCoord qwertyRev[96] = {
 	// SP       !        "        #        $        &        '        (
 	{0,4,0}, {1,0,0}, {1,2,10},{1,0,2}, {1,0,3}, {1,0,4}, {1,0,6}, {0,2,10},
 	// (        )        *        +        ,        -        .        /
 	{1,0,8}, {1,0,9}, {1,0,7}, {0,3,10},{0,3,7}, {0,0,10},{0,3,8}, {0,3,9},
+	// 0        1        2        3        4        5        6        7
+	{0,0,0}, {0,0,1}, {0,0,2}, {0,0,3} ,{0,0,4}, {0,0,5}, {0,0,6}, {0,0,7},
+	// 8        9        :        ;        <        =        >        ?
+	{0,0,8}, {0,0,9}, {1,2,9}, {0,2,9} ,{1,3,7}, {1,3,10},{1,3,8}, {1,3,9},
 	// @        A        B        C        D        E        F        G
 	{1,0,1}, {0,2,0}, {0,3,4}, {0,3,2}, {0,2,2}, {0,1,2}, {0,2,3}, {0,2,4},
 	// H        I        J        K        L        M        N        O
@@ -114,7 +118,7 @@ const MenuOskCoord qwertyRev[80] = {
 	{1,2,5}, {1,1,7}, {1,2,6}, {1,2,7}, {1,2,8}, {1,3,6}, {1,3,5}, {1,1,8},
 	// p        q        r        s        t        u        v        w
 	{1,1,9}, {1,1,0}, {1,1,3}, {1,2,1}, {1,1,4}, {1,1,6}, {1,3,3}, {1,1,1},
-	// x        y        z        {        |        }        ~       CUR
+	// x        y        z        {        |        }        ~      CURSOR
 	{1,3,1}, {1,1,5}, {1,3,0}, {1,7,15},{1,7,15},{1,7,15},{1,7,15},{1,7,15}
 };
 
@@ -600,9 +604,10 @@ void MenuAddChar(char c) {
 	if (md.selItem[md.level] == md.str.length) {
 		if (md.selItem[md.level] < m->keyb.maxLen) {
 			/// \todo check if last position, and move to "DONE" in that case
-			md.str.string[md.selItem[md.level]++] = qwerty[md.coord.caps * 8 +
-				md.coord.row][md.coord.col];
+			MenuOskDrawEditKey(0, MENU_COLOR_OSK_DATA);
+			md.str.string[md.selItem[md.level]++] = c;
 			md.str.length = md.selItem[md.level];
+			MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 		}
 	} else {
 		// We are in the middle of the string, advance to next character
@@ -623,11 +628,42 @@ void MenuOskQwertyKeyPress(void) {
 	}
 }
 
+void MenuOskQwertyKeyDel(void) {
+	const MenuEntry *m = md.me[md.level];
+
+	// If currently at origin, key cannot be deleted
+	if (!md.selItem[md.level]) return;
+	// If we are at the last character, just clear it.
+	if (md.selItem[md.level] == md.str.length) {
+		// Clear current character
+		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL -
+				m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
+				MENU_COLOR_OSK_DATA, 1, " ");
+		md.selItem[md.level]--;
+		md.coord = qwertyRev[md.str.string[md.selItem[md.level]] - ' '];
+	} else {
+		// Not at the end of the string, copy all characters from this
+		// position, 1 character to the left
+		// First clear last character
+		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL -
+				m->keyb.maxLen)>>1) + md.str.length - 1, MENU_LINE_OSK_DATA,
+				MENU_COLOR_OSK_DATA, 1, " ");
+		strncpy(md.str.string + md.selItem[md.level] - 1, md.str.string +
+				md.selItem[md.level], md.str.length - md.selItem[md.level]);
+		md.str.string[md.str.length] = '\0';
+		md.selItem[md.level]--;
+	}
+	md.str.length--;
+	MenuDrawOsk(0);
+}
+
 /// Menu navigation through QWERTY virtual keyboard
 void MenuOskQwertyActions(uint8_t input) {
 	if (input & GP_A_MASK) {
 		MenuOskQwertyKeyPress();
 	} else if (input & GP_B_MASK) {
+		// Delete current character
+		MenuOskQwertyKeyDel();
 	} else if (input & GP_C_MASK) {
 		md.coord.caps ^= 1;
 		MenuDrawOsk(0);
