@@ -611,20 +611,9 @@ void MenuAddChar(char c) {
 		}
 	} else {
 		// We are in the middle of the string, advance to next character
-	}
-}
-
-void MenuOskQwertyKeyPress(void) {
-	// Find if a special key has been pressed
-	if (md.coord.col == MENU_OSK_QWERTY_COLS) {
-		switch (md.coord.row) {
-		}
-	} else if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
-		// Space pressed
-		MenuAddChar(' ');
-	} else {
-		// Normal character pressed
-		MenuAddChar(qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col]);
+		MenuOskDrawEditKey(0, MENU_COLOR_OSK_DATA);
+		md.str.string[md.selItem[md.level]++] = c;
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 	}
 }
 
@@ -657,6 +646,71 @@ void MenuOskQwertyKeyDel(void) {
 	MenuDrawOsk(0);
 }
 
+void MenuOskQwertyDone(void) {
+	const MenuEntry *m = md.me[md.level];
+	
+	// Copy temporal string to menu entry string and scroll back
+	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md.str);
+	md.level--;
+	MenuDraw(MENU_SCROLL_DIR_RIGHT);
+}
+
+void MenuOskEditLeft(void) {
+	const MenuEntry *m = md.me[md.level];
+
+	// If we are at the origin, ignore key
+	if (md.selItem[md.level] == 0) return;
+	// Clear current character
+	VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL -
+			m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
+			MENU_COLOR_OSK_DATA, 1, " ");
+	md.selItem[md.level]--;
+//	md.coord = qwertyRev[md.str.string[md.selItem[md.level]] - ' '];
+	MenuDrawOsk(0);
+}
+
+void MenuOskEditRight(void) {
+	// If we are at the end, ignore key
+	if (md.selItem[md.level] == md.str.length) return;
+	md.selItem[md.level]++;
+	MenuDrawOsk(0);
+}
+
+void MenuOskQwertyKeyPress(void) {
+	// Find if a special key has been pressed
+	if (md.coord.col == MENU_OSK_QWERTY_COLS) {
+		switch (md.coord.row) {
+			case MENU_OSK_FUNC_CANCEL:
+				md.level--;
+				MenuDraw(MENU_SCROLL_DIR_RIGHT);
+				break;
+
+			case MENU_OSK_FUNC_DEL:
+				MenuOskQwertyKeyDel();
+				break;
+
+			case MENU_OSK_FUNC_LEFT:
+				MenuOskEditLeft();
+				break;
+
+			case MENU_OSK_FUNC_RIGHT:
+				MenuOskEditRight();
+				break;
+
+			case MENU_OSK_FUNC_DONE:
+				MenuOskQwertyDone();
+				break;
+
+		}
+	} else if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
+		// Space pressed
+		MenuAddChar(' ');
+	} else {
+		// Normal character pressed
+		MenuAddChar(qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col]);
+	}
+}
+
 /// Menu navigation through QWERTY virtual keyboard
 void MenuOskQwertyActions(uint8_t input) {
 	if (input & GP_A_MASK) {
@@ -668,6 +722,7 @@ void MenuOskQwertyActions(uint8_t input) {
 		md.coord.caps ^= 1;
 		MenuDrawOsk(0);
 	} else if (input & GP_START_MASK) {
+		MenuOskQwertyDone();
 	} else if (input & GP_UP_MASK) {
 		// Draw current key with not selected color
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM);
