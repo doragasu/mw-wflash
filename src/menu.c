@@ -122,6 +122,7 @@ const MenuOskCoord qwertyRev[96] = {
 	{1,3,1}, {1,1,5}, {1,3,0}, {1,7,15},{1,7,15},{1,7,15},{1,7,15},{1,7,15}
 };
 
+/// Supported virtual menu actions
 typedef enum {
 	MENU_OSK_FUNC_CANCEL = 0,	///< Cancel edit
 	MENU_OSK_FUNC_DEL,			///< Delete character
@@ -286,8 +287,15 @@ void MenuXScroll(uint8_t direction) {
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, 0);
 }
 
-/// Draws the current key on the edit field, with the plane offset and
-/// color indicated
+
+
+/************************************************************************//**
+ * Draws the current key on the edit field, with the plane offset and
+ * color indicated.
+ *
+ * \param[in] offset    Character offset in which to draw the menu.
+ * \param[in] textColor Text color definition as defined in vdp module.
+ ****************************************************************************/
 void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 	// Current menu entry
 	const MenuEntry *m = md.me[md.level];
@@ -467,14 +475,18 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	MenuDraw(MENU_SCROLL_DIR_LEFT);
 }
 
-/// Advances page number to the next one (but does not draw the page)
+/************************************************************************//**
+ * Advances page number to the next one (but does not draw the page).
+ ****************************************************************************/
 static inline void MenuNextPage(void) {
 	md.selPage[md.level]++;
 	if (md.selPage[md.level] > md.me[md.level]->item.pages)
 		md.selPage[md.level] = 0;
 }
 
-/// Sets page number to the previous one (but does not draw the page)
+/************************************************************************//**
+ * Sets page number to the previous one (but does not draw the page).
+ ****************************************************************************/
 static inline void MenuPrevPage(void) {
 	md.selPage[md.level] = md.selPage[md.level]?md.selPage[md.level] - 1:
 		md.me[md.level]->item.pages;
@@ -595,6 +607,12 @@ static inline void MenuOskQwertyDrawCurrent(uint8_t color) {
 	}
 }
 
+/************************************************************************//**
+ * Adds specified character to the edited string using an on-screen
+ * keyboard.
+ *
+ * \param[in] c Character to add to the edited string.
+ ****************************************************************************/
 void MenuAddChar(char c) {
 	const MenuEntry *m = md.me[md.level];
 
@@ -617,7 +635,10 @@ void MenuAddChar(char c) {
 	}
 }
 
-void MenuOskQwertyKeyDel(void) {
+/************************************************************************//**
+ * Deletes previous character edited on the on-screen keyboard.
+ ****************************************************************************/
+void MenuOskKeyDel(void) {
 	const MenuEntry *m = md.me[md.level];
 
 	// If currently at origin, key cannot be deleted
@@ -629,7 +650,6 @@ void MenuOskQwertyKeyDel(void) {
 				m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
 				MENU_COLOR_OSK_DATA, 1, " ");
 		md.selItem[md.level]--;
-		md.coord = qwertyRev[md.str.string[md.selItem[md.level]] - ' '];
 	} else {
 		// Not at the end of the string, copy all characters from this
 		// position, 1 character to the left
@@ -646,7 +666,10 @@ void MenuOskQwertyKeyDel(void) {
 	MenuDrawOsk(0);
 }
 
-void MenuOskQwertyDone(void) {
+/************************************************************************//**
+ * Commits and end the string edition using an on-screen keyboard.
+ ****************************************************************************/
+void MenuOskDone(void) {
 	const MenuEntry *m = md.me[md.level];
 	
 	// Copy temporal string to menu entry string and scroll back
@@ -655,6 +678,9 @@ void MenuOskQwertyDone(void) {
 	MenuDraw(MENU_SCROLL_DIR_RIGHT);
 }
 
+/************************************************************************//**
+ * Performs a cursor shift to the left for on-screen keyboards.
+ ****************************************************************************/
 void MenuOskEditLeft(void) {
 	const MenuEntry *m = md.me[md.level];
 
@@ -665,10 +691,12 @@ void MenuOskEditLeft(void) {
 			m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
 			MENU_COLOR_OSK_DATA, 1, " ");
 	md.selItem[md.level]--;
-//	md.coord = qwertyRev[md.str.string[md.selItem[md.level]] - ' '];
 	MenuDrawOsk(0);
 }
 
+/************************************************************************//**
+ * Performs a cursor shift to the right for on-screen keyboards.
+ ****************************************************************************/
 void MenuOskEditRight(void) {
 	// If we are at the end, ignore key
 	if (md.selItem[md.level] == md.str.length) return;
@@ -676,6 +704,9 @@ void MenuOskEditRight(void) {
 	MenuDrawOsk(0);
 }
 
+/************************************************************************//**
+ * Handles key presses for the virtual QWERTY keyboard.
+ ****************************************************************************/
 void MenuOskQwertyKeyPress(void) {
 	// Find if a special key has been pressed
 	if (md.coord.col == MENU_OSK_QWERTY_COLS) {
@@ -686,7 +717,7 @@ void MenuOskQwertyKeyPress(void) {
 				break;
 
 			case MENU_OSK_FUNC_DEL:
-				MenuOskQwertyKeyDel();
+				MenuOskKeyDel();
 				break;
 
 			case MENU_OSK_FUNC_LEFT:
@@ -698,7 +729,7 @@ void MenuOskQwertyKeyPress(void) {
 				break;
 
 			case MENU_OSK_FUNC_DONE:
-				MenuOskQwertyDone();
+				MenuOskDone();
 				break;
 
 		}
@@ -711,18 +742,23 @@ void MenuOskQwertyKeyPress(void) {
 	}
 }
 
-/// Menu navigation through QWERTY virtual keyboard
+/************************************************************************//**
+ * Menu navigation through QWERTY virtual keyboard.
+ *
+ * \param[in] input Pad button changes in the format returned by GpPressed(),
+ *                  but inverted (not).
+ ****************************************************************************/
 void MenuOskQwertyActions(uint8_t input) {
 	if (input & GP_A_MASK) {
 		MenuOskQwertyKeyPress();
 	} else if (input & GP_B_MASK) {
 		// Delete current character
-		MenuOskQwertyKeyDel();
+		MenuOskKeyDel();
 	} else if (input & GP_C_MASK) {
 		md.coord.caps ^= 1;
 		MenuDrawOsk(0);
 	} else if (input & GP_START_MASK) {
-		MenuOskQwertyDone();
+		MenuOskDone();
 	} else if (input & GP_UP_MASK) {
 		// Draw current key with not selected color
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM);

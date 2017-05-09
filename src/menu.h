@@ -218,7 +218,19 @@ void MenuStatStrSet(MenuString statStr);
  ****************************************************************************/
 void MenuButtonAction(uint8_t input);
 
-void MenuForceLoad(MenuEntry *me);
+/************************************************************************//**
+ * Forces loading specified menu entry.
+ *
+ * \param[in] me    Pointer to MenuEntry to load.
+ * \param[in] level Menu level to load the new entry in. If set to 0, the
+ *                  level next to the current menu level will be used.
+ *                  Otherwise the specified level will be set.
+ *
+ * \warning When setting a menu level (other than 0), the caller must make
+ *          sure that all previous levels are correctly populated and
+ *          handled.
+ ****************************************************************************/
+void MenuForceLoad(MenuEntry *me, uint8_t level);
 
 /************************************************************************//**
  * Copy a MenuString.
