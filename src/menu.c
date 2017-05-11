@@ -72,7 +72,7 @@ typedef struct {
 static Menu md;
 
 /// Alphanumeric menu definition
-const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
+static const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 	//   0   1   2   3   4   5   6   7   8   9  10
 		'1','2','3','4','5','6','7','8','9','0','-'
 	},{
@@ -95,7 +95,7 @@ const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 /// Reverse keyboard lookup table, to get QWERTY keyboard coordinates from
 /// the ascii character (subtracting the ' ' character and indexing in this
 /// table
-const MenuOskCoord qwertyRev[96] = {
+static const MenuOskCoord qwertyRev[96] = {
 	// SP       !        "        #        $        &        '        (
 	{0,4,0}, {1,0,0}, {1,2,10},{1,0,2}, {1,0,3}, {1,0,4}, {1,0,6}, {0,2,10},
 	// (        )        *        +        ,        -        .        /
@@ -146,11 +146,23 @@ const char qwertySpace[] = "[SPACE]";
 #define MENU_OSK_IP_ROWS	4
 
 /// IP entry menu definition
-const char ip[MENU_OSK_IP_ROWS][MENU_OSK_IP_COLS] = {
+static const char ip[MENU_OSK_IP_ROWS][MENU_OSK_IP_COLS] = {
 	{'7', '8', '9'},
 	{'4', '5', '6'},
 	{'1', '2', '3'},
 	{'.', '0', '.'}
+};
+
+/// Number of columns of the IP OSK menu
+#define MENU_OSK_NUM_COLS	3
+/// Number of rows of the IP OSK menu
+#define MENU_OSK_NUM_ROWS	4
+
+static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
+	{'7', '8', '9'},
+	{'4', '5', '6'},
+	{'1', '2', '3'},
+	{'0', '0', '0'}
 };
 
 /************************************************************************//**
@@ -341,7 +353,7 @@ void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 void MenuDrawOskFunc(uint16_t offset) {
 	uint8_t i, color, cols;
 
-
+	cols = 0;
 	switch(md.me[md.level]->type) {
 		case MENU_TYPE_OSK_QWERTY:
 			cols = MENU_OSK_QWERTY_COLS;
@@ -987,6 +999,70 @@ void MenuOskIpActions(uint8_t input) {
 	}
 }
 
+void MenuOskNumDrawCurrent(uint8_t textColor) {
+}
+
+void MenuOskNumKeyPress(void) {
+}
+
+void MenuOskNumActions(input) {
+	uint8_t limit;
+
+	if (input & GP_A_MASK) {
+		MenuOskNumKeyPress();
+	} else if (input & GP_B_MASK) {
+		// Delete current character
+		MenuOskKeyDel();
+	} else if (input & GP_C_MASK) {
+		md.coord.caps ^= 1;
+		MenuDrawOsk(0);
+	} else if (input & GP_START_MASK) {
+		MenuOskDone();
+	} else if (input & GP_UP_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
+		// Decrement row and draw key as selected. Note that if we are on last
+		// row, the limit changes
+		limit = md.coord.col < MENU_OSK_NUM_COLS?MENU_OSK_NUM_ROWS:
+			MENU_OSK_NUM_FUNCS;
+			md.coord.row = md.coord.row?md.coord.row - 1:limit - 1;
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_DOWN_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
+		// Increment row and draw key as selected.
+		limit = md.coord.col < MENU_OSK_NUM_COLS?MENU_OSK_NUM_ROWS:
+			MENU_OSK_NUM_FUNCS;
+		md.coord.row = md.coord.row < limit - 1?md.coord.row + 1:0;
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_LEFT_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
+		// Decrement col if not on the last column
+		if (md.coord.row < MENU_OSK_NUM_ROWS) {
+			md.coord.col = md.coord.col?md.coord.col - 1:MENU_OSK_NUM_COLS;
+		}
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_RIGHT_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
+		// Increment row if not on last line
+		if (md.coord.row < MENU_OSK_NUM_ROWS) {
+			md.coord.col = md.coord.col == MENU_OSK_NUM_COLS?0:
+				md.coord.col + 1;
+		}
+		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	}
+}
+
 /************************************************************************//**
  * Obtains the changes of buttons pressed as input, and performs the
  * corresponding actions depending on the button press (item change, menu
@@ -1009,6 +1085,7 @@ void MenuButtonAction(uint8_t input) {
 			break;
 
 		case MENU_TYPE_OSK_NUMERIC:
+			MenuOskNumActions(input);
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
