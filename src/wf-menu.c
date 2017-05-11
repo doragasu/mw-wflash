@@ -10,6 +10,25 @@
 
 const char stdContext[] = "[A]ccept, [B]ack";
 const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
+const char oskIpContext[] = "A-OK, B-Del, C-->, S-Done";
+
+
+char editableIp[16] = "192.168.1.60";
+
+const MenuEntry ipTest = {
+	MENU_TYPE_OSK_IPV4,
+	1,
+	MENU_STR("IP MENU TEST"),
+	MENU_STR(oskIpContext),
+	NULL,
+	NULL,
+	.keyb = {
+		MENU_STR("Enter IP address:"),
+		{editableIp, 12},
+		15,
+		15
+	}
+};
 
 char editableStr[32] = "Edit me!";
 
@@ -35,7 +54,7 @@ const MenuItem lA1Item[] = { {
 		{1, 1}
 	},{
 	MENU_STR("LA1 TEST2"),
-		NULL,
+		&ipTest,
 		NULL,
 		{1, 1}
 	},{
@@ -75,12 +94,12 @@ const MenuItem rootItem[] = { {
 		{1, 1}						///< Selectable, editable, Enabled
 	}, {
 		MENU_STR("CONFIGURATION"),
-		(MenuEntry*)&editTest,
+		NULL,
 		NULL,
 		{1, 1}
 	}, {
 		MENU_STR("3CONFIGURATION"),
-		NULL,
+		(MenuEntry*)&ipTest,
 		NULL,
 		{1, 1}
 	}, {

@@ -140,6 +140,19 @@ const char qwertyFunc[MENU_OSK_NUM_FUNCS][4] = {
 /// Space key label
 const char qwertySpace[] = "[SPACE]";
 
+/// Number of columns of the IP OSK menu
+#define MENU_OSK_IP_COLS	3
+/// Number of rows of the IP OSK menu
+#define MENU_OSK_IP_ROWS	4
+
+/// IP entry menu definition
+const char ip[MENU_OSK_IP_ROWS][MENU_OSK_IP_COLS] = {
+	{'7', '8', '9'},
+	{'4', '5', '6'},
+	{'1', '2', '3'},
+	{'.', '0', '.'}
+};
+
 /************************************************************************//**
  * Compute line character position needed for requested horizontal alignment.
  *
@@ -301,14 +314,55 @@ void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 	const MenuEntry *m = md.me[md.level];
 	char c;
 
-	// Check if we are in a special key
-	if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 0x7F;
-	else if (md.coord.row == MENU_OSK_QWERTY_ROWS) c = ' ';
-	else c = qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col];
+	switch (m->type) {
+		case MENU_TYPE_OSK_QWERTY:
+			// Check if we are in a special key
+			if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 0x7F;
+			else if (md.coord.row == MENU_OSK_QWERTY_ROWS) c = ' ';
+			else
+				c = qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col];
+			break;
+			
+		case MENU_TYPE_OSK_NUMERIC:
+			/// \todo
+			break;
+
+		case MENU_TYPE_OSK_IPV4:
+			if (md.coord.col == MENU_OSK_IP_COLS) c = 0x7F;
+			else c = ip[md.coord.row][md.coord.col];
+			break;
+	}
 	// Draw the selected key with corresponding color
 	VdpDrawText(VDP_PLANEA_ADDR, offset + ((MENU_LINE_CHARS_TOTAL -
 			m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
 			textColor, 1, &c);
+}
+
+void MenuDrawOskFunc(uint16_t offset) {
+	uint8_t i, color, cols;
+
+
+	switch(md.me[md.level]->type) {
+		case MENU_TYPE_OSK_QWERTY:
+			cols = MENU_OSK_QWERTY_COLS;
+			break;
+
+		case MENU_TYPE_OSK_NUMERIC:
+			/// \todo
+			break;
+
+		case MENU_TYPE_OSK_IPV4:
+			cols = MENU_OSK_IP_COLS;
+			break;
+	}
+	for (i = 0; i < MENU_OSK_NUM_FUNCS; i++) {
+		if (md.coord.col == cols && md.coord.row == i)
+			color = MENU_COLOR_ITEM_SEL;
+		else color = MENU_COLOR_ITEM;
+		VdpDrawText(VDP_PLANEA_ADDR, offset + 2 * MENU_OSK_QWERTY_COLS +
+				+ 6 + 2, MENU_LINE_OSK_KEYS + 2 * i,
+				color, 4, (char*)qwertyFunc[i]);
+	}
 }
 
 /************************************************************************//**
@@ -338,8 +392,7 @@ void MenuDrawOsk(uint16_t offset) {
 
 	// Draw the on screen keyboard
 	switch (m->type) {
-		case MENU_TYPE_OSK_QWERTY:
-			// Draw QWERTY OSK
+		case MENU_TYPE_OSK_QWERTY:	// Draw QWERTY OSK
 			for (i = 0; i < MENU_OSK_QWERTY_ROWS; i++) {
 				for (j = 0; j < MENU_OSK_QWERTY_COLS; j++) {
 					if (md.coord.row == i && md.coord.col == j)
@@ -363,20 +416,26 @@ void MenuDrawOsk(uint16_t offset) {
 					color, sizeof(qwertySpace) - 1,
 					(char*)qwertySpace);
 			// Draw special keys
-			for (i = 0; i < MENU_OSK_NUM_FUNCS; i++) {
-				if (md.coord.col == MENU_OSK_QWERTY_COLS && md.coord.row == i)
-					color = MENU_COLOR_ITEM_SEL;
-				else color = MENU_COLOR_ITEM;
-				VdpDrawText(VDP_PLANEA_ADDR, offset + 2*MENU_OSK_QWERTY_COLS +
-						+ 6 + 2, MENU_LINE_OSK_KEYS + 2 * i,
-						color, 4, (char*)qwertyFunc[i]);
+			MenuDrawOskFunc(offset);
+			break;
+
+		case MENU_TYPE_OSK_NUMERIC:	// Draw numeric OSK
+			break;
+
+		case MENU_TYPE_OSK_IPV4:	// Draw IPv4 OSK
+			for (i = 0; i < MENU_OSK_IP_ROWS; i++) {
+				for (j = 0; j < MENU_OSK_IP_COLS; j++) {
+					if (md.coord.row == i && md.coord.col == j)
+						color = MENU_COLOR_ITEM_SEL;
+					else color = MENU_COLOR_ITEM;
+					VdpDrawText(VDP_PLANEA_ADDR, offset - 3 +
+						((MENU_LINE_CHARS_TOTAL - 2 * MENU_OSK_IP_COLS)>>1) +
+						2 * j, MENU_LINE_OSK_KEYS + 2 * i, color, 1,
+						(char*)&ip[i][j]);
+				}
 			}
-			break;
-
-		case MENU_TYPE_OSK_NUMERIC:
-			break;
-
-		case MENU_TYPE_OSK_IPV4:
+			// Draw special keys
+			MenuDrawOskFunc(offset);
 			break;
 
 	}
@@ -433,9 +492,16 @@ void MenuDraw(uint8_t direction) {
 			break;
 
 		case MENU_TYPE_OSK_NUMERIC:
-		case MENU_TYPE_OSK_IPV4:
-			MenuDrawOsk(offset);
+			break;
 
+		case MENU_TYPE_OSK_IPV4:
+			MenuStringCopy(&md.str, &m->keyb.fieldData);
+			md.selItem[md.level] = md.str.length;
+			// Select the "DONE" item
+			md.coord.caps = 0;
+			md.coord.row = MENU_OSK_IP_ROWS;
+			md.coord.col = MENU_OSK_IP_COLS;
+			MenuDrawOsk(offset);
 		default:
 			break;
 	}
@@ -583,7 +649,7 @@ void MenuItemAction(uint8_t input) {
  *
  * \param[in] color Color used to draw the current key.
  ****************************************************************************/
-static inline void MenuOskQwertyDrawCurrent(uint8_t color) {
+void MenuOskQwertyDrawCurrent(uint8_t color) {
 	uint8_t i;
 	// Determine if we have to draw a special key
 	if (md.coord.col >= MENU_OSK_QWERTY_COLS) {
@@ -810,6 +876,117 @@ void MenuOskQwertyActions(uint8_t input) {
 	}
 }
 
+void MenuOskIpDrawCurrent(uint8_t textColor) {
+	uint8_t i;
+
+	// Determine if we have to draw a special key
+	if (md.coord.col >= MENU_OSK_IP_COLS) {
+		i = md.coord.row;
+		VdpDrawText(VDP_PLANEA_ADDR, 2 * MENU_OSK_QWERTY_COLS + 6 + 2,
+				MENU_LINE_OSK_KEYS + 2 * i, textColor, 4,
+				(char*)qwertyFunc[i]);
+	} else {
+		// Draw normal character
+		i = md.coord.row;
+		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL - 2 *
+				MENU_OSK_IP_COLS)>>1) + 2 * md.coord.col - 3,
+				MENU_LINE_OSK_KEYS + 2 * md.coord.row, textColor, 1,
+				(char*)&ip[i][md.coord.col]);
+	}
+}
+
+/************************************************************************//**
+ * Handles key presses for the virtual IP keyboard.
+ ****************************************************************************/
+void MenuOskIpKeyPress(void) {
+	// Find if a special key has been pressed
+	if (md.coord.col == MENU_OSK_IP_COLS) {
+		switch (md.coord.row) {
+			case MENU_OSK_FUNC_CANCEL:
+				md.level--;
+				MenuDraw(MENU_SCROLL_DIR_RIGHT);
+				break;
+
+			case MENU_OSK_FUNC_DEL:
+				MenuOskKeyDel();
+				break;
+
+			case MENU_OSK_FUNC_LEFT:
+				MenuOskEditLeft();
+				break;
+
+			case MENU_OSK_FUNC_RIGHT:
+				MenuOskEditRight();
+				break;
+
+			case MENU_OSK_FUNC_DONE:
+				MenuOskDone();
+				break;
+
+		}
+	} else {
+		// Normal character pressed
+		MenuAddChar(ip[md.coord.row][md.coord.col]);
+	}
+}
+
+void MenuOskIpActions(uint8_t input) {
+	uint8_t limit;
+
+	if (input & GP_A_MASK) {
+		MenuOskIpKeyPress();
+	} else if (input & GP_B_MASK) {
+		// Delete current character
+		MenuOskKeyDel();
+	} else if (input & GP_C_MASK) {
+		md.coord.caps ^= 1;
+		MenuDrawOsk(0);
+	} else if (input & GP_START_MASK) {
+		MenuOskDone();
+	} else if (input & GP_UP_MASK) {
+		// Draw current key with not selected color
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
+		// Decrement row and draw key as selected. Note that if we are on last
+		// row, the limit changes
+		limit = md.coord.col < MENU_OSK_IP_COLS?MENU_OSK_IP_ROWS:
+			MENU_OSK_NUM_FUNCS;
+			md.coord.row = md.coord.row?md.coord.row - 1:limit - 1;
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_DOWN_MASK) {
+		// Draw current key with not selected color
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
+		// Increment row and draw key as selected.
+		limit = md.coord.col < MENU_OSK_IP_COLS?MENU_OSK_IP_ROWS:
+			MENU_OSK_NUM_FUNCS;
+		md.coord.row = md.coord.row < limit - 1?md.coord.row + 1:0;
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_LEFT_MASK) {
+		// Draw current key with not selected color
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
+		// Decrement col if not on the last column
+		if (md.coord.row < MENU_OSK_IP_ROWS) {
+			md.coord.col = md.coord.col?md.coord.col - 1:MENU_OSK_IP_COLS;
+		}
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_RIGHT_MASK) {
+		// Draw current key with not selected color
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
+		// Increment row if not on last line
+		if (md.coord.row < MENU_OSK_IP_ROWS) {
+			md.coord.col = md.coord.col == MENU_OSK_IP_COLS?0:md.coord.col + 1;
+		}
+		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	}
+}
+
 /************************************************************************//**
  * Obtains the changes of buttons pressed as input, and performs the
  * corresponding actions depending on the button press (item change, menu
@@ -835,6 +1012,7 @@ void MenuButtonAction(uint8_t input) {
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
+			MenuOskIpActions(input);
 			break;
 	}
 }
