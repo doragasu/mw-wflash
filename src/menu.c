@@ -162,7 +162,7 @@ static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
 	{'7', '8', '9'},
 	{'4', '5', '6'},
 	{'1', '2', '3'},
-	{'0', '0', '0'}
+	{' ', '0', ' '}
 };
 
 /************************************************************************//**
@@ -336,7 +336,8 @@ void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 			break;
 			
 		case MENU_TYPE_OSK_NUMERIC:
-			/// \todo
+			if (md.coord.col == MENU_OSK_NUM_COLS) c = 0x7F;
+			else c = num[md.coord.row][md.coord.col];
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
@@ -360,7 +361,7 @@ void MenuDrawOskFunc(uint16_t offset) {
 			break;
 
 		case MENU_TYPE_OSK_NUMERIC:
-			/// \todo
+			cols = MENU_OSK_NUM_COLS;
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
@@ -432,6 +433,19 @@ void MenuDrawOsk(uint16_t offset) {
 			break;
 
 		case MENU_TYPE_OSK_NUMERIC:	// Draw numeric OSK
+			for (i = 0; i < MENU_OSK_NUM_ROWS; i++) {
+				for (j = 0; j < MENU_OSK_NUM_COLS; j++) {
+					if (md.coord.row == i && md.coord.col == j)
+						color = MENU_COLOR_ITEM_SEL;
+					else color = MENU_COLOR_ITEM;
+					VdpDrawText(VDP_PLANEA_ADDR, offset - 3 +
+						((MENU_LINE_CHARS_TOTAL - 2 * MENU_OSK_NUM_COLS)>>1) +
+						2 * j, MENU_LINE_OSK_KEYS + 2 * i, color, 1,
+						(char*)&num[i][j]);
+				}
+			}
+			// Draw special keys
+			MenuDrawOskFunc(offset);
 			break;
 
 		case MENU_TYPE_OSK_IPV4:	// Draw IPv4 OSK
@@ -504,6 +518,13 @@ void MenuDraw(uint8_t direction) {
 			break;
 
 		case MENU_TYPE_OSK_NUMERIC:
+			MenuStringCopy(&md.str, &m->keyb.fieldData);
+			md.selItem[md.level] = md.str.length;
+			// Select the "DONE" item
+			md.coord.caps = 0;
+			md.coord.row = MENU_OSK_NUM_ROWS;
+			md.coord.col = MENU_OSK_NUM_COLS;
+			MenuDrawOsk(offset);
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
@@ -951,8 +972,7 @@ void MenuOskIpActions(uint8_t input) {
 		// Delete current character
 		MenuOskKeyDel();
 	} else if (input & GP_C_MASK) {
-		md.coord.caps ^= 1;
-		MenuDrawOsk(0);
+		// Nothing to do for IP keyboards.
 	} else if (input & GP_START_MASK) {
 		MenuOskDone();
 	} else if (input & GP_UP_MASK) {
@@ -1000,9 +1020,54 @@ void MenuOskIpActions(uint8_t input) {
 }
 
 void MenuOskNumDrawCurrent(uint8_t textColor) {
+	uint8_t i;
+
+	// Determine if we have to draw a special key
+	if (md.coord.col >= MENU_OSK_NUM_COLS) {
+		i = md.coord.row;
+		VdpDrawText(VDP_PLANEA_ADDR, 2 * MENU_OSK_QWERTY_COLS + 6 + 2,
+				MENU_LINE_OSK_KEYS + 2 * i, textColor, 4,
+				(char*)qwertyFunc[i]);
+	} else {
+		// Draw normal character
+		i = md.coord.row;
+		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL - 2 *
+				MENU_OSK_NUM_COLS)>>1) + 2 * md.coord.col - 3,
+				MENU_LINE_OSK_KEYS + 2 * md.coord.row, textColor, 1,
+				(char*)&num[i][md.coord.col]);
+	}
 }
 
 void MenuOskNumKeyPress(void) {
+	// Find if a special key has been pressed
+	if (md.coord.col == MENU_OSK_NUM_COLS) {
+		switch (md.coord.row) {
+			case MENU_OSK_FUNC_CANCEL:
+				md.level--;
+				MenuDraw(MENU_SCROLL_DIR_RIGHT);
+				break;
+
+			case MENU_OSK_FUNC_DEL:
+				MenuOskKeyDel();
+				break;
+
+			case MENU_OSK_FUNC_LEFT:
+				MenuOskEditLeft();
+				break;
+
+			case MENU_OSK_FUNC_RIGHT:
+				MenuOskEditRight();
+				break;
+
+			case MENU_OSK_FUNC_DONE:
+				MenuOskDone();
+				break;
+
+		}
+	} else {
+		// Normal character pressed
+		MenuAddChar(num[md.coord.row][md.coord.col]);
+	}
 }
 
 void MenuOskNumActions(input) {
@@ -1014,8 +1079,7 @@ void MenuOskNumActions(input) {
 		// Delete current character
 		MenuOskKeyDel();
 	} else if (input & GP_C_MASK) {
-		md.coord.caps ^= 1;
-		MenuDrawOsk(0);
+		// Nothing to do for numeric keyboards.
 	} else if (input & GP_START_MASK) {
 		MenuOskDone();
 	} else if (input & GP_UP_MASK) {
@@ -1025,7 +1089,12 @@ void MenuOskNumActions(input) {
 		// row, the limit changes
 		limit = md.coord.col < MENU_OSK_NUM_COLS?MENU_OSK_NUM_ROWS:
 			MENU_OSK_NUM_FUNCS;
-			md.coord.row = md.coord.row?md.coord.row - 1:limit - 1;
+		if (md.coord.row) {
+			md.coord.row = md.coord.row - 1;
+		} else {
+			md.coord.row = limit - 1;
+			if (md.coord.col < MENU_OSK_NUM_COLS) md.coord.col = 1;
+		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
@@ -1033,9 +1102,17 @@ void MenuOskNumActions(input) {
 		// Draw current key with not selected color
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
 		// Increment row and draw key as selected.
-		limit = md.coord.col < MENU_OSK_NUM_COLS?MENU_OSK_NUM_ROWS:
-			MENU_OSK_NUM_FUNCS;
-		md.coord.row = md.coord.row < limit - 1?md.coord.row + 1:0;
+		if (md.coord.col < MENU_OSK_NUM_COLS) {
+			if (md.coord.row < (MENU_OSK_NUM_ROWS - 1)) {
+				md.coord.row++;
+				if (md.coord.row >= (MENU_OSK_NUM_ROWS - 1))
+					md.coord.col = 1;
+			} else md.coord.row = 0;
+		} else {
+			if (md.coord.row < (MENU_OSK_NUM_FUNCS - 1))
+					md.coord.row++;
+			else md.coord.row = 0;
+		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
@@ -1043,8 +1120,19 @@ void MenuOskNumActions(input) {
 		// Draw current key with not selected color
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
 		// Decrement col if not on the last column
-		if (md.coord.row < MENU_OSK_NUM_ROWS) {
-			md.coord.col = md.coord.col?md.coord.col - 1:MENU_OSK_NUM_COLS;
+		if (md.coord.col < MENU_OSK_NUM_COLS) {
+			// We are on numeric keys
+			if ((!md.coord.col) ||
+					(md.coord.row >= (MENU_OSK_NUM_ROWS - 1)))
+				md.coord.col = MENU_OSK_NUM_COLS;
+			else md.coord.col--;
+		} else {
+			// We are on special keys
+			if (md.coord.row < MENU_OSK_NUM_ROWS) {
+				if (md.coord.row < (MENU_OSK_NUM_ROWS - 1))
+					md.coord.col--;
+				else md.coord.col = 1;
+			}
 		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
@@ -1053,9 +1141,19 @@ void MenuOskNumActions(input) {
 		// Draw current key with not selected color
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
 		// Increment row if not on last line
-		if (md.coord.row < MENU_OSK_NUM_ROWS) {
-			md.coord.col = md.coord.col == MENU_OSK_NUM_COLS?0:
-				md.coord.col + 1;
+		if (md.coord.col < MENU_OSK_NUM_COLS) {
+			// We are on numeric keys
+			if ((md.coord.col < MENU_OSK_NUM_COLS) &&
+					(md.coord.row < MENU_OSK_NUM_ROWS - 1))
+				md.coord.col++;
+			else md.coord.col = MENU_OSK_NUM_COLS;
+		} else {
+			// We are on special keys
+			if (md.coord.row < MENU_OSK_NUM_ROWS) {
+				if (md.coord.row < (MENU_OSK_NUM_ROWS - 1))
+					md.coord.col = 0;
+				else md.coord.col = 1;
+			}
 		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character

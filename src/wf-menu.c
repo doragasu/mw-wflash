@@ -10,16 +10,32 @@
 
 const char stdContext[] = "[A]ccept, [B]ack";
 const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
-const char oskIpContext[] = "A-OK, B-Del, C-->, S-Done";
+const char oskNumIpContext[] = "A-OK, B-Del, S-Done";
 
 
 char editableIp[16] = "192.168.1.60";
+char editableNum[9] = "123456";
+
+const MenuEntry numTest = {
+	MENU_TYPE_OSK_NUMERIC,
+	1,
+	MENU_STR("NUMERIC MENU TEST"),
+	MENU_STR(oskNumIpContext),
+	NULL,
+	NULL,
+	.keyb = {
+		MENU_STR("Enter number:"),
+		{editableNum, 6},
+		8,
+		8
+	}
+};
 
 const MenuEntry ipTest = {
 	MENU_TYPE_OSK_IPV4,
 	1,
 	MENU_STR("IP MENU TEST"),
-	MENU_STR(oskIpContext),
+	MENU_STR(oskNumIpContext),
 	NULL,
 	NULL,
 	.keyb = {
@@ -48,22 +64,22 @@ const MenuEntry editTest = {
 };
 
 const MenuItem lA1Item[] = { {
-	MENU_STR("LA1 TEST1"),
+	MENU_STR("String input test"),
 		&editTest,
 		NULL,
 		{1, 1}
 	},{
-	MENU_STR("LA1 TEST2"),
+	MENU_STR("IP entry test"),
 		&ipTest,
 		NULL,
 		{1, 1}
 	},{
-	MENU_STR("LA1 TEST3"),
-		NULL,
+	MENU_STR("Numeric entry test"),
+		&numTest,
 		NULL,
 		{1, 1}
 	},{
-	MENU_STR("LA1 TEST4"),
+	MENU_STR("Unused"),
 		NULL,
 		NULL,
 		{1, 1}
