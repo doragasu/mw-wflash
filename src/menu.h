@@ -30,8 +30,24 @@
 #include <stdint.h>
 #include "vdp.h"
 
-/// Menu level, selected item number and pad status
-typedef void(*MenuCb)(uint8_t level, uint8_t item, uint8_t padStatus);
+/// Reason causing the execution of a menu callback function.
+typedef enum {
+	MENU_CB_REASON_ENTRY = 0,	///< Menu entry
+	MENU_CB_REASON_EXIT,		///< Menu exit
+	MENU_CB_REASON_ITEM			///< Item selected
+} MenuCbReason;
+
+
+/************************************************************************//**
+ * Callback function definition, used on several menu actions.
+ *
+ * \param[inout] md Pointer to the MenuData entry with menu information
+ *
+ * \return For menu exit callbacks, the return value is used to validate the
+ * transition. Return TRUE to allow the menu exit, or FALSE to prevent it.
+ * For other callbacks, the return value is ignored.
+ ****************************************************************************/
+typedef int(*MenuCb)(void* md);
 
 #ifndef MENU_NLEVELS
 /// Number of nested menu levels. Should be overriden by application
@@ -189,6 +205,34 @@ typedef struct {
 		MenuOskEntry keyb;		///< On screen keyboard entries
 	};
 } MenuEntry;
+
+/// Coordinates of selected keyboard item
+typedef struct {
+	uint8_t caps:1;		///< Set to 1 to toggle caps key
+	uint8_t row:3;		///< Keyboard row
+	uint8_t col:4;		///< Keyboard column
+} MenuOskCoord;
+
+/// Dynamic data structure needed to display the menus
+typedef struct {
+	/// Menu entry for each menu level
+	const MenuEntry *me[MENU_NLEVELS];
+	/// Reserve space for the rContext string
+	char rConStr[MENU_LINE_CHARS_TOTAL];
+	MenuString rContext;		///< Right context string (bottom line)
+	uint8_t level;				///< Current menu level
+	/// Selected item, for each menu level. On keyboard menus, it holds
+	/// the cursor position.
+	uint8_t selItem[MENU_NLEVELS];
+	/// Selected menu item page (minus 1). On Qwerty keyboards, it holds
+	/// the CAPS status.
+	uint8_t selPage[MENU_NLEVELS];
+	/// Coordinates of selected keyboard item
+	MenuOskCoord coord;
+	/// Temporal string for data entry
+	char strBuf[MENU_STR_MAX_LEN + 1];
+	MenuString str;
+} Menu;
 
 /************************************************************************//**
  * Module initialization. Call this function before using any other one from

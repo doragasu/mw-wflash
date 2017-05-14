@@ -1,5 +1,6 @@
 #include "wf-menu.h"
 #include "util.h"
+#include "vdp.h"
 
 #define MENU_NITEMS(menuItems)	(sizeof(menuItems)/sizeof(MenuItem))
 
@@ -7,6 +8,20 @@
 /// (nItems, spacing, entPerPage, pages)
 #define MENU_ENTRY_NUMS(numItems, spacing)	(numItems),(spacing), \
 	MENU_ITEM_NLINES/(spacing),(numItems)/(MENU_ITEM_NLINES/(spacing))
+
+int TestCb(void* md) {
+	Menu *m = (Menu*)md;
+	const MenuEntry* me = m->me[m->level];
+	uint8_t i;
+
+	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, MENU_COLOR_OSK_DATA, me->title.length,
+			me->title.string);
+
+	for (i = 0; i < 120; i++) VdpVBlankWait();
+
+	return TRUE;
+//	return FALSE;
+}
 
 const char stdContext[] = "[A]ccept, [B]ack";
 const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
@@ -22,7 +37,7 @@ const MenuEntry numTest = {
 	MENU_STR("NUMERIC MENU TEST"),
 	MENU_STR(oskNumIpContext),
 	NULL,
-	NULL,
+	TestCb,
 	.keyb = {
 		MENU_STR("Enter number:"),
 		{editableNum, 6},
@@ -37,7 +52,7 @@ const MenuEntry ipTest = {
 	MENU_STR("IP MENU TEST"),
 	MENU_STR(oskNumIpContext),
 	NULL,
-	NULL,
+	TestCb,
 	.keyb = {
 		MENU_STR("Enter IP address:"),
 		{editableIp, 12},

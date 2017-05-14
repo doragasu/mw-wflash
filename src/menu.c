@@ -41,33 +41,6 @@ const uint8_t scrDelta[] = {
 		md.me[md.level]->item.nItems - (md.me[md.level]->item.entPerPage * \
 		md.me[md.level]->item.pages):md.me[md.level]->item.entPerPage)
 
-/// Coordinates of selected keyboard item
-typedef struct {
-	uint8_t caps:1;		///< Set to 1 to toggle caps key
-	uint8_t row:3;		///< Keyboard row
-	uint8_t col:4;		///< Keyboard column
-} MenuOskCoord;
-
-/// Dynamic data structure needed to display the menus
-typedef struct {
-	/// Menu entry for each menu level
-	const MenuEntry *me[MENU_NLEVELS];
-	/// Reserve space for the rContext string
-	char rConStr[MENU_LINE_CHARS_TOTAL];
-	MenuString rContext;		///< Right context string (bottom line)
-	uint8_t level;				///< Current menu level
-	/// Selected item, for each menu level. On keyboard menus, it holds
-	/// the cursor position.
-	uint8_t selItem[MENU_NLEVELS];
-	/// Selected menu item page (minus 1). On Qwerty keyboards, it holds
-	/// the CAPS status.
-	uint8_t selPage[MENU_NLEVELS];
-	/// Coordinates of selected keyboard item
-	MenuOskCoord coord;
-	char strBuf[MENU_STR_MAX_LEN + 1];
-	MenuString str;
-} Menu;
-
 /// Dynamic data needed to display the menus
 static Menu md;
 
@@ -771,6 +744,10 @@ void MenuOskKeyDel(void) {
 void MenuOskDone(void) {
 	const MenuEntry *m = md.me[md.level];
 	
+	// Run the exit callback and if allowed, perform menu transition
+	/// \todo report pad status
+	if ((m->exit) && (!m->exit(&md)))
+		return;
 	// Copy temporal string to menu entry string and scroll back
 	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md.str);
 	md.level--;
@@ -974,6 +951,7 @@ void MenuOskIpActions(uint8_t input) {
 	} else if (input & GP_C_MASK) {
 		// Nothing to do for IP keyboards.
 	} else if (input & GP_START_MASK) {
+		/// \todo check IP is valid before accepting
 		MenuOskDone();
 	} else if (input & GP_UP_MASK) {
 		// Draw current key with not selected color
@@ -1081,6 +1059,7 @@ void MenuOskNumActions(input) {
 	} else if (input & GP_C_MASK) {
 		// Nothing to do for numeric keyboards.
 	} else if (input & GP_START_MASK) {
+		/// \todo check number is in range before accepting
 		MenuOskDone();
 	} else if (input & GP_UP_MASK) {
 		// Draw current key with not selected color
