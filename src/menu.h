@@ -43,9 +43,9 @@ typedef enum {
  *
  * \param[inout] md Pointer to the MenuData entry with menu information
  *
- * \return For menu exit callbacks, the return value is used to validate the
- * transition. Return TRUE to allow the menu exit, or FALSE to prevent it.
- * For other callbacks, the return value is ignored.
+ * \return For menu exit and menu item callbacks, the return value is used
+ * to validate the menu transition. Return TRUE to allow the menu change, or
+ * FALSE to prevent it. For other callbacks, the return value is ignored.
  ****************************************************************************/
 typedef int(*MenuCb)(void* md);
 

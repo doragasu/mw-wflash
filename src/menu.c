@@ -594,8 +594,10 @@ void MenuItemAction(uint8_t input) {
 
 	// Parse buttons before movement
 	if (input & GP_A_MASK) {
-		// Accept selected menu option
+		// If defined run callback, and perform item actions if authorized
 		tmp = MenuGetCurrentItemNum();
+		if ((m->item.item[tmp].cb) && (!m->item.item[tmp].cb(&md))) return;
+		// Accept selected menu option
 		if (m->item.item[tmp].next) {
 			md.me[md.level + 1] = m->item.item[tmp].next;
 			// Level up!
@@ -744,8 +746,7 @@ void MenuOskKeyDel(void) {
 void MenuOskDone(void) {
 	const MenuEntry *m = md.me[md.level];
 	
-	// Run the exit callback and if allowed, perform menu transition
-	/// \todo report pad status
+	// If exit callback defined, run it and perform transition if allowed.
 	if ((m->exit) && (!m->exit(&md)))
 		return;
 	// Copy temporal string to menu entry string and scroll back
