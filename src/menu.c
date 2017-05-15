@@ -621,34 +621,35 @@ void MenuItemAction(uint8_t input) {
 			MenuDraw(MENU_SCROLL_DIR_RIGHT);
 		}
 	} else if (input & GP_UP_MASK) {
-		// Go up a menu item
-		if (md.selItem[md.level]) {
-			// Draw currently selected item with non-selected color
-			MenuDrawCurrentItem(MENU_COLOR_ITEM);
-			// Draw previous item with selected color
-			md.selItem[md.level]--;
-			MenuDrawCurrentItem(MENU_COLOR_ITEM_SEL);
-		} else {
-			// Go to previous page and select last item
-			MenuPrevPage();
-			md.selItem[md.level] = MenuNumPageItems() - 1;
-			MenuDrawItemPage(0);
-		}
+		// Go up a menu item, and continue while item is not selectable
+		do {
+			if (md.selItem[md.level]) {
+				md.selItem[md.level]--;
+			} else {
+				// Go to previous page and select last item
+				MenuPrevPage();
+				md.selItem[md.level] = MenuNumPageItems() - 1;
+			}
+		} while (md.me[md.level]->item.item[md.selPage[md.level] *
+				md.me[md.level]->item.entPerPage + md.selItem[md.level]].
+				flags.selectable == 0);
+		MenuDrawItemPage(0);
 	} else if (input & GP_DOWN_MASK) {
 		// Go down a menu item
 		tmp = MenuNumPageItems() - 1;
-		if (md.selItem[md.level] < tmp) {
-			// Draw currently selected item with non-selected color
-			MenuDrawCurrentItem(MENU_COLOR_ITEM);
-			// Draw next item with selected color
-			md.selItem[md.level]++;
-			MenuDrawCurrentItem(MENU_COLOR_ITEM_SEL);
-		} else {
-			// Advance to next page, and select first item
-			MenuNextPage();
-			md.selItem[md.level] = 0;
-			MenuDrawItemPage(0);
-		}
+		// Advance once, and continue advancing while item not selectable
+		do {
+			if (md.selItem[md.level] < tmp) {
+				md.selItem[md.level]++;
+			} else {
+				// Advance to next page, and select first item
+				MenuNextPage();
+				md.selItem[md.level] = 0;
+			}
+		} while (md.me[md.level]->item.item[md.selPage[md.level] *
+				md.me[md.level]->item.entPerPage + md.selItem[md.level]].
+				flags.selectable == 0);
+		MenuDrawItemPage(0);
 	} else if (input & GP_LEFT_MASK) {
 		// Change to previous page
 		MenuPrevPage();

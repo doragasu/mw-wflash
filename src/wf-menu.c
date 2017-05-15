@@ -122,32 +122,32 @@ const MenuItem rootItem[] = { {
 		MENU_STR("START"),			///< Caption
 		&lA1Entry,					///< Next
 		NULL,						///< Callback
-		{1, 1}						///< Selectable, editable, Enabled
+		{1, 1}						///< Selectable, Enabled
 	}, {
 		MENU_STR("CONFIGURATION"),
 		NULL,
 		NULL,
 		{1, 1}
 	}, {
-		MENU_STR("3CONFIGURATION"),
+		MENU_STR("3NOT SELECTABLE"),
 		(MenuEntry*)&ipTest,
 		NULL,
-		{1, 1}
+		{0, 1}
 	}, {
 		MENU_STR("4CONFIGURATION"),
 		NULL,
 		NULL,
 		{1, 1}
 	}, {
-		MENU_STR("5CONFIGURATION"),
+		MENU_STR("5NOT SELECTABLE"),
 		NULL,
 		NULL,
-		{1, 1}
+		{0, 1}
 	}, {
-		MENU_STR("6CONFIGURATION"),
+		MENU_STR("6NOT SELECTABLE"),
 		NULL,
 		NULL,
-		{1, 1}
+		{0, 1}
 	}, {
 		MENU_STR("7CONFIGURATION"),
 		NULL,
@@ -184,15 +184,15 @@ const MenuItem rootItem[] = { {
 		NULL,
 		{1, 1}
 	}, {
-		MENU_STR("14CONFIGURATION"),
+		MENU_STR("14NOT SELECTABLE"),
 		NULL,
 		NULL,
-		{1, 1}
+		{0, 1}
 	}, {
-		MENU_STR("15CONFIGURATION"),
+		MENU_STR("15NOT SELECTABLE"),
 		NULL,
 		NULL,
-		{1, 1}
+		{0, 1}
 	}
 };
 #define MENU_ROOT_ITEMS	(sizeof(rootItem)/sizeof(MenuItem))
