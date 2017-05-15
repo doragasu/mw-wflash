@@ -224,6 +224,8 @@ void MenuDrawItemPage(uint8_t chrOff) {
 	uint8_t pageItems;
 	// Number of the item to draw
 	uint8_t item;
+	// Color used to draw the current item
+	uint8_t color;
 
 	// Clear previously drawn items
 	MenuClearLines(MENU_LINE_ITEM_FIRST, MENU_LINE_ITEM_LAST, chrOff);
@@ -236,10 +238,15 @@ void MenuDrawItemPage(uint8_t chrOff) {
 	for (i = 0, line = MENU_LINE_ITEM_FIRST, item = md.selPage[md.level]
 			* m->item.entPerPage; i < pageItems; i++,
 			line += m->item.spacing, item++) {
+		if (i == md.selItem[md.level]) {
+			color = MENU_COLOR_ITEM_SEL;
+		} else {
+			color = m->item.item[item].flags.alt_color?MENU_COLOR_ITEM_ALT:
+				MENU_COLOR_ITEM;
+		}
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
 			m->item.item[item].caption, m->item.align, m->margin), line,
-			i == md.selItem[md.level]?MENU_COLOR_ITEM_SEL:MENU_COLOR_ITEM,
-			m->item.item[item].caption.length,
+			color, m->item.item[item].caption.length,
 			m->item.item[item].caption.string);
 	}
 	// Draw page number and total, if number of pages greater than 1

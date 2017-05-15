@@ -82,17 +82,17 @@ const MenuItem lA1Item[] = { {
 	MENU_STR("String input test"),
 		&editTest,
 		NULL,
-		{1, 1}
+		{1, 0}
 	},{
 	MENU_STR("IP entry test"),
 		&ipTest,
 		NULL,
-		{1, 1}
+		{1, 0}
 	},{
 	MENU_STR("Numeric entry test"),
 		&numTest,
 		NULL,
-		{1, 1}
+		{1, 0}
 	},{
 	MENU_STR("Unused"),
 		NULL,
@@ -122,12 +122,12 @@ const MenuItem rootItem[] = { {
 		MENU_STR("START"),			///< Caption
 		&lA1Entry,					///< Next
 		NULL,						///< Callback
-		{1, 1}						///< Selectable, Enabled
+		{1, 0}						///< Selectable, alt_color
 	}, {
 		MENU_STR("CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("3NOT SELECTABLE"),
 		(MenuEntry*)&ipTest,
@@ -137,7 +137,7 @@ const MenuItem rootItem[] = { {
 		MENU_STR("4CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("5NOT SELECTABLE"),
 		NULL,
@@ -152,37 +152,37 @@ const MenuItem rootItem[] = { {
 		MENU_STR("7CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("8CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("9CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("10CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("11CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("12CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("13CONFIGURATION"),
 		NULL,
 		NULL,
-		{1, 1}
+		{1, 0}
 	}, {
 		MENU_STR("14NOT SELECTABLE"),
 		NULL,

@@ -119,6 +119,8 @@ typedef int(*MenuCb)(void* md);
 #define MENU_COLOR_PAGER		VDP_TXT_COL_CYAN
 /// Unselected item color
 #define MENU_COLOR_ITEM			VDP_TXT_COL_WHITE
+/// Unselected item, alternate color
+#define MENU_COLOR_ITEM_ALT		VDP_TXT_COL_CYAN
 /// Selected item color
 #define MENU_COLOR_ITEM_SEL		VDP_TXT_COL_MAGENTA
 /// Color to draw the field name on the on screen keyboard menus
@@ -163,7 +165,7 @@ typedef struct {
 	const MenuCb cb;			///< Callback to run if option chosen
 	struct {
 		uint8_t selectable:1;	///< Selectable item
-		uint8_t enabled:1;		///< Enabled item
+		uint8_t alt_color:1;	///< Print with alternate color
 	} flags;					///< Menu item flags
 } MenuItem;
 
