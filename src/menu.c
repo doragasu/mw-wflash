@@ -131,6 +131,7 @@ static const char ip[MENU_OSK_IP_ROWS][MENU_OSK_IP_COLS] = {
 /// Number of rows of the IP OSK menu
 #define MENU_OSK_NUM_ROWS	4
 
+/// Numeric entry menu definition
 static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
 	{'7', '8', '9'},
 	{'4', '5', '6'},
@@ -164,7 +165,6 @@ uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin) {
 			return margin;
 	}
 }
-
 
 /************************************************************************//**
  * Clears requested lines of the screen. Each line is 40 characters wide.
@@ -230,10 +230,12 @@ void MenuDrawItemPage(uint8_t chrOff) {
 	// Get the number of items to draw on current page
 	pageItems = MenuNumPageItems();
 	// Keep selected item unless it points to a non existing option
-	if (md.selItem[md.level] >= pageItems) md.selItem[md.level] = pageItems - 1;
+	if (md.selItem[md.level] >= pageItems)
+		md.selItem[md.level] =  pageItems - 1;
 	// Draw menu items in page
 	for (i = 0, line = MENU_LINE_ITEM_FIRST, item = md.selPage[md.level]
-			* m->item.entPerPage; i < pageItems; i++, line += m->item.spacing, item++) {
+			* m->item.entPerPage; i < pageItems; i++,
+			line += m->item.spacing, item++) {
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
 			m->item.item[item].caption, m->item.align, m->margin), line,
 			i == md.selItem[md.level]?MENU_COLOR_ITEM_SEL:MENU_COLOR_ITEM,
@@ -324,6 +326,11 @@ void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 			textColor, 1, &c);
 }
 
+/************************************************************************//**
+ * Draw on screen keybaoard function keys.
+ *
+ * \param[in] offset    Character offset in which to draw the menu.
+ ****************************************************************************/
 void MenuDrawOskFunc(uint16_t offset) {
 	uint8_t i, color, cols;
 
@@ -564,7 +571,6 @@ static inline void MenuPrevPage(void) {
 		md.me[md.level]->item.pages;
 }
 
-/// Draws current item on the menu screen
 /************************************************************************//**
  * Draw current item for MENU_TYPE_ITEM menus, with specified color.
  *
@@ -784,11 +790,30 @@ void MenuOskEditRight(void) {
 }
 
 /************************************************************************//**
- * Handles key presses for the virtual QWERTY keyboard.
+ * Handles key presses for the virtual keyboards.
  ****************************************************************************/
-void MenuOskQwertyKeyPress(void) {
+void MenuOskKeyPress(void) {
+	uint8_t cols;
+
+	switch (md.me[md.level]->type) {
+		case MENU_TYPE_OSK_QWERTY:
+			cols = MENU_OSK_QWERTY_COLS;
+			break;
+
+		case MENU_TYPE_OSK_NUMERIC:
+			cols = MENU_OSK_NUM_COLS;
+			break;
+
+		case MENU_TYPE_OSK_IPV4:
+			cols = MENU_OSK_IP_COLS;
+			break;
+
+		default:
+			cols = 0;
+	}
 	// Find if a special key has been pressed
-	if (md.coord.col == MENU_OSK_QWERTY_COLS) {
+	if (md.coord.col == cols) {
+		// Parse special virtual keys
 		switch (md.coord.row) {
 			case MENU_OSK_FUNC_CANCEL:
 				md.level--;
@@ -812,12 +837,28 @@ void MenuOskQwertyKeyPress(void) {
 				break;
 
 		}
-	} else if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
-		// Space pressed
-		MenuAddChar(' ');
 	} else {
-		// Normal character pressed
-		MenuAddChar(qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col]);
+		// Parse normal key depending on keyboard type
+		switch (md.me[md.level]->type) {
+			case MENU_TYPE_OSK_QWERTY:
+			   	if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
+					// Space pressed
+					MenuAddChar(' ');
+				} else {
+					// Normal character pressed
+					MenuAddChar(qwerty[md.coord.caps * 4 +
+							md.coord.row][md.coord.col]);
+				}
+				break;
+
+			case MENU_TYPE_OSK_NUMERIC:
+				MenuAddChar(num[md.coord.row][md.coord.col]);
+				break;
+
+		case MENU_TYPE_OSK_IPV4:
+			MenuAddChar(ip[md.coord.row][md.coord.col]);
+			break;
+		} // switch()
 	}
 }
 
@@ -829,7 +870,7 @@ void MenuOskQwertyKeyPress(void) {
  ****************************************************************************/
 void MenuOskQwertyActions(uint8_t input) {
 	if (input & GP_A_MASK) {
-		MenuOskQwertyKeyPress();
+		MenuOskKeyPress();
 	} else if (input & GP_B_MASK) {
 		// Delete current character
 		MenuOskKeyDel();
@@ -889,6 +930,11 @@ void MenuOskQwertyActions(uint8_t input) {
 	}
 }
 
+/************************************************************************//**
+ * Draw current item for MENU_TYPE_OSK_IPV4 menus, with specified color.
+ *
+ * \param[in] txtColor Color used to draw the item.
+ ****************************************************************************/
 void MenuOskIpDrawCurrent(uint8_t textColor) {
 	uint8_t i;
 
@@ -909,45 +955,16 @@ void MenuOskIpDrawCurrent(uint8_t textColor) {
 }
 
 /************************************************************************//**
- * Handles key presses for the virtual IP keyboard.
+ * Menu navigation through IP virtual keyboard.
+ *
+ * \param[in] input Pad button changes in the format returned by GpPressed(),
+ *                  but inverted (not).
  ****************************************************************************/
-void MenuOskIpKeyPress(void) {
-	// Find if a special key has been pressed
-	if (md.coord.col == MENU_OSK_IP_COLS) {
-		switch (md.coord.row) {
-			case MENU_OSK_FUNC_CANCEL:
-				md.level--;
-				MenuDraw(MENU_SCROLL_DIR_RIGHT);
-				break;
-
-			case MENU_OSK_FUNC_DEL:
-				MenuOskKeyDel();
-				break;
-
-			case MENU_OSK_FUNC_LEFT:
-				MenuOskEditLeft();
-				break;
-
-			case MENU_OSK_FUNC_RIGHT:
-				MenuOskEditRight();
-				break;
-
-			case MENU_OSK_FUNC_DONE:
-				MenuOskDone();
-				break;
-
-		}
-	} else {
-		// Normal character pressed
-		MenuAddChar(ip[md.coord.row][md.coord.col]);
-	}
-}
-
 void MenuOskIpActions(uint8_t input) {
 	uint8_t limit;
 
 	if (input & GP_A_MASK) {
-		MenuOskIpKeyPress();
+		MenuOskKeyPress();
 	} else if (input & GP_B_MASK) {
 		// Delete current character
 		MenuOskKeyDel();
@@ -1000,6 +1017,11 @@ void MenuOskIpActions(uint8_t input) {
 	}
 }
 
+/************************************************************************//**
+ * Draw current item for MENU_TYPE_OSK_NUMERIC menus, with specified color.
+ *
+ * \param[in] txtColor Color used to draw the item.
+ ****************************************************************************/
 void MenuOskNumDrawCurrent(uint8_t textColor) {
 	uint8_t i;
 
@@ -1019,43 +1041,16 @@ void MenuOskNumDrawCurrent(uint8_t textColor) {
 	}
 }
 
-void MenuOskNumKeyPress(void) {
-	// Find if a special key has been pressed
-	if (md.coord.col == MENU_OSK_NUM_COLS) {
-		switch (md.coord.row) {
-			case MENU_OSK_FUNC_CANCEL:
-				md.level--;
-				MenuDraw(MENU_SCROLL_DIR_RIGHT);
-				break;
-
-			case MENU_OSK_FUNC_DEL:
-				MenuOskKeyDel();
-				break;
-
-			case MENU_OSK_FUNC_LEFT:
-				MenuOskEditLeft();
-				break;
-
-			case MENU_OSK_FUNC_RIGHT:
-				MenuOskEditRight();
-				break;
-
-			case MENU_OSK_FUNC_DONE:
-				MenuOskDone();
-				break;
-
-		}
-	} else {
-		// Normal character pressed
-		MenuAddChar(num[md.coord.row][md.coord.col]);
-	}
-}
-
+/************************************************************************//**
+ * Parses actions for the numeric virtual keyboard.
+ *
+ * \param[in] input Key press changes, as obtained by GpPressed() function.
+ ****************************************************************************/
 void MenuOskNumActions(input) {
 	uint8_t limit;
 
 	if (input & GP_A_MASK) {
-		MenuOskNumKeyPress();
+		MenuOskKeyPress();
 	} else if (input & GP_B_MASK) {
 		// Delete current character
 		MenuOskKeyDel();

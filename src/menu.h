@@ -69,11 +69,6 @@ typedef int(*MenuCb)(void* md);
 /// START button
 #define MENU_BUTTON_START	3
  
-// Default actions if no menu callbacks provided:
-// A, START: Accept selected option
-// B, Nothing
-// C, Back
-
 /** \addtogroup MenuGeometry Dimension related definitions
  *  \note On the menu context, a line is not a "raster" line, but a character
  *  line (typically 1 line per 8 raster lines).
@@ -132,6 +127,7 @@ typedef int(*MenuCb)(void* md);
 #define MENU_COLOR_OSK_DATA		VDP_TXT_COL_CYAN
 /** \} */
 
+/// Maximum string length
 #define MENU_STR_MAX_LEN	32
 
 /// Supported alignment for menu items
