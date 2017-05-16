@@ -282,5 +282,21 @@ void MenuForceLoad(MenuEntry *me, uint8_t level);
  ****************************************************************************/
 void MenuStringCopy(MenuString *dst, const MenuString *src);
 
+/************************************************************************//**
+ * IPv4 validate function. This function evaluates the data entered on the
+ * input Menu structure, to guess if it corresponds to a valid IPv4.
+ *
+ * \param[in] md Pointer to the Menu structure containing the entered string
+ *               to be evaluated.
+ *
+ * \return TRUE if the evaluated string corresponds to a valid IPv4. False
+ *         otherwise.
+ *
+ * \note The intended use of this function is to be an exit callback for
+ * MENU_TYPE_OSK_IPV4 menu entries, to force a valid IP address to be
+ * entered in these menus.
+ ****************************************************************************/
+int MenuIpValidate(void *md);
+
 #endif /*_MENU_H_*/
 

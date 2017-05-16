@@ -8,6 +8,7 @@
 #include "menu.h"
 #include "gamepad.h"
 #include <string.h>
+#include "util.h"
 
 /// Scroll direction to the left
 #define MENU_SCROLL_DIR_LEFT	0
@@ -761,10 +762,11 @@ void MenuOskKeyDel(void) {
  ****************************************************************************/
 void MenuOskDone(void) {
 	const MenuEntry *m = md.me[md.level];
-	
+
+	// Add null termination to string
+	md.strBuf[md.str.length] = '\0';	
 	// If exit callback defined, run it and perform transition if allowed.
-	if ((m->exit) && (!m->exit(&md)))
-		return;
+	if ((m->exit) && (!m->exit(&md))) return;
 	// Copy temporal string to menu entry string and scroll back
 	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md.str);
 	md.level--;
@@ -1189,3 +1191,70 @@ void MenuStringCopy(MenuString *dst, const MenuString *src) {
 	dst->string[dst->length] = '\0';
 }
 
+
+/************************************************************************//**
+ * Evaluates if a string points to a number that can be stored in a
+ * uint8_t type variable.
+ *
+ * \return The pointer to the character following the last digit of the
+ *         number, if the string represents a number fittint in a uint_8.
+ *         NULL if the string does not represent an uint8_t number.
+ ****************************************************************************/
+char *MenuNumIsU8(char num[]) {
+	uint8_t i;
+
+	// Skip leading zeros
+	while (*num == '0') num++;
+	// Determine number length (up to 4 characters)
+	for (i = 0; (i < 4) && (num[i] >= '0') && (num[i] <= '9'); i++);
+	
+	switch (i) {
+		// If number is 3 characters, the number fits in 8 bits only if
+		// lower than 255
+		case 3:
+			if ((num[0] > '2') || ((num[0] == '2') && ((num[1] > '5') ||
+						((num[1] == '5') && (num[2] > '5')))))
+				return NULL;
+
+		// If length is 2 or 1 characters, the number fits in 8 bits.
+		case 2:
+		case 1:
+			return num + i;
+
+		// If length is 4 or more, number does not fit in 8 bits.
+		default:
+			return NULL;
+	}
+}
+
+/************************************************************************//**
+ * IPv4 validate function. This function evaluates the data entered on the
+ * input Menu structure, to guess if it corresponds to a valid IPv4.
+ *
+ * \param[in] md Pointer to the Menu structure containing the entered string
+ *               to be evaluated.
+ *
+ * \return TRUE if the evaluated string corresponds to a valid IPv4. False
+ *         otherwise.
+ *
+ * \note The intended use of this function is to be an exit callback for
+ * MENU_TYPE_OSK_IPV4 menu entries, to force a valid IP address to be
+ * entered in these menus.
+ ****************************************************************************/
+int MenuIpValidate(void *m) {
+	Menu *md = (Menu*)m;
+	char *str = md->strBuf;
+	int8_t i;
+
+	// Evaluate if we have 4 numbers fitting in a byte, separated by '.'
+	if (!(str = MenuNumIsU8(md->strBuf))) return FALSE;
+
+	for (i = 2; i >= 0; i--) {
+		if (*str != '.') return FALSE;
+		str++;
+		if (!(str = MenuNumIsU8(str))) return FALSE;
+	}
+
+	if (*str != '\0') return FALSE;	
+	return TRUE;
+}

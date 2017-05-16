@@ -44,6 +44,14 @@ static inline void ToUpper(char str[]) {
 
 uint8_t Byte2UnsStr(uint8_t num, char str[4]);
 
+#ifndef TRUE
+/// TRUE value for logic comparisons
+#define TRUE 1
+/// FALSE value for logic comparisons
+#define TRUE 1
+#define FALSE 0
+#endif
+
 #endif //_UTIL_H_
 
 

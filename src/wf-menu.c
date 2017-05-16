@@ -52,7 +52,7 @@ const MenuEntry ipTest = {
 	MENU_STR("IP MENU TEST"),
 	MENU_STR(oskNumIpContext),
 	NULL,
-	TestCb,
+	MenuIpValidate,
 	.keyb = {
 		MENU_STR("Enter IP address:"),
 		{editableIp, 12},
