@@ -618,9 +618,10 @@ void MenuItemAction(uint8_t input) {
 			md.level++;
 			md.selItem[md.level] = 0;
 			md.selPage[md.level] = 0;
-			MenuDraw(MENU_SCROLL_DIR_LEFT);
 			// Call menu entry callback
 			if (md.me[md.level]->entry) md.me[md.level]->entry(&md);
+			// Draw menu
+			MenuDraw(MENU_SCROLL_DIR_LEFT);
 		}
 	} else if (input & GP_B_MASK) {
 		// Go back one menu level

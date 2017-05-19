@@ -239,8 +239,8 @@ int MwApCfgGet(uint8_t index, char *ssid[], char *pass[]) {
 	cmd->data[0] = index;
 	MW_TRY_CMD_SEND(cmd, MW_ERROR);
 	MW_TRY_REP_RECV(cmd, MW_ERROR);
-	*ssid = cmd->apCfg.ssid;
-	*pass = cmd->apCfg.pass;
+	if (ssid) *ssid = cmd->apCfg.ssid;
+	if (pass) *pass = cmd->apCfg.pass;
 
 	return index;
 }

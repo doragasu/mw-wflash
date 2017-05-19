@@ -162,7 +162,7 @@ typedef struct {
 typedef struct {
 	MenuString caption;			///< Menu item text (editable)
 	const void *next;			///< Next MenuEntry (if item accepted)
-	const MenuCb cb;			///< Callback to run if option chosen
+	MenuCb cb;			///< Callback to run if option chosen
 	struct {
 		uint8_t selectable:1;	///< Selectable item
 		uint8_t alt_color:1;	///< Print with alternate color
