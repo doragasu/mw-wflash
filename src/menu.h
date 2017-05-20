@@ -283,6 +283,20 @@ void MenuForceLoad(MenuEntry *me, uint8_t level);
 void MenuStringCopy(MenuString *dst, const MenuString *src);
 
 /************************************************************************//**
+ * Copy a null terminated character string. Allows to specify a maximum
+ * length for the copy, and returns the number of characters copied.
+ *
+ * \param[out] dst    Destination string.
+ * \param[in]  src    Source string.
+ * \param[in]  maxLen Maximum length to copy.
+ *
+ * \return Number of characters copied (not including the null termination).
+ * \warning If maxLen characters are copied before reaching the null
+ * termination, copied dst string will not be null terminated.
+ ****************************************************************************/
+uint16_t MenuStrCpy(char dst[], const char src[], uint16_t maxLen);
+
+/************************************************************************//**
  * IPv4 validate function. This function evaluates the data entered on the
  * input Menu structure, to guess if it corresponds to a valid IPv4.
  *
@@ -297,6 +311,36 @@ void MenuStringCopy(MenuString *dst, const MenuString *src);
  * entered in these menus.
  ****************************************************************************/
 int MenuIpValidate(void *md);
+
+/************************************************************************//**
+ * Sets background to red, writes a panic message and loops forever.
+ *
+ * \param[in] errStr String with the error that causes the panic status
+ * \param[in] len    Length in characters of errStr string.
+ ****************************************************************************/
+void MenuPanic(char errStr[], uint8_t len);
+
+/************************************************************************//**
+ * Clears requested lines of the screen. Each line is 40 characters wide.
+ *
+ * \param[in] first  First line to clear.
+ * \param[in] last   Last line to clear.
+ * \param[in] offset Horizontal plane offset of the screen.
+ ****************************************************************************/
+void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset);
+
+/************************************************************************//**
+ * Compute line character position needed for requested horizontal alignment.
+ *
+ * \param[in] mStr   MenuString type text to align.
+ * \param[in] align  Requested alignment.
+ * \param[in] margin Margin to apply to left and right alignments (ignored
+ *                   for center aligned strings).
+ *
+ * \return The horizontal position of the start of the string, for it to be
+ * horizontal aligned as requested.
+ ****************************************************************************/
+uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin);
 
 #endif /*_MENU_H_*/
 

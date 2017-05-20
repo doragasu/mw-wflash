@@ -28,16 +28,6 @@
 /// Command buffer
 static char cmdBuf[WFLASH_BUFLEN];
 
-/// Sets background to RED, prints message and loops forever
-/// \todo scroll to the origin before drawing
-void Panic(char msg[]) {
-	VdpRamWrite(VDP_CRAM_WR, 0x00, VDP_COLOR_RED);
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, VDP_TXT_COL_CYAN,
-			SF_LINE_MAXCHARS, msg);
-	MwModuleReset();
-	while(1);
-}
-
 /// Waits until start is pressed (to boot flashed ROM) or a client connects
 int WaitUserInteraction(void) {
 	MwSockStat s;
@@ -49,55 +39,16 @@ int WaitUserInteraction(void) {
 		if (!(GpRead() & GP_START_MASK)) SfBoot(SF_ENTRY_POINT_ADDR);
 		for (loop = 5; loop > 0; loop--) VdpVBlankWait();
 		s = MwSockStatGet(WF_CHANNEL);
-	} while (s != MW_ERROR && s == MW_SOCK_TCP_LISTEN);
+	} while (s != (MwSockStat)MW_ERROR && s == MW_SOCK_TCP_LISTEN);
 	return (MW_SOCK_TCP_EST == s)?0:-1;
-}
-
-/// Waits forever until module joins an AP or error
-int WaitApJoin(void) {
-	MwMsgSysStat* stat;
-	MwIpCfg *ip;
-	uint8_t i;
-	int8_t loop;
-	char statBuf[16];
-	MenuString statStr;
-
-	statStr.string = statBuf;
-	// Poll status each 100 ms	
-	do {
-		for (loop = 5; loop > 0; loop--) VdpVBlankWait();
-		stat = MwSysStatGet();
-	} while((stat != NULL) && (stat->sys_stat < 4));
-// TODO: Use ONLINE flag (it looks like big/little endian reverse bit fields
-//	} while((stat != NULL) && (!stat->online));
-
-	if (stat == NULL) return -1;
-
-	// Obtain IP address and fill status info with result
-	i = stat->cfg;
-	if (MwIpCfgGet(i, &ip) != MW_OK) {
-		strcpy(statBuf, "DISCONNECTED!");
-		statStr.length = 13;
-		MenuStatStrSet(statStr);
-		return 0;
-	}
-	i =  Byte2UnsStr(ip->addr>>24, statBuf);
-	statBuf[i++] = '.';
-	i += Byte2UnsStr(ip->addr>>16, statBuf + i);
-	statBuf[i++] = '.';
-	i += Byte2UnsStr(ip->addr>>8, statBuf + i);
-	statBuf[i++] = '.';
-	i += Byte2UnsStr(ip->addr, statBuf + i);
-	statBuf[i] = '\0';
-	statStr.length = i;
-
-	return 0;
 }
 
 /// MegaWiFi initialization
 int MegaWifiInit(void){
-	uint8_t verMajor, verMinor, i, loop;
+	uint8_t verMajor, verMinor, loop;
 	char *variant;
+	char strBuf[20];
+	MenuString stat;
 
 	// Initialize MegaWiFi
 	MwInit(cmdBuf, WFLASH_BUFLEN);
@@ -107,64 +58,78 @@ int MegaWifiInit(void){
 	MwModuleStart();
 	for (loop = 119; loop > 0; loop--) VdpVBlankWait();
 	UartResetFifos();
-	// Wait until module has joined AP
-	if (WaitApJoin()) Panic("COULD NOT JOIN AP!");
 	
+	stat.string = strBuf;
 	// Try detecting MegaWiFi module by requesting version
 	if (MwVersionGet(&verMajor, &verMinor, &variant) != MW_OK) {
+		// Set menu status string to show Megawifi was not found
+		stat.length = MenuStrCpy(strBuf, "MegaWiFi?", 20 - 1);
+		strBuf[20 - 1] = '\0';	// Ensure null termination
+		MenuStatStrSet(stat);
 		return -1;
 	}
-	// Draw detected RTOS version
-	VdpDrawText(VDP_PLANEA_ADDR, 12, 1, VDP_TXT_COL_WHITE,
-			SF_LINE_MAXCHARS, "- MW RTOS");
-	i = 22 + VdpDrawDec(VDP_PLANEA_ADDR, 22, 1, VDP_TXT_COL_CYAN, verMajor);
-	VdpDrawText(VDP_PLANEA_ADDR, i++, 1, VDP_TXT_COL_WHITE,
-			SF_LINE_MAXCHARS, ".");
-	i += VdpDrawDec(VDP_PLANEA_ADDR, i, 1, VDP_TXT_COL_CYAN, verMinor) + 1;
-	ToUpper(variant);
-	VdpDrawText(VDP_PLANEA_ADDR, i, 1, VDP_TXT_COL_CYAN,
-			SF_LINE_MAXCHARS, variant);
-
+	// Set menu status string to show readed version
+	stat.length = MenuStrCpy(strBuf, "MW RTOS ", 0);
+	stat.length += Byte2UnsStr(verMajor, strBuf + stat.length);
+	strBuf[stat.length++] = '.';
+	stat.length += Byte2UnsStr(verMinor, strBuf + stat.length);
+	MenuStatStrSet(stat);
 	return 0;
 }
 
 /// Global initialization
 void Init(void) {
-	const MenuString str = {"IDLE", 4};
+	const MenuString str = {"Detecting WiFi...", 17};
 	// Initialize VDP
 	VdpInit();
 	// Initialize gamepad
 	GpInit();
 	// Initialize menu system
 	WfMenuInit(str);
+	// Initialize MegaWifi
+	MegaWifiInit();
 }
 
 /// Entry point
 int main(void) {
+	MwMsgSysStat *stat;
+	MwIpCfg *ip;
+	MwState prevStat = MW_ST_INIT;
+	char statBuf[16];
+	MenuString statStr;
 	uint8_t pad;
+
 	// Initialization
 	Init();
+	statStr.string = statBuf;
 	while (1) {
 		/// \todo 1. Parse communications events.
 		// 2. Wait for VBlank.
 		VdpVBlankWait();
 		// 3. Read controller and perform non-menu related actions.
 		pad = GpPressed();
-		// 4. Perform menu related actions.
-		MenuButtonAction(pad);
+		// 4. If pad pressed, perform menu related actions. Else check
+		//    connection status.
+		if (~pad) MenuButtonAction(pad);
+		else {
+			stat = MwSysStatGet();
+			// Find if connection has just been established
+			if ((stat != NULL) && (stat->sys_stat >= MW_ST_READY) &&
+					(prevStat < MW_ST_READY)) {
+				// Connection established! Print IP in the status string
+				if (MwIpCfgGet(stat->cfg, &ip) != MW_OK)
+					MenuPanic("COULD NOT GET IP!", 17);
+				statStr.length = MenuBin2IpStr(ip->addr, statBuf);
+				MenuStatStrSet(statStr);
+			} else if ((stat != NULL) && (stat->sys_stat < MW_ST_READY)
+					&& (prevStat >= MW_ST_READY)) {
+				// Connection lost! Inform in the status string
+				statStr.length = MenuStrCpy(statBuf, "DISCONNECTED!", 16 - 1);
+				statBuf[16 - 1] = '\0';
+				MenuStatStrSet(statStr);
+			}
+		}
 	}
-//	while (1) { // Bind port 1989 for command server MwTcpBind(WF_CHANNEL, WFLASH_PORT); // Wait until we have a client connection
-//		WaitUserInteraction();
-//		// Got client connection!!!
-//		SfInit();
-//		// Run command parser
-//		while (!SfCycle());
-//		/// Error or socket disconnected
-//		MwTcpDisconnect(WF_CHANNEL);
-//		VdpLineClear(VDP_PLANEA_ADDR, 3);
-//		VdpDrawText(VDP_PLANEA_ADDR, 1, 3, VDP_TXT_COL_MAGENTA,
-//				SF_LINE_MAXCHARS, "DISCONNECTED!");
-//	}
 	return 0;
 }
 

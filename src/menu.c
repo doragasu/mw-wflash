@@ -141,6 +141,26 @@ static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
 };
 
 /************************************************************************//**
+ * Sets background to red, writes a panic message and loops forever.
+ *
+ * \param[in] errStr String with the error that causes the panic status
+ * \param[in] len    Length in characters of errStr string.
+ ****************************************************************************/
+void MenuPanic(char errStr[], uint8_t len) {
+	const MenuString error = {errStr, len};
+
+	// Clear previously drawn items, and print the WiFi scan message
+	MenuClearLines(MENU_LINE_ITEM_FIRST, MENU_LINE_ITEM_LAST, 0);
+
+	// Set background to red and write panic message
+	VdpRamWrite(VDP_CRAM_WR, 0x00, VDP_COLOR_RED);
+	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(error, MENU_H_ALIGN_CENTER,
+			0), 12, VDP_TXT_COL_CYAN, error.length, errStr);
+
+	while (1);
+}
+
+/************************************************************************//**
  * Compute line character position needed for requested horizontal alignment.
  *
  * \param[in] mStr   MenuString type text to align.
@@ -203,7 +223,7 @@ void MenuStatStrSet(MenuString statStr) {
 	// Redraw context string
 	MenuClearLines(MENU_LINE_CONTEXT, MENU_LINE_CONTEXT, 0);
 	VdpDrawText(VDP_PLANEA_ADDR, m->margin, MENU_LINE_CONTEXT,
-			MENU_COLOR_CONTEXT_L, statStr.length, m->lContext.string);
+			MENU_COLOR_CONTEXT_L, m->lContext.length, m->lContext.string);
 	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(md.rContext, MENU_H_ALIGN_RIGHT,
 			m->margin), MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R,
 			statStr.length, md.rContext.string);
@@ -617,7 +637,8 @@ void MenuItemAction(uint8_t input) {
 			if (m->exit) m->exit(&md);
 			md.me[md.level + 1] = m->item.item[tmp].next;
 			// Level up!
-			md.level++;
+			if (md.level < MENU_NLEVELS) md.level++;
+			else MenuPanic("MENU LEVELS EXHAUSTED!", 22);
 			// Call menu entry callback
 			if (md.me[md.level]->entry) md.me[md.level]->entry(&md);
 			// Select page and item
@@ -1200,6 +1221,29 @@ void MenuStringCopy(MenuString *dst, const MenuString *src) {
 	dst->string[dst->length] = '\0';
 }
 
+/************************************************************************//**
+ * Copy a null terminated character string. Allows to specify a maximum
+ * length for the copy, and returns the number of characters copied.
+ *
+ * \param[out] dst    Destination string.
+ * \param[in]  src    Source string.
+ * \param[in]  maxLen Maximum length to copy.
+ *
+ * \return Number of characters copied (not including the null termination).
+ * \warning If maxLen characters are copied before reaching the null
+ * termination, copied dst string will not be null terminated.
+ ****************************************************************************/
+uint16_t MenuStrCpy(char dst[], const char src[], uint16_t maxLen) {
+	uint16_t i;
+
+	// If maxLen is 0, no maxLen specified, so use the maximum possible value
+	if (!maxLen) maxLen--;
+
+	for (i = 0; (i < maxLen) && (src[i] != '\0'); i++)
+		dst[i] = src[i];
+
+	return i;
+}
 
 /************************************************************************//**
  * Evaluates if a string points to a number that can be stored in a

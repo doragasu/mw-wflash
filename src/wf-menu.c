@@ -48,6 +48,7 @@ const char strDns1[] = "DNS1:    ";
 const char strDns2[] = "DNS2:    ";
 const char strEdit[] = "EDIT";
 const char strAct[] =  "SET AS ACTIVE";
+const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
 
 char editableIp[16] = "192.168.1.60";
 char editableNum[9] = "123456";
@@ -127,18 +128,6 @@ static char dynPool[WF_MENU_MAX_DYN_ITEMS * WF_MENU_AVG_STR_LEN];
 /// Pool for dynamically created items
 static MenuItem dynItems[WF_MENU_MAX_DYN_ITEMS];
 
-uint16_t MenuStrCpy(char dst[], const char src[], uint16_t maxLen) {
-	uint16_t i;
-
-	// If maxLen is 0, no maxLen specified, so use the maximum possible value
-	if (!maxLen) maxLen--;
-
-	for (i = 0; (i < maxLen) && (src[i] != '\0'); i++)
-		dst[i] = src[i];
-
-	return i;
-}
-
 /// Converts an IP address in uint32_t binary representation to
 /// string representation. Returns resulting string length.
 uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
@@ -153,6 +142,48 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 	i += Byte2UnsStr(addr, str + i);
 	str[i] = '\0';
 	return i;
+}
+
+int MenuWiFiScan(void *m) {
+	UNUSED_PARAM(m);
+	const MenuString scanMenuStr = {(char*)strScan, sizeof(strScan) - 1};
+
+	// Clear previously drawn items, and print the WiFi scan message
+	MenuClearLines(11, 13, 0);
+
+	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(scanMenuStr, MENU_H_ALIGN_CENTER,
+			0), 12, MENU_COLOR_ITEM_ALT, scanMenuStr.length,(char*)strScan);
+
+	// Scan networks and fill in information
+
+	while(1);
+
+	return 0;
+}
+
+/// \note This entry is not const because the number of entries is unknown
+/// until the scan is performed
+MenuEntry confSsidSelEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	8,								// Margin
+	MENU_STR("WIFI NETWORK"),		// Title
+	MENU_STR(stdContext),			// Left context
+	MenuWiFiScan,					// cbEntry
+	NULL,							// cbExit
+	.item = {
+		dynItems,					// item
+		0,							// nItems
+		2,							// spacing
+		0,							// entPerPage
+		0,							// pages
+		{MENU_H_ALIGN_LEFT}			// align
+	}
+};
+
+int MenuConfSetActive(void *m) {
+	UNUSED_PARAM(m);
+
+	return 0;
 }
 
 int MenuConfDataEntryCb(void *m) {
@@ -256,7 +287,7 @@ int MenuConfDataEntryCb(void *m) {
 	// EDIT
 	dynItems[i].caption.string = dynPool + offset;
 	dynItems[i].caption.length = sizeof(strEdit) - 1;
-	dynItems[i].cb = NULL;
+	dynItems[i].cb = MenuWiFiScan;
 	dynItems[i].next = NULL;
 	dynItems[i].flags.selectable = 1;
 	dynItems[i++].flags.alt_color = 0;
@@ -264,10 +295,16 @@ int MenuConfDataEntryCb(void *m) {
 	// SET AS ACTIVE
 	dynItems[i].caption.string = dynPool + offset;
 	dynItems[i].caption.length = sizeof(strAct) - 1;
-	dynItems[i].cb = NULL;
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 1;
-	dynItems[i].flags.alt_color = 0;
+	if (error) {
+		dynItems[i].flags.selectable = 0;
+		dynItems[i].flags.alt_color = 1;
+		dynItems[i].cb = NULL;
+	} else {
+		dynItems[i].flags.selectable = 1;
+		dynItems[i].flags.alt_color = 0;
+		dynItems[i].cb = MenuConfSetActive;
+	}
 	offset += 1 + MenuStrCpy(dynPool + offset, strAct, 0);
 	// Fill remaining fields
 	for (i = 0; i < 6; i++) {
@@ -292,7 +329,7 @@ int MenuConfDataEntryCb(void *m) {
 const MenuEntry confEntryData = {
 	MENU_TYPE_ITEM,					// Menu type
 	8,								// Margin
-	MENU_STR("CONNECTION"),			// Title
+	MENU_STR("NETWORK CONFIGURATION"),	// Title
 	MENU_STR(stdContext),			// Left context
 	MenuConfDataEntryCb,			// cbEntry
 	NULL,							// cbExit
