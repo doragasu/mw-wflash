@@ -603,7 +603,7 @@ static inline void MenuDrawCurrentItem(uint8_t txtColor) {
  * \param[in] input Input key changes.
  ****************************************************************************/
 void MenuItemAction(uint8_t input) {
-	uint8_t tmp;
+	uint8_t tmp, i;
 	const MenuEntry *m = md.me[md.level];
 
 	// Parse buttons before movement
@@ -613,20 +613,28 @@ void MenuItemAction(uint8_t input) {
 		if ((m->item.item[tmp].cb) && (!m->item.item[tmp].cb(&md))) return;
 		// Accept selected menu option
 		if (m->item.item[tmp].next) {
+			// Call exit callback before exiting menu
+			if (m->exit) m->exit(&md);
 			md.me[md.level + 1] = m->item.item[tmp].next;
 			// Level up!
 			md.level++;
-			md.selItem[md.level] = 0;
-			md.selPage[md.level] = 0;
 			// Call menu entry callback
 			if (md.me[md.level]->entry) md.me[md.level]->entry(&md);
+			// Select page and item
+			for (i = 0; !md.me[md.level]->item.item[i].flags.selectable; i++);
+			md.selItem[md.level] = i;
+			md.selPage[md.level] = 0;
 			// Draw menu
 			MenuDraw(MENU_SCROLL_DIR_LEFT);
 		}
 	} else if (input & GP_B_MASK) {
 		// Go back one menu level
 		if (md.level) {
+			// If there is exit callback, execute it
+			if (m->exit) m->exit(&md);
 			md.level--;
+			// Call menu entry callback
+			if (md.me[md.level]->entry) md.me[md.level]->entry(&md);
 			MenuDraw(MENU_SCROLL_DIR_RIGHT);
 		}
 	} else if (input & GP_UP_MASK) {

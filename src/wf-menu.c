@@ -139,6 +139,22 @@ uint16_t MenuStrCpy(char dst[], const char src[], uint16_t maxLen) {
 	return i;
 }
 
+/// Converts an IP address in uint32_t binary representation to
+/// string representation. Returns resulting string length.
+uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
+	uint8_t i;
+
+	i  = Byte2UnsStr(addr>>24, str);
+	str[i++] = '.';
+	i += Byte2UnsStr(addr>>16, str + i);
+	str[i++] = '.';
+	i += Byte2UnsStr(addr>>8, str + i);
+	str[i++] = '.';
+	i += Byte2UnsStr(addr, str + i);
+	str[i] = '\0';
+	return i;
+}
+
 int MenuConfDataEntryCb(void *m) {
 	const Menu *me = (Menu*)m;
 	char *ssid;
@@ -157,12 +173,12 @@ int MenuConfDataEntryCb(void *m) {
 	if ((MwApCfgGet(confItem, &ssid, NULL) != MW_OK) || (*ssid == '\0')) {
 		// Configuration request failed, fill all items as empty
 		// SSID
+		error = TRUE;
 		strLen  = MenuStrCpy(dynPool, strSsid, 0);
 		strLen += MenuStrCpy(dynPool + strLen, strEmptyText, 0);
 		dynItems[i].caption.string = dynPool;
 		dynItems[i++].caption.length = strLen;
 		offset = strLen + 1;
-		error = TRUE;
 	} else {
 		strLen  = MenuStrCpy(dynPool, strSsid, 0);
 		strLen += MenuStrCpy(dynPool + strLen, ssid, MW_SSID_MAXLEN);
@@ -175,7 +191,7 @@ int MenuConfDataEntryCb(void *m) {
 		dynItems[i++].caption.length = strLen;
 		offset = strLen + 1;
 	}
-	if (error || (MwIpCfgGet(confItem, &ip) != MW_OK))
+	if (error || (MwIpCfgGet(confItem, &ip) != MW_OK)) {
 		// IP
 		strLen  = MenuStrCpy(dynPool + offset, strIp, 0);
 		strLen += MenuStrCpy(dynPool + offset + strLen, strEmptyText, 0);
@@ -183,7 +199,7 @@ int MenuConfDataEntryCb(void *m) {
 		dynItems[i++].caption.length = strLen;
 		offset += strLen + 1;
 		// MASK
-		*dynPool = '\0';
+		*(dynPool + offset) = '\0';
 		dynItems[i].caption.string = dynPool + offset;
 		dynItems[i++].caption.length = 0;
 		// GATEWAY
@@ -196,13 +212,70 @@ int MenuConfDataEntryCb(void *m) {
 		dynItems[i].caption.string = dynPool + offset;
 		dynItems[i++].caption.length = 0;
 	} else {
-		// Request IP configuration
-		
+		/// \todo Filling data is pretty regular and should be done in a loop
+		/// IP
+		/// \todo Implement automatic (DHCP) settings
+		strLen  = MenuStrCpy(dynPool + offset, strIp, 0);
+		strLen += MenuBin2IpStr(ip->addr, dynPool + offset + strLen);
+		dynItems[i].caption.string = dynPool + offset;
+		dynItems[i++].caption.length = strLen;
+		offset += strLen + 1;
+		// MASK
+		strLen  = MenuStrCpy(dynPool + offset, strMask, 0);
+		strLen += MenuBin2IpStr(ip->mask, dynPool + offset + strLen);
+		dynItems[i].caption.string = dynPool + offset;
+		dynItems[i++].caption.length = strLen;
+		offset += strLen + 1;
+		// GATEWAY
+		strLen  = MenuStrCpy(dynPool + offset, strGw, 0);
+		strLen += MenuBin2IpStr(ip->gateway, dynPool + offset + strLen);
+		dynItems[i].caption.string = dynPool + offset;
+		dynItems[i++].caption.length = strLen;
+		offset += strLen + 1;
+		// DNS1
+		strLen  = MenuStrCpy(dynPool + offset, strDns1, 0);
+		strLen += MenuBin2IpStr(ip->dns1, dynPool + offset + strLen);
+		dynItems[i].caption.string = dynPool + offset;
+		dynItems[i++].caption.length = strLen;
+		offset += strLen + 1;
+		// DNS2
+		strLen  = MenuStrCpy(dynPool + offset, strDns1, 0);
+		strLen += MenuBin2IpStr(ip->dns1, dynPool + offset + strLen);
+		dynItems[i].caption.string = dynPool + offset;
+		dynItems[i++].caption.length = strLen;
+		offset += strLen + 1;
 	}
 	// [BLANK]
+	dynItems[i].caption.length = sizeof(strEdit) - 1;
+	*(dynPool + offset) = '\0';
+	dynItems[i].cb = NULL;
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 0;
+	dynItems[i].flags.alt_color = 0;
+	dynItems[i++].caption.length = 0;
 	// EDIT
-	// SET AS DEFAULT
-	
+	dynItems[i].caption.string = dynPool + offset;
+	dynItems[i].caption.length = sizeof(strEdit) - 1;
+	dynItems[i].cb = NULL;
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 1;
+	dynItems[i++].flags.alt_color = 0;
+	offset += 1 + MenuStrCpy(dynPool + offset, strEdit, 0);
+	// SET AS ACTIVE
+	dynItems[i].caption.string = dynPool + offset;
+	dynItems[i].caption.length = sizeof(strAct) - 1;
+	dynItems[i].cb = NULL;
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 1;
+	dynItems[i].flags.alt_color = 0;
+	offset += 1 + MenuStrCpy(dynPool + offset, strAct, 0);
+	// Fill remaining fields
+	for (i = 0; i < 6; i++) {
+		dynItems[i].cb = NULL;
+		dynItems[i].next = NULL;
+		dynItems[i].flags.selectable = 0;
+		dynItems[i].flags.alt_color = 1;
+	}
 	return 0;
 }
 
