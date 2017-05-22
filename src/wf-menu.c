@@ -36,6 +36,10 @@ int TestCb(void* md) {
 //	return FALSE;
 }
 
+const char security[][4] = {
+	"OPEN", "WEP ", "WPA1", "WPA2", "WPA ", "??? "
+};
+
 const char stdContext[] = "[A]ccept, [B]ack";
 const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
 const char oskNumIpContext[] = "A-OK, B-Del, S-Done";
@@ -49,6 +53,7 @@ const char strDns2[] = "DNS2:    ";
 const char strEdit[] = "EDIT";
 const char strAct[] =  "SET AS ACTIVE";
 const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
+const char strScanFail[] = "SCAN FAILED!";
 
 char editableIp[16] = "192.168.1.60";
 char editableNum[9] = "123456";
@@ -146,7 +151,13 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 
 int MenuWiFiScan(void *m) {
 	UNUSED_PARAM(m);
-	const MenuString scanMenuStr = {(char*)strScan, sizeof(strScan) - 1};
+	MenuString scanMenuStr = {(char*)strScan, sizeof(strScan) - 1};
+	char *apData;
+	uint16_t pos;
+	MwApData apd;
+	int16_t dataLen;
+	uint8_t i;
+	uint16_t strPos;
 
 	// Clear previously drawn items, and print the WiFi scan message
 	MenuClearLines(11, 13, 0);
@@ -154,10 +165,38 @@ int MenuWiFiScan(void *m) {
 	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(scanMenuStr, MENU_H_ALIGN_CENTER,
 			0), 12, MENU_COLOR_ITEM_ALT, scanMenuStr.length,(char*)strScan);
 
-	// Scan networks and fill in information
+	// Scan networks
+	if ((dataLen = MwApScan(&apData)) == MW_ERROR) {
+		MenuClearLines(11, 13, 0);
 
-	while(1);
+		scanMenuStr.string = (char*)strScanFail;	
+		scanMenuStr.length = sizeof(strScanFail) - 1;
+		VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(scanMenuStr,
+				MENU_H_ALIGN_CENTER, 0), 12, MENU_COLOR_ITEM_ALT,
+				scanMenuStr.length,(char*)strScanFail);
+		VdpFramesWait(120);
+		MenuDrawItemPage(0);
+		return -1;
+	}
+	// Scan complete, fill in information.
+	pos = 0;
+	for (i = 0, pos = 0, strPos = 0; (pos = MwApFillNext(apData, pos, &apd,
+			dataLen) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
+		// Fill a dynEntry. Format is: signal_strength(3) auth(4) SSID(21)
+		/// \todo check we do not overflow string buffer
+		dynItems[i].caption.string = dynPool + strPos;
+		if (apd.auth < MW_AUTH_OPEN || apd.auth > MW_AUTH_UNKNOWN)
+			apd.auth = MW_AUTH_UNKNOWN;
+		Byte2UnsStr(apd.str, dynPool + strPos);
+		strPos += 4;
+		strPos += MenuStrCpy(dynPool + strPos, security[(uint8_t)apd.auth], 0);
+		strPos += MenuStrCpy(dynPool + strPos, apd.ssid, apd.ssidLen);
+		dynPool[strPos++] = '\0';
+		dynItems[i].caption.length = dynPool + strPos -
+			dynItems[i].caption.string;
+	}
 
+	
 	return 0;
 }
 

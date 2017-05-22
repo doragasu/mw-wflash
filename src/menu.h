@@ -342,5 +342,12 @@ void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset);
  ****************************************************************************/
 uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin);
 
+/************************************************************************//**
+ * Draw requested item page.
+ *
+ * \param[in] chrOff Character offset in plane to draw menu
+ ****************************************************************************/
+void MenuDrawItemPage(uint8_t chrOff);
+
 #endif /*_MENU_H_*/
 

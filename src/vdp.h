@@ -274,6 +274,11 @@ uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 void VdpVBlankWait(void);
 
 /************************************************************************//**
+ * Wait the specified number of frames
+ ****************************************************************************/
+void VdpFramesWait(uint16_t frames);
+
+/************************************************************************//**
  * Copies from VRAM to VRAM a specified region.
  *
  * \param[in] src Start VRAM memory address to copy.

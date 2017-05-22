@@ -62,6 +62,15 @@
 #define MW_CMD_ERROR		255		///< Error command reply
 /** \} */
 
+typedef enum {
+	MW_AUTH_OPEN = 0,
+	MW_AUTH_WEP,
+	MW_AUTH_WPA_PSK,
+	MW_AUTH_WPA2_PSK,
+	MW_AUTH_WPA_WPA2_PSK,
+	MW_AUTH_UNKNOWN
+} MwAuthTypes;
+
 /// TCP/UDP address message
 typedef struct {
 	char dst_port[6];	///< TCP destination port string

@@ -356,3 +356,12 @@ void VdpVBlankWait(void) {
 	while ((VDP_CTRL_PORT_W & VDP_STAT_VBLANK) == 0);
 }
 
+/************************************************************************//**
+ * Wait the specified number of frames.
+ *
+ * \param[in] frames Number of frames to wait.
+ ****************************************************************************/
+void VdpFramesWait(uint16_t frames) {
+	while (frames--) VdpVBlankWait();
+}
+
