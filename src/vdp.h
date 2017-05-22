@@ -254,6 +254,9 @@ void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 void VdpDrawHex(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 		uint8_t num);
 
+void VdpDrawU32(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
+		uint32_t num);
+
 /************************************************************************//**
  * Draws an 8-bit decimal number on a plane.
  *

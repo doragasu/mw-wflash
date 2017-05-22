@@ -214,6 +214,17 @@ uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	return i;
 }
 
+void VdpDrawU32(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
+		uint32_t num) {
+	int8_t i;
+
+	for (i = 24; i >= 0; i -= 8) {
+		VdpDrawHex(planeAddr, x, y, txtColor, num>>i);
+		x += 2;
+	}
+
+}
+
 /************************************************************************//**
  * Loads a 1bpp font on the VRAM, setting specified foreground and
  * background colours.

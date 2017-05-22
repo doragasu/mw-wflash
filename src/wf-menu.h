@@ -1,9 +1,6 @@
 #ifndef _WF_MENU_H_
 #define _WF_MENU_H_
 
-/// \todo compute the number of levels
-#define MENU_NLEVELS	10
-
 #include "menu.h"
 
 void WfMenuInit(MenuString statStr);

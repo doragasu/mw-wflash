@@ -226,7 +226,7 @@ int MenuConfSetActive(void *m) {
 }
 
 int MenuConfDataEntryCb(void *m) {
-	const Menu *me = (Menu*)m;
+	const Menu *md = (Menu*)m;
 	char *ssid;
 	MwIpCfg *ip;
 	uint8_t offset;
@@ -237,7 +237,7 @@ int MenuConfDataEntryCb(void *m) {
 
 	// It is assumed that the configuration item is stored on previous level
 	// data, as it corresponds to the selected option.
-	confItem = me->selItem[me->level - 1];
+	confItem = md->selItem[md->level - 1];
 	i = 0;
 	// Get the SSID
 	if ((MwApCfgGet(confItem, &ssid, NULL) != MW_OK) || (*ssid == '\0')) {
@@ -409,7 +409,7 @@ int MenuConfEntryCb(void* m) {
 			offset += 8;
 		} else {
 			copied = MenuStrCpy(dynPool + offset, ssid, 32);
-			if (copied == 32) *(dynPool + offset + 32) = '\0';
+			if (copied == 32) dynPool[offset + 32] = '\0';
 			dynItems[i].caption.length = copied;
 			offset += copied + 1;
 		}

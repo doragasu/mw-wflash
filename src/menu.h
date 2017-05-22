@@ -50,11 +50,11 @@ typedef enum {
 typedef int(*MenuCb)(void* md);
 
 #ifndef MENU_NLEVELS
-/// Number of nested menu levels. Should be overriden by application
-/// before including this file.
+/// Number of nested menu levels. Can be overriden by application by
+/// defining this constant in the makefile.
 /// \warning Setting this to a value lower than needed will cause mass
 /// destruction!
-#define MENU_NLEVELS	4
+#define MENU_NLEVELS	10
 #endif
 
 /// Number of buttons supported
