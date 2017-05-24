@@ -1242,6 +1242,8 @@ uint16_t MenuStrCpy(char dst[], const char src[], uint16_t maxLen) {
 	for (i = 0; (i < maxLen) && (src[i] != '\0'); i++)
 		dst[i] = src[i];
 
+	if (i < maxLen) dst[i] = '\0';
+
 	return i;
 }
 

@@ -54,6 +54,7 @@ const char strEdit[] = "EDIT";
 const char strAct[] =  "SET AS ACTIVE";
 const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
 const char strScanFail[] = "SCAN FAILED!";
+const char strOk[] = "OK";
 
 char editableIp[16] = "192.168.1.60";
 char editableNum[9] = "123456";
@@ -128,10 +129,160 @@ const MenuItem confItem[] = { {
 	}
 };
 
+/// Selected network configuration item (from 0 to 2)
+static uint8_t selConfig;
 /// Pool for dynamically created strings
 static char dynPool[WF_MENU_MAX_DYN_ITEMS * WF_MENU_AVG_STR_LEN];
 /// Pool for dynamically created items
 static MenuItem dynItems[WF_MENU_MAX_DYN_ITEMS];
+
+/// Fills dynItems with network parameters. Does NOT fill callbacks,
+/// next entries or flags
+int MenuIpConfFill(uint8_t *startItem, uint16_t *offset, 
+		uint8_t numConfig) {
+	MwIpCfg *ip;
+	uint8_t strLen;
+
+	// A return value of 0 means that there is an error.
+	if (MwIpCfgGet(numConfig, &ip) != MW_OK) return 1;
+
+	/// \todo Filling data is pretty regular and should be done in a loop
+	/// IP
+	/// \todo Implement automatic (DHCP) settings
+	strLen  = MenuStrCpy(dynPool + (*offset), strIp, 0);
+	strLen += MenuBin2IpStr(ip->addr, dynPool + (*offset) + strLen);
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = strLen;
+	(*offset) += strLen + 1;
+	// MASK
+	strLen  = MenuStrCpy(dynPool + (*offset), strMask, 0);
+	strLen += MenuBin2IpStr(ip->mask, dynPool + (*offset) + strLen);
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = strLen;
+	(*offset) += strLen + 1;
+	// GATEWAY
+	strLen  = MenuStrCpy(dynPool + (*offset), strGw, 0);
+	strLen += MenuBin2IpStr(ip->gateway, dynPool + (*offset) + strLen);
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = strLen;
+	(*offset) += strLen + 1;
+	// DNS1
+	strLen  = MenuStrCpy(dynPool + (*offset), strDns1, 0);
+	strLen += MenuBin2IpStr(ip->dns1, dynPool + (*offset) + strLen);
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = strLen;
+	(*offset) += strLen + 1;
+	// DNS2
+	strLen  = MenuStrCpy(dynPool + (*offset), strDns1, 0);
+	strLen += MenuBin2IpStr(ip->dns1, dynPool + (*offset) + strLen);
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = strLen;
+	(*offset) += strLen + 1;
+
+	return 0;
+}
+
+/// Fills dynItems with default network parameters. Does NOT fill callbacks,
+/// next entries or flags
+uint16_t MenuIpConfFillBlank(uint8_t *startItem, uint16_t *offset) {
+	uint8_t strLen;
+
+	// IP
+	strLen  = MenuStrCpy(dynPool + (*offset), strIp, 0);
+	strLen += MenuStrCpy(dynPool + (*offset) + strLen, strEmptyText, 0);
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = strLen;
+	*offset += strLen + 1;
+	// MASK
+	dynPool[(*offset)] = '\0';
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = 0;
+	// GATEWAY
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = 0;
+	// DNS1
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = 0;
+	// DNS2
+	dynItems[(*startItem)].caption.string = dynPool + (*offset);
+	dynItems[(*startItem)++].caption.length = 0;
+
+	return 0;
+}
+
+int MenuNetConfEntryCb(void *m) {
+	UNUSED_PARAM(m);
+	const Menu *md = (Menu*)m;
+	uint16_t offset;
+	const uint8_t pLevel = md->level - 1;
+//	uint8_t item;
+	char ssidBuf[32 + 1];
+	uint8_t i;
+
+	// Fill in scanned SSID, that must be still available in the dynamic
+	// entries of the previous menu
+//	item = md->selPage[pLevel] * md->me[pLevel]->item.entPerPage +
+//		   md->selItem[pLevel];
+	// Copy the SSID to a temporal buffer before putting it in the final
+	// destination, because if SSID was the first entry and we copy it
+	// directly, because of the preceding "SSID: " text, most likely it will
+	// overwrite itself.
+	i = 0;
+	MenuStrCpy(ssidBuf, dynItems[pLevel].caption.string, 0);
+	offset  = MenuStrCpy(dynPool, strSsid, 0);
+	offset += MenuStrCpy(dynPool + offset, ssidBuf, 0);
+	dynItems[i].caption.string = dynPool;
+	dynItems[i].caption.length = offset++;
+	/// \todo Will have to fill this to handle DHCP/manual configuration
+	dynItems[i].cb = NULL;	
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 1;
+	dynItems[i++].flags.alt_color = 0;
+	
+	// Fill IP configuration of the curren entry. If not configured, fill
+	// with default configuration (DHCP).
+	if (MenuIpConfFill(&i, &offset, selConfig))
+		MenuIpConfFillBlank(&i, &offset);
+	// Add [BLANK] entry
+	dynPool[offset] = '\0';
+	dynItems[i].caption.string = dynPool + offset++;
+	dynItems[i].caption.length = 0;
+	// Add OK entry
+	dynItems[i].caption.string = dynPool + offset;
+	dynItems[i].caption.length = MenuStrCpy(dynPool + offset, strOk, 0);
+	offset += dynItems[i++].caption.length + 1;
+	// Add BACK entry
+	dynItems[i].caption.string = dynPool + offset;
+	dynItems[i].caption.length = MenuStrCpy(dynPool + offset, strOk, 0);
+	offset += dynItems[i++].caption.length + 1;
+	// Fill remaining item fields
+	for (i = 0; i < 9; i++) {
+		dynItems[i].cb = NULL;
+		/// \todo Fill this with correct value
+		dynItems[i].next = NULL;
+		dynItems[i].flags.selectable = 1;
+		dynItems[i].flags.alt_color = 0;
+	}
+	dynItems[6].flags.selectable = 0;	// Empty entry
+	return 0;
+}
+
+const MenuEntry MenuIpCfgEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	8,								// Margin
+	MENU_STR("NETWORK CONFIGURATION"),	// Title
+	MENU_STR(stdContext),			// Left context
+	MenuNetConfEntryCb,				// cbEntry
+	NULL,							// cbExit
+	.item = {
+		dynItems,					// item
+		9,							// nItems
+		2,							// spacing
+		9,							// entPerPage
+		0,							// pages
+		{MENU_H_ALIGN_LEFT}			// align
+	}
+};
 
 /// Converts an IP address in uint32_t binary representation to
 /// string representation. Returns resulting string length.
@@ -182,7 +333,7 @@ int MenuWiFiScan(void *m) {
 	pos = 0;
 	for (i = 0, pos = 0, strPos = 0; (pos = MwApFillNext(apData, pos, &apd,
 			dataLen) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
-		// Fill a dynEntry. Format is: signal_strength(3) auth(4) SSID(21)
+		// Fill a dynEntry. Format is: signal_strength(3) auth(4) SSID(29)
 		/// \todo check we do not overflow string buffer
 		dynItems[i].caption.string = dynPool + strPos;
 		if (apd.auth < MW_AUTH_OPEN || apd.auth > MW_AUTH_UNKNOWN)
@@ -194,6 +345,11 @@ int MenuWiFiScan(void *m) {
 		dynPool[strPos++] = '\0';
 		dynItems[i].caption.length = dynPool + strPos -
 			dynItems[i].caption.string;
+
+		dynItems[i].next = &MenuIpCfgEntry;
+		dynItems[i].cb = NULL;
+		dynItems[i].flags.selectable = 1;
+		dynItems[i].flags.alt_color = 0;
 	}
 
 	
@@ -226,21 +382,18 @@ int MenuConfSetActive(void *m) {
 }
 
 int MenuConfDataEntryCb(void *m) {
-	const Menu *md = (Menu*)m;
+	UNUSED_PARAM(m);
 	char *ssid;
-	MwIpCfg *ip;
-	uint8_t offset;
-	uint8_t confItem;
+	uint16_t offset;
 	uint8_t i;
 	uint8_t strLen;
 	uint8_t error = FALSE;
 
 	// It is assumed that the configuration item is stored on previous level
 	// data, as it corresponds to the selected option.
-	confItem = md->selItem[md->level - 1];
 	i = 0;
 	// Get the SSID
-	if ((MwApCfgGet(confItem, &ssid, NULL) != MW_OK) || (*ssid == '\0')) {
+	if ((MwApCfgGet(selConfig, &ssid, NULL) != MW_OK) || (*ssid == '\0')) {
 		// Configuration request failed, fill all items as empty
 		// SSID
 		error = TRUE;
@@ -261,59 +414,10 @@ int MenuConfDataEntryCb(void *m) {
 		dynItems[i++].caption.length = strLen;
 		offset = strLen + 1;
 	}
-	if (error || (MwIpCfgGet(confItem, &ip) != MW_OK)) {
-		// IP
-		strLen  = MenuStrCpy(dynPool + offset, strIp, 0);
-		strLen += MenuStrCpy(dynPool + offset + strLen, strEmptyText, 0);
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = strLen;
-		offset += strLen + 1;
-		// MASK
-		*(dynPool + offset) = '\0';
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = 0;
-		// GATEWAY
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = 0;
-		// DNS1
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = 0;
-		// DNS2
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = 0;
-	} else {
-		/// \todo Filling data is pretty regular and should be done in a loop
-		/// IP
-		/// \todo Implement automatic (DHCP) settings
-		strLen  = MenuStrCpy(dynPool + offset, strIp, 0);
-		strLen += MenuBin2IpStr(ip->addr, dynPool + offset + strLen);
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = strLen;
-		offset += strLen + 1;
-		// MASK
-		strLen  = MenuStrCpy(dynPool + offset, strMask, 0);
-		strLen += MenuBin2IpStr(ip->mask, dynPool + offset + strLen);
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = strLen;
-		offset += strLen + 1;
-		// GATEWAY
-		strLen  = MenuStrCpy(dynPool + offset, strGw, 0);
-		strLen += MenuBin2IpStr(ip->gateway, dynPool + offset + strLen);
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = strLen;
-		offset += strLen + 1;
-		// DNS1
-		strLen  = MenuStrCpy(dynPool + offset, strDns1, 0);
-		strLen += MenuBin2IpStr(ip->dns1, dynPool + offset + strLen);
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = strLen;
-		offset += strLen + 1;
-		// DNS2
-		strLen  = MenuStrCpy(dynPool + offset, strDns1, 0);
-		strLen += MenuBin2IpStr(ip->dns1, dynPool + offset + strLen);
-		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i++].caption.length = strLen;
-		offset += strLen + 1;
+	// If no error, fill IP configuration
+	if (error || MenuIpConfFill(&i, &offset, selConfig)) {
+			error = TRUE;
+			MenuIpConfFillBlank(&i, &offset);
 	}
 	// [BLANK]
 	dynItems[i].caption.length = sizeof(strEdit) - 1;
@@ -382,6 +486,15 @@ const MenuEntry confEntryData = {
 	}
 };
 
+/// Sets the selected menu entry configuration variable
+int MenuConfEntrySet(void *m) {
+	Menu *md = (Menu*)m;
+
+	selConfig = md->selItem[md->level];
+	
+	return 1;
+}
+
 /// Fills confEntry items
 /// \todo Add a marker to default configuration
 int MenuConfEntryCb(void* m) {
@@ -394,7 +507,7 @@ int MenuConfEntryCb(void* m) {
 	// Load MegaWiFi configurations and fill entries with available SSIDs
 	for (i = 0, offset = 0; i < 3; i++) {
 		dynItems[i].caption.string = dynPool + offset;
-		dynItems[i].cb = NULL;
+		dynItems[i].cb = MenuConfEntrySet;
 		dynItems[i].next = &confEntryData;
 		dynItems[i].flags.selectable = 1;
 		dynItems[i].flags.alt_color = 0;
