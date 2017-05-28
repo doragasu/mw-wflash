@@ -51,6 +51,7 @@ const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
 const char oskNumIpContext[] = "A-OK, B-Del, S-Done";
 const char strEmptyText[] = "<EMPTY>";
 const char strSsid[] = "SSID:    ";
+const char strPass[] = "PASS:    ";
 const char strIp[] =   "IP:      ";
 const char strMask[] = "MASK:    ";
 const char strGw[] =   "GATEWAY: ";
@@ -222,7 +223,7 @@ uint16_t MenuIpConfFillDhcp(uint8_t *startItem, uint16_t *offset) {
 	// DNS1
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = 0;
-	// DNS2
+	// DNS1
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = 0;
 
@@ -246,7 +247,7 @@ int MenuNetConfEntryAcceptCb(void *m) {
 
 
 	// Save the configuration to WiFi module
-	if (MwApCfgSet(selConfig, dynItems[0].caption.string,
+	if (MwApCfgSet(selConfig, dynItems[0].caption.string + sizeof(strSsid) - 1,
 				dynItems[1].caption.string) != MW_OK) {
 		tmpStr.string = (char*)strCfgFail;
 		tmpStr.length = sizeof(strCfgFail) - 1;
@@ -276,7 +277,7 @@ int MenuNetConfEntryCb(void *m) {
 	uint16_t offset;
 	const uint8_t pLevel = md->level - 1;
 //	uint8_t item;
-	char ssidBuf[32 + 1];
+	char ssidBuf[32 + 8 + 1];
 	uint8_t i;
 	uint8_t dhcp = FALSE;
 
@@ -289,13 +290,23 @@ int MenuNetConfEntryCb(void *m) {
 	// directly, because of the preceding "SSID: " text, most likely it will
 	// overwrite itself.
 	i = 0;
+	// Note: string includes SSID identifier text
 	MenuStrCpy(ssidBuf, dynItems[pLevel].caption.string, 0);
-	offset  = MenuStrCpy(dynPool, strSsid, 0);
-	offset += MenuStrCpy(dynPool + offset, ssidBuf, 0);
+	offset = MenuStrCpy(dynPool, ssidBuf, 0);
 	dynItems[i].caption.string = dynPool;
 	dynItems[i].caption.length = offset++;
-	/// \todo Will have to fill this to handle DHCP/manual configuration
 	dynItems[i].cb = NULL;	
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 1;
+	dynItems[i++].flags.alt_color = 0;
+	// Add empty PASS entry
+	dynItems[i].caption.string = dynPool + offset;
+	offset += MenuStrCpy(dynPool + offset, strPass, 0);
+	offset += MenuStrCpy(dynPool + offset, strEmptyText, 0);
+	dynItems[i].caption.length = dynPool + offset -
+		dynItems[i].caption.string;
+	offset++;
+	dynItems[i].cb = NULL;
 	dynItems[i].next = NULL;
 	dynItems[i].flags.selectable = 1;
 	dynItems[i++].flags.alt_color = 0;
@@ -368,9 +379,9 @@ const MenuEntry MenuIpCfgEntry = {
 	NULL,							// cbExit
 	.item = {
 		dynItems,					// item
-		9,							// nItems
+		10,							// nItems
 		2,							// spacing
-		9,							// entPerPage
+		10,							// entPerPage
 		0,							// pages
 		{MENU_H_ALIGN_LEFT}			// align
 	}
@@ -394,7 +405,7 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 
 int MenuWiFiScan(void *m) {
 	UNUSED_PARAM(m);
-	MenuString scanMenuStr = {(char*)strScan, sizeof(strScan) - 1};
+	MenuString str;
 	char *apData;
 	uint16_t pos;
 	MwApData apd;
@@ -403,20 +414,20 @@ int MenuWiFiScan(void *m) {
 	uint16_t strPos;
 
 	// Clear previously drawn items, and print the WiFi scan message
-	MenuClearLines(11, 13, 0);
-
-	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(scanMenuStr, MENU_H_ALIGN_CENTER,
-			0), 12, MENU_COLOR_ITEM_ALT, scanMenuStr.length,(char*)strScan);
+	str.string = (char*)strScan;
+	str.length = sizeof(strScan) - 1;
+	MenuMessage(str, 0);
 
 	// Scan networks
 	if ((dataLen = MwApScan(&apData)) == MW_ERROR) {
-		MenuClearLines(11, 13, 0);
-
-		scanMenuStr.string = (char*)strScanFail;	
-		scanMenuStr.length = sizeof(strScanFail) - 1;
-		MenuMessage(scanMenuStr, 120);
-		return -1;
+		str.string = (char*)strScanFail;	
+		str.length = sizeof(strScanFail) - 1;
+		MenuMessage(str, 120);
+		return FALSE;
 	}
+	str.string = (char*)"SCAN OK!!!";
+	str.length = 10;
+	MenuMessage(str, 120);
 	// Scan complete, fill in information.
 	pos = 0;
 	for (i = 0, pos = 0, strPos = 0; (pos = MwApFillNext(apData, pos, &apd,
@@ -471,7 +482,7 @@ int MenuConfSetActive(void *m) {
 
 int MenuConfDataEntryCb(void *m) {
 	UNUSED_PARAM(m);
-	char *ssid;
+	char *ssid, *pass;
 	uint16_t offset;
 	uint8_t i;
 	uint8_t strLen;
@@ -480,8 +491,8 @@ int MenuConfDataEntryCb(void *m) {
 	// It is assumed that the configuration item is stored on previous level
 	// data, as it corresponds to the selected option.
 	i = 0;
-	// Get the SSID
-	if ((MwApCfgGet(selConfig, &ssid, NULL) != MW_OK) || (*ssid == '\0')) {
+	// Get the SSID and password
+	if ((MwApCfgGet(selConfig, &ssid, &pass) != MW_OK) || (*ssid == '\0')) {
 		// Configuration request failed, fill all items as empty
 		// SSID
 		error = TRUE;
@@ -490,6 +501,12 @@ int MenuConfDataEntryCb(void *m) {
 		dynItems[i].caption.string = dynPool;
 		dynItems[i++].caption.length = strLen;
 		offset = strLen + 1;
+		// PASS
+		strLen  = MenuStrCpy(dynPool + offset, strPass, 0);
+		strLen += MenuStrCpy(dynPool + offset + strLen, strEmptyText, 0);
+		dynItems[i].caption.string = dynPool + offset;
+		dynItems[i++].caption.length = strLen;
+		offset += strLen + 1;
 	} else {
 		strLen  = MenuStrCpy(dynPool, strSsid, 0);
 		strLen += MenuStrCpy(dynPool + strLen, ssid, MW_SSID_MAXLEN);
@@ -501,6 +518,16 @@ int MenuConfDataEntryCb(void *m) {
 		dynItems[i].caption.string = dynPool;
 		dynItems[i++].caption.length = strLen;
 		offset = strLen + 1;
+		// PASS
+		strLen  = MenuStrCpy(dynPool + offset, strPass, 0);
+		strLen += MenuStrCpy(dynPool + offset + strLen, pass, MW_SSID_MAXLEN);
+		if (dynPool[offset + strLen] != '\0') {
+			strLen++;
+			dynPool[offset + strLen] = '\0';
+		}
+		dynItems[i].caption.string = dynPool + offset;
+		dynItems[i++].caption.length = strLen;
+		offset += strLen + 1;
 	}
 	// If no error, fill IP configuration
 	if (error || MenuIpConfFill(&i, &offset, selConfig)) {
@@ -538,7 +565,7 @@ int MenuConfDataEntryCb(void *m) {
 	}
 	offset += 1 + MenuStrCpy(dynPool + offset, strAct, 0);
 	// Fill remaining fields
-	for (i = 0; i < 6; i++) {
+	for (i = 0; i < 7; i++) {
 		dynItems[i].cb = NULL;
 		dynItems[i].next = NULL;
 		dynItems[i].flags.selectable = 0;
@@ -549,6 +576,7 @@ int MenuConfDataEntryCb(void *m) {
 
 // Menu structure:
 // SSID:    <data>
+// PASS:	<data>
 // IP:      <MANUAL,AUTO>
 // MASK:    <DATA>
 // GATEWAY: <DATA>
@@ -566,9 +594,9 @@ const MenuEntry confEntryData = {
 	NULL,							// cbExit
 	.item = {
 		dynItems,					// item
-		9,							// nItems
+		10,							// nItems
 		2,							// spacing
-		9,							// entPerPage
+		10,							// entPerPage
 		0,							// pages
 		{MENU_H_ALIGN_LEFT}			// align
 	}
