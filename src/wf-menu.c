@@ -22,6 +22,12 @@
 #define MENU_ENTRY_ITEM(item, spacing)	\
 	(item), MENU_ENTRY_NUMS(MENU_NITEMS(item),(spacing))
 
+/// IP address definition
+typedef union {
+	uint32_t addr;
+	uint8_t byte[4];
+} IpAddr;
+
 int TestCb(void* md) {
 	Menu *m = (Menu*)md;
 	const MenuEntry* me = m->me[m->level];
@@ -54,6 +60,8 @@ const char strEdit[] = "EDIT";
 const char strAct[] =  "SET AS ACTIVE";
 const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
 const char strScanFail[] = "SCAN FAILED!";
+const char strCfgFail[] = "CONFIGURATION FAILED!";
+const char strDhcp[] = "AUTO";
 const char strOk[] = "OK";
 
 char editableIp[16] = "192.168.1.60";
@@ -136,6 +144,17 @@ static char dynPool[WF_MENU_MAX_DYN_ITEMS * WF_MENU_AVG_STR_LEN];
 /// Pool for dynamically created items
 static MenuItem dynItems[WF_MENU_MAX_DYN_ITEMS];
 
+uint32_t MenuIpStr2Bin(char ip[]) {
+	IpAddr addr;
+	int i;
+
+	for (i = 0; i < 4; i++) {
+		if ((ip = Str2UnsByte(ip, &addr.byte[i])) == NULL) return 0;
+		ip++;
+	}
+	return addr.addr;
+}
+
 /// Fills dynItems with network parameters. Does NOT fill callbacks,
 /// next entries or flags
 int MenuIpConfFill(uint8_t *startItem, uint16_t *offset, 
@@ -184,12 +203,12 @@ int MenuIpConfFill(uint8_t *startItem, uint16_t *offset,
 
 /// Fills dynItems with default network parameters. Does NOT fill callbacks,
 /// next entries or flags
-uint16_t MenuIpConfFillBlank(uint8_t *startItem, uint16_t *offset) {
+uint16_t MenuIpConfFillDhcp(uint8_t *startItem, uint16_t *offset) {
 	uint8_t strLen;
 
 	// IP
 	strLen  = MenuStrCpy(dynPool + (*offset), strIp, 0);
-	strLen += MenuStrCpy(dynPool + (*offset) + strLen, strEmptyText, 0);
+	strLen += MenuStrCpy(dynPool + (*offset) + strLen, strDhcp, 0);
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = strLen;
 	*offset += strLen + 1;
@@ -210,6 +229,47 @@ uint16_t MenuIpConfFillBlank(uint8_t *startItem, uint16_t *offset) {
 	return 0;
 }
 
+int MenuNetConfEntryBackCb(void *m) {
+	UNUSED_PARAM(m);
+
+	return 0;
+}
+
+
+int MenuNetConfEntryAcceptCb(void *m) {
+	Menu *md = (Menu*)m;
+	UNUSED_PARAM(m);
+	// IP configuration
+	MwIpCfg ipCfg;
+	MenuString tmpStr;
+	int i = 2;
+
+
+	// Save the configuration to WiFi module
+	if (MwApCfgSet(selConfig, dynItems[0].caption.string,
+				dynItems[1].caption.string) != MW_OK) {
+		tmpStr.string = (char*)strCfgFail;
+		tmpStr.length = sizeof(strCfgFail) - 1;
+		MenuMessage(tmpStr, 120);
+		return FALSE;
+	}
+	ipCfg.addr = MenuIpStr2Bin(dynItems[i++].caption.string);
+	ipCfg.mask = MenuIpStr2Bin(dynItems[i++].caption.string);
+	ipCfg.gateway = MenuIpStr2Bin(dynItems[i++].caption.string);
+	ipCfg.dns1 = MenuIpStr2Bin(dynItems[i++].caption.string);
+	ipCfg.dns2 = MenuIpStr2Bin(dynItems[i++].caption.string);
+	if (MwIpCfgSet(selConfig, &ipCfg) != MW_OK) {
+		tmpStr.string = (char*)strCfgFail;
+		tmpStr.length = sizeof(strCfgFail) - 1;
+		MenuMessage(tmpStr, 120);
+		return FALSE;
+	}
+	// Go back two menu levels
+	md->level -= 2;
+
+	return TRUE;
+}
+
 int MenuNetConfEntryCb(void *m) {
 	UNUSED_PARAM(m);
 	const Menu *md = (Menu*)m;
@@ -218,6 +278,7 @@ int MenuNetConfEntryCb(void *m) {
 //	uint8_t item;
 	char ssidBuf[32 + 1];
 	uint8_t i;
+	uint8_t dhcp = FALSE;
 
 	// Fill in scanned SSID, that must be still available in the dynamic
 	// entries of the previous menu
@@ -241,8 +302,10 @@ int MenuNetConfEntryCb(void *m) {
 	
 	// Fill IP configuration of the curren entry. If not configured, fill
 	// with default configuration (DHCP).
-	if (MenuIpConfFill(&i, &offset, selConfig))
-		MenuIpConfFillBlank(&i, &offset);
+	if (MenuIpConfFill(&i, &offset, selConfig)) {
+		dhcp = TRUE;
+		MenuIpConfFillDhcp(&i, &offset);
+	}
 	// Add [BLANK] entry
 	dynPool[offset] = '\0';
 	dynItems[i].caption.string = dynPool + offset++;
@@ -256,14 +319,43 @@ int MenuNetConfEntryCb(void *m) {
 	dynItems[i].caption.length = MenuStrCpy(dynPool + offset, strOk, 0);
 	offset += dynItems[i++].caption.length + 1;
 	// Fill remaining item fields
-	for (i = 0; i < 9; i++) {
+	// - For SSID and IP
+	for (i = 0; i < 2; i++) {
 		dynItems[i].cb = NULL;
 		/// \todo Fill this with correct value
 		dynItems[i].next = NULL;
 		dynItems[i].flags.selectable = 1;
 		dynItems[i].flags.alt_color = 0;
 	}
-	dynItems[6].flags.selectable = 0;	// Empty entry
+	// - For the remaining IP configuration fields
+	for (; i < 6; i++) {
+		dynItems[i].cb = NULL;
+		/// \todo Fill this with correct value
+		dynItems[i].next = NULL;
+		dynItems[i].flags.selectable = ~dhcp;
+		dynItems[i].flags.alt_color = dhcp;
+	}
+	// For the [BLANK] string
+	dynItems[i].cb = NULL;
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 0;
+	dynItems[i++].flags.alt_color = 0;
+	// For the OK string
+	dynItems[i].cb = MenuNetConfEntryAcceptCb;
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 1;
+	dynItems[i++].flags.alt_color = 0;
+	// For the BACK string
+	dynItems[i].cb = NULL;
+	dynItems[i].next = NULL;
+	dynItems[i].flags.selectable = 1;
+	dynItems[i++].flags.alt_color = 0;
+	// For the OK and back strings:
+	for (; i < 9; i++) {
+		dynItems[i].next = NULL;
+		dynItems[i].flags.selectable = 1;
+		dynItems[i].flags.alt_color = 0;
+	}
 	return 0;
 }
 
@@ -322,11 +414,7 @@ int MenuWiFiScan(void *m) {
 
 		scanMenuStr.string = (char*)strScanFail;	
 		scanMenuStr.length = sizeof(strScanFail) - 1;
-		VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(scanMenuStr,
-				MENU_H_ALIGN_CENTER, 0), 12, MENU_COLOR_ITEM_ALT,
-				scanMenuStr.length,(char*)strScanFail);
-		VdpFramesWait(120);
-		MenuDrawItemPage(0);
+		MenuMessage(scanMenuStr, 120);
 		return -1;
 	}
 	// Scan complete, fill in information.
@@ -417,7 +505,7 @@ int MenuConfDataEntryCb(void *m) {
 	// If no error, fill IP configuration
 	if (error || MenuIpConfFill(&i, &offset, selConfig)) {
 			error = TRUE;
-			MenuIpConfFillBlank(&i, &offset);
+			MenuIpConfFillDhcp(&i, &offset);
 	}
 	// [BLANK]
 	dynItems[i].caption.length = sizeof(strEdit) - 1;

@@ -1210,6 +1210,25 @@ void MenuButtonAction(uint8_t input) {
 }
 
 /************************************************************************//**
+ * Draw a message "box" over the current menu. The function allows choosing
+ * if the message is kept during a fixed amount of frames, or until the
+ * user presses any button.
+ *
+ * \param[out] str    String to print on the message "box"
+ * \param[in]  frames Number of frames to keep the message box. If set to 0,
+ *                    the message will be kept until user presses any button.
+ ****************************************************************************/
+void MenuMessage(MenuString str, uint16_t frames) {
+	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(str, MENU_H_ALIGN_CENTER, 0),
+			12, MENU_COLOR_ITEM_ALT, str.length, str.string);
+	if (frames) VdpFramesWait(120);
+	else {
+	}
+
+	MenuDrawItemPage(0);
+}
+
+/************************************************************************//**
  * Copy a MenuString.
  *
  * \param[out] dst Destination MenuString.

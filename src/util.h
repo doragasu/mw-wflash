@@ -42,7 +42,29 @@ static inline void ToUpper(char str[]) {
 	}
 }
 
+/****************************************************************************
+ * Converts an unsigned 8-bit number (uint8_t) in its character string
+ * representation.
+ *
+ * \param[in]  num Input number to convert.
+ * \param[out] str String representing the input number.
+ *
+ * \return Resulting str length (not including null termination).
+ ****************************************************************************/
 uint8_t Byte2UnsStr(uint8_t num, char str[4]);
+
+/****************************************************************************
+ * Converts a character string representing an 8-bit unsigned number, to its
+ * binary (uint8_t) representation.
+ *
+ * \param[in]  strIn  Input string with the number to convert.
+ * \param[out] result Converted number will be left here.
+ *
+ * \return Pointer to the end of the number received in strIn parameter, or
+ * NULL if the strIn does not contain a valid string representation of an
+ * uint8_t type.
+ ****************************************************************************/
+char *Str2UnsByte(char strIn[], uint8_t *result);
 
 #ifndef TRUE
 /// TRUE value for logic comparisons
