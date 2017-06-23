@@ -149,13 +149,9 @@ static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
 void MenuPanic(char errStr[], uint8_t len) {
 	const MenuString error = {errStr, len};
 
-	// Clear previously drawn items, and print the WiFi scan message
-	MenuClearLines(MENU_LINE_ITEM_FIRST, MENU_LINE_ITEM_LAST, 0);
-
 	// Set background to red and write panic message
 	VdpRamWrite(VDP_CRAM_WR, 0x00, VDP_COLOR_RED);
-	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(error, MENU_H_ALIGN_CENTER,
-			0), 12, VDP_TXT_COL_CYAN, error.length, errStr);
+	MenuMessage(error, 0);
 
 	while (1);
 }
@@ -262,7 +258,7 @@ void MenuDrawItemPage(uint8_t chrOff) {
 		if (i == md.selItem[md.level]) {
 			color = MENU_COLOR_ITEM_SEL;
 		} else {
-			color = m->item.item[item].flags.alt_color?MENU_COLOR_ITEM_ALT:
+			color = m->item.item[item].alt_color?MENU_COLOR_ITEM_ALT:
 				MENU_COLOR_ITEM;
 		}
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
@@ -642,7 +638,7 @@ void MenuItemAction(uint8_t input) {
 			// Call menu entry callback
 			if (md.me[md.level]->entry) md.me[md.level]->entry(&md);
 			// Select page and item
-			for (i = 0; !md.me[md.level]->item.item[i].flags.selectable; i++);
+			for (i = 0; !md.me[md.level]->item.item[i].selectable; i++);
 			md.selItem[md.level] = i;
 			md.selPage[md.level] = 0;
 			// Draw menu
@@ -670,7 +666,7 @@ void MenuItemAction(uint8_t input) {
 			}
 		} while (md.me[md.level]->item.item[md.selPage[md.level] *
 				md.me[md.level]->item.entPerPage + md.selItem[md.level]].
-				flags.selectable == 0);
+				selectable == 0);
 		MenuDrawItemPage(0);
 	} else if (input & GP_DOWN_MASK) {
 		// Go down a menu item
@@ -686,7 +682,7 @@ void MenuItemAction(uint8_t input) {
 			}
 		} while (md.me[md.level]->item.item[md.selPage[md.level] *
 				md.me[md.level]->item.entPerPage + md.selItem[md.level]].
-				flags.selectable == 0);
+				selectable == 0);
 		MenuDrawItemPage(0);
 	} else if (input & GP_LEFT_MASK) {
 		// Change to previous page

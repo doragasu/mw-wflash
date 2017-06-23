@@ -21,8 +21,10 @@
  * - Exit callback of the exiting MenuEntry is executed.
  * - Entry callback of the entering MenuEntry is executed.
  *
- * \author	Jesús Alonso (doragasu)
- * \date	2017
+ * \author	 Jesús Alonso (doragasu)
+ * \date	 2017
+ * \defgroup menu menu
+ * \{
  ****************************************************************************/
 #ifndef _MENU_H_
 #define _MENU_H_
@@ -162,11 +164,16 @@ typedef struct {
 typedef struct {
 	MenuString caption;			///< Menu item text (editable)
 	const void *next;			///< Next MenuEntry (if item accepted)
-	MenuCb cb;			///< Callback to run if option chosen
-	struct {
-		uint8_t selectable:1;	///< Selectable item
-		uint8_t alt_color:1;	///< Print with alternate color
-	} flags;					///< Menu item flags
+	MenuCb cb;					///< Callback to run if option chosen
+	union {
+		struct {
+			uint8_t selectable:1;	///< Selectable item
+			uint8_t alt_color:1;	///< Print with alternate color
+			uint8_t hide:1;			///< Hide text
+//			uint8_t edit_off:5;		///< Offset to start editing text
+		};
+		uint8_t flags;			///< Menu item flags
+	};
 } MenuItem;
 
 /// Private items for item list Menu Entres.
@@ -198,6 +205,7 @@ typedef struct {
 	const MenuString lContext;	///< Left context string (bottom line)
 	const MenuCb entry;			///< Callback for menu entry
 	const MenuCb exit;			///< Callback for menu exit
+	const MenuCb cBut;			///< C button callback
 	union {
 		MenuItemEntry item;		///< Item list entries
 		MenuOskEntry keyb;		///< On screen keyboard entries
@@ -361,4 +369,5 @@ uint8_t MenuStrAlign(MenuString mStr, MenuHAlign align, uint8_t margin);
 void MenuDrawItemPage(uint8_t chrOff);
 
 #endif /*_MENU_H_*/
+/** \} */
 

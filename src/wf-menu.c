@@ -28,25 +28,29 @@ typedef union {
 	uint8_t byte[4];
 } IpAddr;
 
-int TestCb(void* md) {
-	Menu *m = (Menu*)md;
-	const MenuEntry* me = m->me[m->level];
-	uint8_t i;
-
-	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, MENU_COLOR_OSK_DATA, me->title.length,
-			me->title.string);
-
-	for (i = 0; i < 120; i++) VdpVBlankWait();
-
-	return TRUE;
-//	return FALSE;
-}
+//int TestCb(void* md) {
+//	Menu *m = (Menu*)md;
+//	const MenuEntry* me = m->me[m->level];
+//	uint8_t i;
+//
+//	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, MENU_COLOR_OSK_DATA, me->title.length,
+//			me->title.string);
+//
+//	for (i = 0; i < 120; i++) VdpVBlankWait();
+//
+//	return TRUE;
+////	return FALSE;
+//}
 
 const char security[][4] = {
 	"OPEN", "WEP ", "WPA1", "WPA2", "WPA ", "??? "
 };
 
+/// Offset used on the network options emu
+#define MENU_NET_VALUE_OFFSET	9
+
 const char stdContext[] = "[A]ccept, [B]ack";
+const char strScanContext[] = "[A]ccept, [B]ack, [C]: Rescan";
 const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
 const char oskNumIpContext[] = "A-OK, B-Del, S-Done";
 const char strEmptyText[] = "<EMPTY>";
@@ -65,81 +69,93 @@ const char strCfgFail[] = "CONFIGURATION FAILED!";
 const char strDhcp[] = "AUTO";
 const char strOk[] = "OK";
 
-char editableIp[16] = "192.168.1.60";
-char editableNum[9] = "123456";
+//char editableIp[16] = "192.168.1.60";
+//char editableNum[9] = "123456";
+//
+//const MenuEntry numTest = {
+//	MENU_TYPE_OSK_NUMERIC,
+//	1,
+//	MENU_STR("NUMERIC MENU TEST"),
+//	MENU_STR(oskNumIpContext),
+//	NULL,
+//	TestCb,
+//	.keyb = {
+//		MENU_STR("Enter number:"),
+//		{editableNum, 6},
+//		8,
+//		8
+//	}
+//};
+//
+//const MenuEntry ipTest = {
+//	MENU_TYPE_OSK_IPV4,
+//	1,
+//	MENU_STR("IP MENU TEST"),
+//	MENU_STR(oskNumIpContext),
+//	NULL,
+//	MenuIpValidate,
+//	.keyb = {
+//		MENU_STR("Enter IP address:"),
+//		{editableIp, 12},
+//		15,
+//		15
+//	}
+//};
+//
+//char editableStr[32] = "Edit me!";
+//
+//const MenuEntry editTest = {
+//	MENU_TYPE_OSK_QWERTY,			// Item list type
+//	1,								// Margin
+//	MENU_STR("EDIT MENU TEST"),		// Title
+//	MENU_STR(oskQwertyContext),		// Left context
+//	NULL,							// cbEntry
+//	NULL,							// cbExit
+//	.keyb = {
+//		MENU_STR("Input string test:"),
+//		{editableStr, 8},
+//		32,
+//		32
+//	}
+//};
+//
+//const MenuItem confItem[] = { {
+//	MENU_STR("String input test"),
+//		&editTest,
+//		NULL,
+//		{1, 0}
+//	},{
+//	MENU_STR("IP entry test"),
+//		&ipTest,
+//		NULL,
+//		{1, 0}
+//	},{
+//	MENU_STR("Numeric entry test"),
+//		&numTest,
+//		NULL,
+//		{1, 0}
+//	},{
+//	MENU_STR("Unused"),
+//		NULL,
+//		NULL,
+//		{1, 1}
+//	}
+//};
 
-const MenuEntry numTest = {
-	MENU_TYPE_OSK_NUMERIC,
-	1,
-	MENU_STR("NUMERIC MENU TEST"),
-	MENU_STR(oskNumIpContext),
-	NULL,
-	TestCb,
-	.keyb = {
-		MENU_STR("Enter number:"),
-		{editableNum, 6},
-		8,
-		8
-	}
-};
+/// Module global menu data structure
+typedef struct {
+//	MwIpCfg ip;				///< IP configuration being edited
+//	// SSID being edited
+//	char ssid[MW_SSID_MAXLEN + 1];
+//	// Password being edited
+//	char pass[MW_PASS_MAXLEN + 1];
+	/// Selected network configuration item (from 0 to 2)
+	uint8_t selConfig;
+} WfMenuData;
 
-const MenuEntry ipTest = {
-	MENU_TYPE_OSK_IPV4,
-	1,
-	MENU_STR("IP MENU TEST"),
-	MENU_STR(oskNumIpContext),
-	NULL,
-	MenuIpValidate,
-	.keyb = {
-		MENU_STR("Enter IP address:"),
-		{editableIp, 12},
-		15,
-		15
-	}
-};
+/// Module global data (other than item buffers)
+static WfMenuData wd;
 
-char editableStr[32] = "Edit me!";
-
-const MenuEntry editTest = {
-	MENU_TYPE_OSK_QWERTY,			// Item list type
-	1,								// Margin
-	MENU_STR("EDIT MENU TEST"),		// Title
-	MENU_STR(oskQwertyContext),		// Left context
-	NULL,							// cbEntry
-	NULL,							// cbExit
-	.keyb = {
-		MENU_STR("Input string test:"),
-		{editableStr, 8},
-		32,
-		32
-	}
-};
-
-const MenuItem confItem[] = { {
-	MENU_STR("String input test"),
-		&editTest,
-		NULL,
-		{1, 0}
-	},{
-	MENU_STR("IP entry test"),
-		&ipTest,
-		NULL,
-		{1, 0}
-	},{
-	MENU_STR("Numeric entry test"),
-		&numTest,
-		NULL,
-		{1, 0}
-	},{
-	MENU_STR("Unused"),
-		NULL,
-		NULL,
-		{1, 1}
-	}
-};
-
-/// Selected network configuration item (from 0 to 2)
-static uint8_t selConfig;
 /// Pool for dynamically created strings
 static char dynPool[WF_MENU_MAX_DYN_ITEMS * WF_MENU_AVG_STR_LEN];
 /// Pool for dynamically created items
@@ -247,7 +263,7 @@ int MenuNetConfEntryAcceptCb(void *m) {
 
 
 	// Save the configuration to WiFi module
-	if (MwApCfgSet(selConfig, dynItems[0].caption.string + sizeof(strSsid) - 1,
+	if (MwApCfgSet(wd.selConfig, dynItems[0].caption.string + sizeof(strSsid) - 1,
 				dynItems[1].caption.string) != MW_OK) {
 		tmpStr.string = (char*)strCfgFail;
 		tmpStr.length = sizeof(strCfgFail) - 1;
@@ -259,7 +275,7 @@ int MenuNetConfEntryAcceptCb(void *m) {
 	ipCfg.gateway = MenuIpStr2Bin(dynItems[i++].caption.string);
 	ipCfg.dns1 = MenuIpStr2Bin(dynItems[i++].caption.string);
 	ipCfg.dns2 = MenuIpStr2Bin(dynItems[i++].caption.string);
-	if (MwIpCfgSet(selConfig, &ipCfg) != MW_OK) {
+	if (MwIpCfgSet(wd.selConfig, &ipCfg) != MW_OK) {
 		tmpStr.string = (char*)strCfgFail;
 		tmpStr.length = sizeof(strCfgFail) - 1;
 		MenuMessage(tmpStr, 120);
@@ -270,35 +286,58 @@ int MenuNetConfEntryAcceptCb(void *m) {
 
 	return TRUE;
 }
+int MenuNetParamEditCb(void *m) {
+	UNUSED_PARAM(m);
+
+	// Set menu title, data and content string (from previous menu entry)
+	
+//	switch 
+	return FALSE;
+}
+
+MenuEntry editTest = {
+	MENU_TYPE_OSK_QWERTY,			// Item list type
+	1,								// Margin
+	{NULL, 0},						// Title
+	MENU_STR(oskQwertyContext),		// Left context
+	MenuNetParamEditCb,				// cbEntry
+	NULL,							// cbExit
+	.keyb = {
+		{NULL, 0},
+		{NULL, 0},
+		0,
+		0
+	}
+};
 
 int MenuNetConfEntryCb(void *m) {
 	UNUSED_PARAM(m);
 	const Menu *md = (Menu*)m;
 	uint16_t offset;
 	const uint8_t pLevel = md->level - 1;
-//	uint8_t item;
-	char ssidBuf[32 + 8 + 1];
+	uint8_t item;
+	char ssidBuf[32 + 9 + 1];
 	uint8_t i;
 	uint8_t dhcp = FALSE;
 
 	// Fill in scanned SSID, that must be still available in the dynamic
 	// entries of the previous menu
-//	item = md->selPage[pLevel] * md->me[pLevel]->item.entPerPage +
-//		   md->selItem[pLevel];
+	item = md->selPage[pLevel] * md->me[pLevel]->item.entPerPage +
+		   md->selItem[pLevel];
 	// Copy the SSID to a temporal buffer before putting it in the final
 	// destination, because if SSID was the first entry and we copy it
 	// directly, because of the preceding "SSID: " text, most likely it will
 	// overwrite itself.
 	i = 0;
 	// Note: string includes SSID identifier text
-	MenuStrCpy(ssidBuf, dynItems[pLevel].caption.string, 0);
+	MenuStrCpy(ssidBuf, dynItems[item].caption.string, 0);
 	offset = MenuStrCpy(dynPool, ssidBuf, 0);
 	dynItems[i].caption.string = dynPool;
 	dynItems[i].caption.length = offset++;
 	dynItems[i].cb = NULL;	
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 1;
-	dynItems[i++].flags.alt_color = 0;
+	dynItems[i].selectable = 1;
+	dynItems[i++].alt_color = 0;
 	// Add empty PASS entry
 	dynItems[i].caption.string = dynPool + offset;
 	offset += MenuStrCpy(dynPool + offset, strPass, 0);
@@ -308,12 +347,12 @@ int MenuNetConfEntryCb(void *m) {
 	offset++;
 	dynItems[i].cb = NULL;
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 1;
-	dynItems[i++].flags.alt_color = 0;
+	dynItems[i].selectable = 1;
+	dynItems[i++].alt_color = 0;
 	
 	// Fill IP configuration of the curren entry. If not configured, fill
 	// with default configuration (DHCP).
-	if (MenuIpConfFill(&i, &offset, selConfig)) {
+	if (MenuIpConfFill(&i, &offset, wd.selConfig)) {
 		dhcp = TRUE;
 		MenuIpConfFillDhcp(&i, &offset);
 	}
@@ -335,37 +374,37 @@ int MenuNetConfEntryCb(void *m) {
 		dynItems[i].cb = NULL;
 		/// \todo Fill this with correct value
 		dynItems[i].next = NULL;
-		dynItems[i].flags.selectable = 1;
-		dynItems[i].flags.alt_color = 0;
+		dynItems[i].selectable = 1;
+		dynItems[i].alt_color = 0;
 	}
 	// - For the remaining IP configuration fields
 	for (; i < 6; i++) {
 		dynItems[i].cb = NULL;
 		/// \todo Fill this with correct value
 		dynItems[i].next = NULL;
-		dynItems[i].flags.selectable = ~dhcp;
-		dynItems[i].flags.alt_color = dhcp;
+		dynItems[i].selectable = ~dhcp;
+		dynItems[i].alt_color = dhcp;
 	}
 	// For the [BLANK] string
 	dynItems[i].cb = NULL;
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 0;
-	dynItems[i++].flags.alt_color = 0;
+	dynItems[i].selectable = 0;
+	dynItems[i++].alt_color = 0;
 	// For the OK string
 	dynItems[i].cb = MenuNetConfEntryAcceptCb;
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 1;
-	dynItems[i++].flags.alt_color = 0;
+	dynItems[i].selectable = 1;
+	dynItems[i++].alt_color = 0;
 	// For the BACK string
 	dynItems[i].cb = NULL;
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 1;
-	dynItems[i++].flags.alt_color = 0;
+	dynItems[i].selectable = 1;
+	dynItems[i++].alt_color = 0;
 	// For the OK and back strings:
 	for (; i < 9; i++) {
 		dynItems[i].next = NULL;
-		dynItems[i].flags.selectable = 1;
-		dynItems[i].flags.alt_color = 0;
+		dynItems[i].selectable = 1;
+		dynItems[i].alt_color = 0;
 	}
 	return 0;
 }
@@ -375,8 +414,9 @@ const MenuEntry MenuIpCfgEntry = {
 	8,								// Margin
 	MENU_STR("NETWORK CONFIGURATION"),	// Title
 	MENU_STR(stdContext),			// Left context
-	MenuNetConfEntryCb,				// cbEntry
-	NULL,							// cbExit
+	MenuNetConfEntryCb,				// entry callback
+	NULL,							// exit callback
+	NULL,							// cBut callback
 	.item = {
 		dynItems,					// item
 		10,							// nItems
@@ -418,6 +458,8 @@ int MenuWiFiScan(void *m) {
 	str.length = sizeof(strScan) - 1;
 	MenuMessage(str, 0);
 
+	// Disconnect from network
+	MwApLeave();
 	// Scan networks
 	if ((dataLen = MwApScan(&apData)) == MW_ERROR) {
 		str.string = (char*)strScanFail;	
@@ -447,8 +489,8 @@ int MenuWiFiScan(void *m) {
 
 		dynItems[i].next = &MenuIpCfgEntry;
 		dynItems[i].cb = NULL;
-		dynItems[i].flags.selectable = 1;
-		dynItems[i].flags.alt_color = 0;
+		dynItems[i].selectable = 1;
+		dynItems[i].alt_color = 0;
 	}
 
 	
@@ -461,9 +503,10 @@ MenuEntry confSsidSelEntry = {
 	MENU_TYPE_ITEM,					// Menu type
 	8,								// Margin
 	MENU_STR("WIFI NETWORK"),		// Title
-	MENU_STR(stdContext),			// Left context
-	MenuWiFiScan,					// cbEntry
-	NULL,							// cbExit
+	MENU_STR(strScanContext),		// Left context
+	MenuWiFiScan,					// entry callback
+	NULL,							// exit callback
+	MenuWiFiScan,					// cBut callback
 	.item = {
 		dynItems,					// item
 		0,							// nItems
@@ -474,6 +517,7 @@ MenuEntry confSsidSelEntry = {
 	}
 };
 
+/// \todo Set active configuration
 int MenuConfSetActive(void *m) {
 	UNUSED_PARAM(m);
 
@@ -492,7 +536,7 @@ int MenuConfDataEntryCb(void *m) {
 	// data, as it corresponds to the selected option.
 	i = 0;
 	// Get the SSID and password
-	if ((MwApCfgGet(selConfig, &ssid, &pass) != MW_OK) || (*ssid == '\0')) {
+	if ((MwApCfgGet(wd.selConfig, &ssid, &pass) != MW_OK) || (*ssid == '\0')) {
 		// Configuration request failed, fill all items as empty
 		// SSID
 		error = TRUE;
@@ -530,7 +574,7 @@ int MenuConfDataEntryCb(void *m) {
 		offset += strLen + 1;
 	}
 	// If no error, fill IP configuration
-	if (error || MenuIpConfFill(&i, &offset, selConfig)) {
+	if (error || MenuIpConfFill(&i, &offset, wd.selConfig)) {
 			error = TRUE;
 			MenuIpConfFillDhcp(&i, &offset);
 	}
@@ -539,28 +583,28 @@ int MenuConfDataEntryCb(void *m) {
 	*(dynPool + offset) = '\0';
 	dynItems[i].cb = NULL;
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 0;
-	dynItems[i].flags.alt_color = 0;
+	dynItems[i].selectable = 0;
+	dynItems[i].alt_color = 0;
 	dynItems[i++].caption.length = 0;
 	// EDIT
 	dynItems[i].caption.string = dynPool + offset;
 	dynItems[i].caption.length = sizeof(strEdit) - 1;
 	dynItems[i].cb = MenuWiFiScan;
 	dynItems[i].next = NULL;
-	dynItems[i].flags.selectable = 1;
-	dynItems[i++].flags.alt_color = 0;
+	dynItems[i].selectable = 1;
+	dynItems[i++].alt_color = 0;
 	offset += 1 + MenuStrCpy(dynPool + offset, strEdit, 0);
 	// SET AS ACTIVE
 	dynItems[i].caption.string = dynPool + offset;
 	dynItems[i].caption.length = sizeof(strAct) - 1;
 	dynItems[i].next = NULL;
 	if (error) {
-		dynItems[i].flags.selectable = 0;
-		dynItems[i].flags.alt_color = 1;
+		dynItems[i].selectable = 0;
+		dynItems[i].alt_color = 1;
 		dynItems[i].cb = NULL;
 	} else {
-		dynItems[i].flags.selectable = 1;
-		dynItems[i].flags.alt_color = 0;
+		dynItems[i].selectable = 1;
+		dynItems[i].alt_color = 0;
 		dynItems[i].cb = MenuConfSetActive;
 	}
 	offset += 1 + MenuStrCpy(dynPool + offset, strAct, 0);
@@ -568,8 +612,8 @@ int MenuConfDataEntryCb(void *m) {
 	for (i = 0; i < 7; i++) {
 		dynItems[i].cb = NULL;
 		dynItems[i].next = NULL;
-		dynItems[i].flags.selectable = 0;
-		dynItems[i].flags.alt_color = 1;
+		dynItems[i].selectable = 0;
+		dynItems[i].alt_color = 1;
 	}
 	return 0;
 }
@@ -590,8 +634,9 @@ const MenuEntry confEntryData = {
 	8,								// Margin
 	MENU_STR("NETWORK CONFIGURATION"),	// Title
 	MENU_STR(stdContext),			// Left context
-	MenuConfDataEntryCb,			// cbEntry
-	NULL,							// cbExit
+	MenuConfDataEntryCb,			// entry callback
+	NULL,							// exit callback
+	NULL,							// cBut callback
 	.item = {
 		dynItems,					// item
 		10,							// nItems
@@ -606,7 +651,7 @@ const MenuEntry confEntryData = {
 int MenuConfEntrySet(void *m) {
 	Menu *md = (Menu*)m;
 
-	selConfig = md->selItem[md->level];
+	wd.selConfig = md->selItem[md->level];
 	
 	return 1;
 }
@@ -625,8 +670,8 @@ int MenuConfEntryCb(void* m) {
 		dynItems[i].caption.string = dynPool + offset;
 		dynItems[i].cb = MenuConfEntrySet;
 		dynItems[i].next = &confEntryData;
-		dynItems[i].flags.selectable = 1;
-		dynItems[i].flags.alt_color = 0;
+		dynItems[i].selectable = 1;
+		dynItems[i].alt_color = 0;
 		dynPool[offset++] = '1' + i;
 		dynPool[offset++] = ':';
 		dynPool[offset++] = ' ';
@@ -652,8 +697,9 @@ const MenuEntry confEntry = {
 	1,								// Margin
 	MENU_STR("CONFIGURATION"),		// Title
 	MENU_STR(stdContext),			// Left context
-	MenuConfEntryCb,				// cbEntry
-	NULL,							// cbExit
+	MenuConfEntryCb,				// entry
+	NULL,							// exit
+	NULL,							// cBut callback
 	.item = {
 		dynItems,					// item
 		3,							// nItems
@@ -669,12 +715,12 @@ const MenuItem rootItem[] = { {
 		MENU_STR("START"),			///< Caption
 		NULL,						///< Next
 		NULL,						///< Callback
-		{1, 1}						///< Selectable, alt_color
+		{{1, 1, 0}}					///< Selectable, alt_color, hide
 	}, {
 		MENU_STR("CONFIGURATION"),
 		&confEntry,
 		NULL,
-		{1, 0}
+		{{1, 0, 0}}
 	}
 };
 
@@ -684,8 +730,9 @@ const MenuEntry rootMenu = {
 	1,								// Margin
 	MENU_STR("WFLASH BOOTLOADER"),	// Title
 	MENU_STR(stdContext),			// Left context
-	NULL,							// cbEntry
-	NULL,							// cbExit
+	NULL,							// entry callback
+	NULL,							// exit callback
+	NULL,							// cBut callback
 	.item = {
 		// rootItem, nItems, spacing, enPerPage, pages
 		MENU_ENTRY_ITEM(rootItem, 2),
