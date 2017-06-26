@@ -382,6 +382,38 @@ int MwApLeave(void) {
 }
 
 /************************************************************************//**
+ * Sets default AP/IP configuration.
+ *
+ * \param[in]  index Index of the configuration to set.
+ *
+ * \return MW_OK if default configuration successfully changed.
+ ****************************************************************************/
+int MwDefApCfg(uint8_t index) {
+	if (!mwReady) return MW_ERROR;
+
+	cmd->datalen = 1;
+	cmd->cmd = MW_CMD_DEF_AP_CFG;
+	cmd->data[0] = index;
+	MW_TRY_CMD_SEND(cmd, MW_ERROR);
+	MW_TRY_REP_RECV(cmd, MW_ERROR);
+	return MW_OK;
+}
+
+/************************************************************************//**
+ * Gets default AP/IP configuration.
+ *
+ * \return MW_ERROR if AP/IP configuration could not be obtained, or the
+ * default AP/IP configuration otherwise.
+ ****************************************************************************/
+int MwDefApCfgGet(void) {
+	cmd->datalen = 0;
+	cmd->cmd = MW_CMD_DEF_AP_CFG_GET;
+	MW_TRY_CMD_SEND(cmd, MW_ERROR);
+	MW_TRY_REP_RECV(cmd, MW_ERROR);
+	return cmd->data[0];
+}
+
+/************************************************************************//**
  * \brief Tries establishing a TCP connection with specified server.
  *
  * \param[in] ch Channel used for the connection.

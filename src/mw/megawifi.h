@@ -197,6 +197,23 @@ int MwApFillNext(char apData[], uint16_t pos,
 int MwApJoin(uint8_t index);
 
 /************************************************************************//**
+ * Sets default AP/IP configuration.
+ *
+ * \param[in]  index Index of the configuration to set.
+ *
+ * \return MW_OK if default configuration successfully changed.
+ ****************************************************************************/
+int MwDefApCfg(uint8_t index);
+
+/************************************************************************//**
+ * Gets default AP/IP configuration.
+ *
+ * \return MW_ERROR if AP/IP configuration could not be obtained, or the
+ * default AP/IP configuration otherwise.
+ ****************************************************************************/
+int MwDefApCfgGet(void);
+
+/************************************************************************//**
  * \brief Leaves a previously joined AP.
  *
  * \return MW_OK if AP successfully left, or MW_ERROR if operation failed.

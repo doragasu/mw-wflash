@@ -31,35 +31,37 @@
 /** \addtogroup MwCmds MwCmds
  *  \brief Supported commands.
  *  \{ */
-#define MW_CMD_OK			  0		///< OK command reply
-#define MW_CMD_VERSION        1		///< Get firmware version
-#define MW_CMD_ECHO			  2		///< Echo data
-#define MW_CMD_AP_SCAN		  3		///< Scan for access points
-#define MW_CMD_AP_CFG		  4		///< Configure access point
-#define MW_CMD_AP_CFG_GET     5		///< Get access point configuration
-#define MW_CMD_IP_CFG		  6		///< Configure IPv4
-#define MW_CMD_IP_CFG_GET	  7		///< Get IPv4 configuration
-#define MW_CMD_AP_JOIN		  8		///< Join access point
-#define MW_CMD_AP_LEAVE		  9		///< Leave previously joined access point
-#define MW_CMD_TCP_CON		 10		///< Connect TCP socket
-#define MW_CMD_TCP_BIND		 11		///< Bind TCP socket to port
-#define MW_CMD_TCP_ACCEPT	 12		///< Accept incomint TCP connection
-#define MW_CMD_TCP_DISC		 13		///< Disconnect and free TCP socket
-#define MW_CMD_UDP_SET		 14		///< Configure UDP socket
-#define MW_CMD_UDP_CLR		 15		///< Clear and free UDP socket
-#define MW_CMD_SOCK_STAT	 16		///< Get socket status
-#define MW_CMD_PING			 17		///< Ping host
-#define MW_CMD_SNTP_CFG		 18		///< Configure SNTP service
-#define MW_CMD_DATETIME		 19		///< Get date and time
-#define MW_CMD_DT_SET        20		///< Set date and time
-#define MW_CMD_FLASH_WRITE	 21		///< Write to WiFi module flash
-#define MW_CMD_FLASH_READ	 22		///< Read from WiFi module flash
-#define MW_CMD_FLASH_ERASE	 23		///< Erase sector from WiFi flash
-#define MW_CMD_FLASH_ID 	 24		///< Get WiFi flash chip identifiers
-#define MW_CMD_SYS_STAT		 25		///< Get system status
-#define MW_CMD_DEF_CFG_SET	 26		///< Set default configuration
-#define MW_CMD_HRNG_GET		 27		///< Gets random numbers
-#define MW_CMD_ERROR		255		///< Error command reply
+#define MW_CMD_OK				  0		///< OK command reply
+#define MW_CMD_VERSION      	  1		///< Get firmware version
+#define MW_CMD_ECHO				  2		///< Echo data
+#define MW_CMD_AP_SCAN			  3		///< Scan for access points
+#define MW_CMD_AP_CFG			  4		///< Configure access point
+#define MW_CMD_AP_CFG_GET   	  5		///< Get access point configuration
+#define MW_CMD_IP_CFG			  6		///< Configure IPv4
+#define MW_CMD_IP_CFG_GET		  7		///< Get IPv4 configuration
+#define MW_CMD_DEF_AP_CFG		  8		///< Set default AP configuration
+#define MW_CMD_DEF_AP_CFG_GET	  9		///< Get default AP configuration
+#define MW_CMD_AP_JOIN			 10		///< Join access point
+#define MW_CMD_AP_LEAVE			 11		///< Leave previously joined AP
+#define MW_CMD_TCP_CON			 12		///< Connect TCP socket
+#define MW_CMD_TCP_BIND			 13		///< Bind TCP socket to port
+#define MW_CMD_TCP_ACCEPT		 14		///< Accept incomint TCP connection
+#define MW_CMD_TCP_DISC			 15		///< Disconnect and free TCP socket
+#define MW_CMD_UDP_SET			 16		///< Configure UDP socket
+#define MW_CMD_UDP_CLR			 17		///< Clear and free UDP socket
+#define MW_CMD_SOCK_STAT		 18		///< Get socket status
+#define MW_CMD_PING				 19		///< Ping host
+#define MW_CMD_SNTP_CFG			 20		///< Configure SNTP service
+#define MW_CMD_DATETIME			 21		///< Get date and time
+#define MW_CMD_DT_SET       	 22		///< Set date and time
+#define MW_CMD_FLASH_WRITE		 23		///< Write to WiFi module flash
+#define MW_CMD_FLASH_READ		 24		///< Read from WiFi module flash
+#define MW_CMD_FLASH_ERASE		 25		///< Erase sector from WiFi flash
+#define MW_CMD_FLASH_ID 		 26		///< Get WiFi flash chip identifiers
+#define MW_CMD_SYS_STAT			 27		///< Get system status
+#define MW_CMD_DEF_CFG_SET		 28		///< Set default configuration
+#define MW_CMD_HRNG_GET			 29		///< Gets random numbers
+#define MW_CMD_ERROR			255		///< Error command reply
 /** \} */
 
 typedef enum {
