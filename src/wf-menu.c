@@ -22,6 +22,18 @@
 #define MENU_ENTRY_ITEM(item, spacing)	\
 	(item), MENU_ENTRY_NUMS(MENU_NITEMS(item),(spacing))
 
+/// Network parameters that can be configured
+typedef enum {
+	WF_NET_SSID = 0,		///< WiFi AP SSID
+	WF_NET_PASS,			///< WiFi AP password
+	WF_NET_IP,				///< IPv4 address
+	WF_NET_MASK,			///< Network mask
+	WF_NET_GATEWAY,			///< Gateway
+	WF_NET_DNS1,			///< DNS, first entry
+	WF_NET_DNS2,			///< DNS, second entry
+	WF_NET_CFG_PARAMS		///< Number of network parameters to configure
+} WfNetConfItems;
+
 /// IP address definition
 typedef union {
 	uint32_t addr;
@@ -68,6 +80,12 @@ const char strScanFail[] = "SCAN FAILED!";
 const char strCfgFail[] = "CONFIGURATION FAILED!";
 const char strDhcp[] = "AUTO";
 const char strOk[] = "OK";
+const char *strNetPar[WF_NET_CFG_PARAMS] = {
+	"SSID", "PASS", "IP", "MASK", "GATEWAY", "DNS1", "DNS2"
+};
+const char strNetParLen[WF_NET_CFG_PARAMS] = {
+	4, 4, 2, 4, 7, 4, 4
+};
 
 //char editableIp[16] = "192.168.1.60";
 //char editableNum[9] = "123456";
@@ -142,13 +160,11 @@ const char strOk[] = "OK";
 //	}
 //};
 
+
 /// Module global menu data structure
 typedef struct {
-//	MwIpCfg ip;				///< IP configuration being edited
-//	// SSID being edited
-//	char ssid[MW_SSID_MAXLEN + 1];
-//	// Password being edited
-//	char pass[MW_PASS_MAXLEN + 1];
+	/// Pointers to menu configuration entries being edited
+	char *netParPtr[WF_NET_CFG_PARAMS];
 	/// Selected network configuration item (from 0 to 2)
 	uint8_t selConfig;
 } WfMenuData;
@@ -179,37 +195,42 @@ int MenuIpConfFill(uint8_t *startItem, uint16_t *offset,
 	MwIpCfg *ip;
 	uint8_t strLen;
 
-	// A return value of 0 means that there is an error.
+	// A MwIpCfgGet() return value of 0 means that there is an error.
 	if (MwIpCfgGet(numConfig, &ip) != MW_OK) return 1;
 
 	/// \todo Filling data is pretty regular and should be done in a loop
 	/// IP
 	/// \todo Implement automatic (DHCP) settings
 	strLen  = MenuStrCpy(dynPool + (*offset), strIp, 0);
+	wd.netParPtr[*startItem] = dynPool + (*offset);		// Store param ptr.
 	strLen += MenuBin2IpStr(ip->addr, dynPool + (*offset) + strLen);
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = strLen;
 	(*offset) += strLen + 1;
 	// MASK
 	strLen  = MenuStrCpy(dynPool + (*offset), strMask, 0);
+	wd.netParPtr[*startItem] = dynPool + (*offset);		// Store param ptr.
 	strLen += MenuBin2IpStr(ip->mask, dynPool + (*offset) + strLen);
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = strLen;
 	(*offset) += strLen + 1;
 	// GATEWAY
 	strLen  = MenuStrCpy(dynPool + (*offset), strGw, 0);
+	wd.netParPtr[*startItem] = dynPool + (*offset);		// Store param ptr.
 	strLen += MenuBin2IpStr(ip->gateway, dynPool + (*offset) + strLen);
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = strLen;
 	(*offset) += strLen + 1;
 	// DNS1
 	strLen  = MenuStrCpy(dynPool + (*offset), strDns1, 0);
+	wd.netParPtr[*startItem] = dynPool + (*offset);		// Store param ptr.
 	strLen += MenuBin2IpStr(ip->dns1, dynPool + (*offset) + strLen);
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = strLen;
 	(*offset) += strLen + 1;
 	// DNS2
 	strLen  = MenuStrCpy(dynPool + (*offset), strDns1, 0);
+	wd.netParPtr[*startItem] = dynPool + (*offset);		// Store param ptr.
 	strLen += MenuBin2IpStr(ip->dns1, dynPool + (*offset) + strLen);
 	dynItems[(*startItem)].caption.string = dynPool + (*offset);
 	dynItems[(*startItem)++].caption.length = strLen;
@@ -263,7 +284,8 @@ int MenuNetConfEntryAcceptCb(void *m) {
 
 
 	// Save the configuration to WiFi module
-	if (MwApCfgSet(wd.selConfig, dynItems[0].caption.string + sizeof(strSsid) - 1,
+	if (MwApCfgSet(wd.selConfig, dynItems[0].caption.string +
+			sizeof(strSsid) - 1,
 				dynItems[1].caption.string) != MW_OK) {
 		tmpStr.string = (char*)strCfgFail;
 		tmpStr.length = sizeof(strCfgFail) - 1;
@@ -287,18 +309,47 @@ int MenuNetConfEntryAcceptCb(void *m) {
 	return TRUE;
 }
 int MenuNetParamEditCb(void *m) {
-	UNUSED_PARAM(m);
+	const Menu *md = (Menu*)m;
+	int item = md->selItem[md->level - 1];
+	MenuEntry *me = (MenuEntry*)md->me[md->level];
 
 	// Set menu title, data and content string (from previous menu entry)
-	
+	// We have to fill:
+	// me->keyb.fieldName: <FIELD NAME>
+	// me->keyb.fieldData: <point to variable>
+	// me->keyb.maxLen:    <Set depending on field>
+	// me->keyb.lineLen:   <Set depending on field>
+	memcpy(dynPool, strNetPar[item], strNetParLen[item] + 1);
+	me->keyb.fieldName.string = dynPool;
+	me->keyb.fieldName.length = strNetParLen[item];
+	// TODO: CONTINUE HERE, PLAN WHICH IS THE BEST WAY TO RECOVER DATA
+	// MAYBE THE BEST WAY IS STORING POINTERS TO dynPool when filling
+	// data on previous step
+
 //	switch 
 	return FALSE;
 }
 
+//const MenuEntry ipTest = {
+//	MENU_TYPE_OSK_IPV4,
+//	1,
+//	MENU_STR("IP MENU TEST"),
+//	MENU_STR(oskNumIpContext),
+//	NULL,
+//	MenuIpValidate,
+//	.keyb = {
+//		MENU_STR("Enter IP address:"),
+//		{editableIp, 12},
+//		15,
+//		15
+//	}
+//};
+
 MenuEntry editTest = {
 	MENU_TYPE_OSK_QWERTY,			// Item list type
 	1,								// Margin
-	{NULL, 0},						// Title
+	MENU_STR(strEdit),				// Title
+//	{NULL, 0},						// Title
 	MENU_STR(oskQwertyContext),		// Left context
 	MenuNetParamEditCb,				// cbEntry
 	NULL,							// cbExit
@@ -310,6 +361,14 @@ MenuEntry editTest = {
 	}
 };
 
+// Items:
+// 0: SSID
+// 1: PASS
+// 2: IP
+// 3: MASK
+// 4: GATEWAY
+// 5: DNS1
+// 6: DNS2
 int MenuNetConfEntryCb(void *m) {
 	UNUSED_PARAM(m);
 	const Menu *md = (Menu*)m;
@@ -322,6 +381,7 @@ int MenuNetConfEntryCb(void *m) {
 
 	// Fill in scanned SSID, that must be still available in the dynamic
 	// entries of the previous menu
+	// TODO: Enhance function to work if we do not come from a WiFi scan
 	item = md->selPage[pLevel] * md->me[pLevel]->item.entPerPage +
 		   md->selItem[pLevel];
 	// Copy the SSID to a temporal buffer before putting it in the final
@@ -329,9 +389,11 @@ int MenuNetConfEntryCb(void *m) {
 	// directly, because of the preceding "SSID: " text, most likely it will
 	// overwrite itself.
 	i = 0;
+	// network parameter edit menu?
 	// Note: string includes SSID identifier text
 	MenuStrCpy(ssidBuf, dynItems[item].caption.string, 0);
 	offset = MenuStrCpy(dynPool, ssidBuf, 0);
+	wd.netParPtr[i] = dynPool + MENU_NET_VALUE_OFFSET;	// Store param ptr.
 	dynItems[i].caption.string = dynPool;
 	dynItems[i].caption.length = offset++;
 	dynItems[i].cb = NULL;	
@@ -339,8 +401,10 @@ int MenuNetConfEntryCb(void *m) {
 	dynItems[i].selectable = 1;
 	dynItems[i++].alt_color = 0;
 	// Add empty PASS entry
+	// TODO: Warning, maybe we should leave 64 + 1 bytes for a full password!
 	dynItems[i].caption.string = dynPool + offset;
 	offset += MenuStrCpy(dynPool + offset, strPass, 0);
+	wd.netParPtr[i] = dynPool + offset;					// Store param ptr.
 	offset += MenuStrCpy(dynPool + offset, strEmptyText, 0);
 	dynItems[i].caption.length = dynPool + offset -
 		dynItems[i].caption.string;
@@ -470,7 +534,7 @@ int MenuWiFiScan(void *m) {
 	str.string = (char*)"SCAN OK!!!";
 	str.length = 10;
 	MenuMessage(str, 120);
-	// Scan complete, fill in information.
+	// Scan complete, fill in MenuItem information.
 	pos = 0;
 	for (i = 0, pos = 0, strPos = 0; (pos = MwApFillNext(apData, pos, &apd,
 			dataLen) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
@@ -521,7 +585,8 @@ MenuEntry confSsidSelEntry = {
 int MenuConfSetActive(void *m) {
 	UNUSED_PARAM(m);
 
-	return 0;
+	// Set default config to selected entry
+	return MwDefApCfg(wd.selConfig);
 }
 
 int MenuConfDataEntryCb(void *m) {
@@ -540,19 +605,22 @@ int MenuConfDataEntryCb(void *m) {
 		// Configuration request failed, fill all items as empty
 		// SSID
 		error = TRUE;
-		strLen  = MenuStrCpy(dynPool, strSsid, 0);
+		strLen  = MenuStrCpy(dynPool, strSsid, 0);	// "SSID: "
+		wd.netParPtr[i] = NULL;	// No SSID, inform with NULL pointer
 		strLen += MenuStrCpy(dynPool + strLen, strEmptyText, 0);
 		dynItems[i].caption.string = dynPool;
 		dynItems[i++].caption.length = strLen;
 		offset = strLen + 1;
 		// PASS
-		strLen  = MenuStrCpy(dynPool + offset, strPass, 0);
+		strLen  = MenuStrCpy(dynPool + offset, strPass, 0); // "PASS: "
+		wd.netParPtr[i] = NULL;	// No SSID, inform with NULL pointer
 		strLen += MenuStrCpy(dynPool + offset + strLen, strEmptyText, 0);
 		dynItems[i].caption.string = dynPool + offset;
 		dynItems[i++].caption.length = strLen;
 		offset += strLen + 1;
 	} else {
-		strLen  = MenuStrCpy(dynPool, strSsid, 0);
+		strLen  = MenuStrCpy(dynPool, strSsid, 0);	// "SSID: "
+		wd.netParPtr[i] = dynPool + strLen;		// Store ptr to param
 		strLen += MenuStrCpy(dynPool + strLen, ssid, MW_SSID_MAXLEN);
 		// If SSID is 32 bytes, it might not be null terminated
 		if (dynPool[strLen] != '\0') {
@@ -563,7 +631,8 @@ int MenuConfDataEntryCb(void *m) {
 		dynItems[i++].caption.length = strLen;
 		offset = strLen + 1;
 		// PASS
-		strLen  = MenuStrCpy(dynPool + offset, strPass, 0);
+		strLen  = MenuStrCpy(dynPool + offset, strPass, 0); // "PASS: "
+		wd.netParPtr[i] = dynPool + offset + strLen;	// Store ptr to param
 		strLen += MenuStrCpy(dynPool + offset + strLen, pass, MW_SSID_MAXLEN);
 		if (dynPool[offset + strLen] != '\0') {
 			strLen++;

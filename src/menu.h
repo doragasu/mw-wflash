@@ -191,10 +191,10 @@ typedef struct {
 
 /// Private items for On Screen Keyboard Menu Entries
 typedef struct {
-	const MenuString fieldName;	///< Field name
+	MenuString fieldName;		///< Field name
 	MenuString fieldData;		///< Editable field data
-	const uint8_t maxLen;		///< Maximum length of fieldData string
-	const uint8_t lineLen;		///< Maximum line length
+	uint8_t maxLen;				///< Maximum length of fieldData string
+	uint8_t lineLen;			///< Maximum line length
 } MenuOskEntry;
 
 /// Menu entry, supporting the different menu entry types that can be used.
