@@ -4,10 +4,6 @@
  *
  * \author Jesús Alonso (doragasu)
  * \date   2015
- * \warning TODO This module is currently broken because the FlashRead() and
- * FlashWrite() functions only write to byte addresses. There should be
- * another pair of functions for 16-bit reads/writes, used when suited.
- * Other option is to use a macro that adapts to the used data type.
  ****************************************************************************/
 
 #include "flash.h"
