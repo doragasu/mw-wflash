@@ -92,7 +92,10 @@ void *MpAlloc(uint16_t length) {
  * calls if the input pos pointer is not the last returned by MpAlloc(). E.g.
  * if MpAlloc() is called consecutively three times, and MpFreeTo() is called
  * with the pointer returned by the second call, the memory granted by the
- * second and third calls to MpAlloc() will be deallocated.
+ * second and third calls to MpAlloc() will be deallocated. Although this is
+ * usually undesired, sometimes it is useful. In any case it is important
+ * taking it into account when using this module.
+ *
  * \warning Function fails (and does nothing) if input position is NOT
  * aligned as required by MP_ALIGN parameter. As MpAlloc() always returns
  * aligned pointers, this should not be a problem when using the function as

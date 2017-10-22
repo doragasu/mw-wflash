@@ -156,6 +156,14 @@ typedef enum {
 typedef struct {
 	char *string;
 	uint8_t length;
+	union {
+		uint8_t flags;
+		struct {
+			uint8_t editable:1;	// String can be edited if TRUE
+			uint8_t empty:1;	// String is empty if TRUE
+			uint8_t reserved:6;	// Do not use (set to 0)
+		};
+	};
 } MenuString;
 
 /// Menu Item.
@@ -198,6 +206,8 @@ typedef struct {
 } MenuOskEntry;
 
 /// Menu entry, supporting the different menu entry types that can be used.
+/// Entries are defined as const to be on ROM, and copied to a MenuEntity
+/// structure before displaying the menu entry data.
 typedef struct {
 	const uint8_t type;			///< Menu type
 	const uint8_t margin;		///< Margin
@@ -211,6 +221,15 @@ typedef struct {
 		MenuOskEntry keyb;		///< On screen keyboard entries
 	};
 } MenuEntry;
+
+/// Menu entity, contains the menu live data (that will be directly displayed
+/// on screen.
+typedef struct menuEntity {
+	MenuEntry mEntry;
+	struct menuEntity *prev;
+	uint8_t selItem;
+	uint8_t selPage;
+} MenuEntity;
 
 /// Coordinates of selected keyboard item
 typedef struct {

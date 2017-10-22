@@ -44,6 +44,10 @@
 // navigating menus back. Note that this might be dangerous because reaching
 // the deeper levels of the menu structures might exhaust the memory pool.
 // The pool floor is tracked when entering a menu, and freed when exiting it.
+// It might be possible freeing the memory used for the current menu just
+// before entering next, to keep the memory footprint low, but this might
+// complicate to a great extent going backwards from a menu to the previous
+// one.
 #include "menu.h"
 #include "gamepad.h"
 #include <string.h>
@@ -81,9 +85,6 @@ const uint8_t scrDelta[] = {
 		md.me[md.level]->item.nItems - (md.me[md.level]->item.entPerPage * \
 		md.me[md.level]->item.pages):md.me[md.level]->item.entPerPage)
 
-/// Dynamic data needed to display the menus
-static Menu md;
-
 /// Alphanumeric menu definition
 static const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 	//   0   1   2   3   4   5   6   7   8   9  10
@@ -110,7 +111,7 @@ static const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 /// table
 static const MenuOskCoord qwertyRev[96] = {
 	// SP       !        "        #        $        &        '        (
-	{0,4,0}, {1,0,0}, {1,2,10},{1,0,2}, {1,0,3}, {1,0,4}, {1,0,6}, {0,2,10},
+	{0,4,0}, {1,0,0}, {1,2,q10},{1,0,2}, {1,0,3}, {1,0,4}, {1,0,6}, {0,2,10},
 	// (        )        *        +        ,        -        .        /
 	{1,0,8}, {1,0,9}, {1,0,7}, {0,3,10},{0,3,7}, {0,0,10},{0,3,8}, {0,3,9},
 	// 0        1        2        3        4        5        6        7
@@ -178,6 +179,9 @@ static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
 	{'1', '2', '3'},
 	{' ', '0', ' '}
 };
+
+/// Dynamic data needed to display the menus
+static Menu md;
 
 /************************************************************************//**
  * Sets background to red, writes a panic message and loops forever.
