@@ -781,13 +781,13 @@ const MenuEntry confEntry = {
 
 /// Root menu items
 const MenuItem rootItem[] = { {
-		MENU_STR("START"),			///< Caption
-		NULL,						///< Next
-		NULL,						///< Callback
-		{{1, 1, 0}}					///< Selectable, alt_color, hide
+		MENU_STR("START"),			// Caption
+		NULL,						// Next: none (yet ;-)
+		NULL,						// Callback
+		{{1, 1, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_STR("CONFIGURATION"),
-		&confEntry,
+		&confEntry,					// Next: Configuration entry
 		NULL,
 		{{1, 0, 0}}
 	}

@@ -1,7 +1,7 @@
 /* Linker script for the wflash bootloader.
  *
  * The bootloader has a 512 byte header on top of the cartridge (vectors +
- * cartridge header) and a boot sector at the bottom 8 KiB of the 32 Mbit
+ * cartridge header) and a boot sector at the bottom of the 32 Mbit
  * ROM. All the space inbetween is unused.
  *
  * The code and initialized data at the 8 KiB boot sector are copied to the

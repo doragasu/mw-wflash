@@ -43,7 +43,7 @@ _Vecteurs_68K:
 
         .incbin "boot/rom_head.bin", 0, 0x100
 
-* Locate the boot sector at the last 8 KiB sector of the Flash chip.
+* Locate the boot sector at the last 32 KiB sector of the Flash chip.
         .org    0x003F8000
 _Entry_Point:
         move    #0x2700,%sr
@@ -345,8 +345,13 @@ ltuns:
 BootAddr:
 	move.l 4(%sp),%d2
 
-* Clear WRAM
+* De-initialize pads. This is done because some games skip initialization
+* if pad is already initialized
 	moveq	#0x00,%d0
+	lea 	0xa10008,%a0
+	move.w	%d0,(%a0)
+
+* Clear WRAM
 	move.w  #0x3FFF,%d1
 	lea     0xff0000,%a0
 WRamClear:

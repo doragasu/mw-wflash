@@ -5,6 +5,45 @@
  * \author	Jesús Alonso (doragasu)
  * \date	2017
  ****************************************************************************/
+
+// NOTES:
+// Each menu screen is defined by one MenuEntry and one or more MenuItems.
+// The MenuEntry defines the screen layout, and the MenuItems define the
+// items that appear in the menu.
+//
+// MenuEntry and MenuItems shall be const structures to preserver RAM. When
+// a menu is entered, these structures that define the menu are copied from
+// ROM to RAM. This is enough to draw simple (static) menus, but more dynamic
+// menus require that the copied menu data is modified before the menu is
+// displayed. For this the module implements several callback functions, that
+// are called in several situations, and can modify the menu data as needed:
+// - MenuEntry::entry: called when the menu is entered.
+// - MenuEntry::exit:  called when the menu is exited. Invalidates the menu
+//   exit if the callback returns FALSE.
+// - MenuEntry::cBut:  called when C button is pressed.
+//
+// In addition to the "standard" menus, based on MenuEntry and MenuItems, this
+// module implements On Screen Keyboard (OSK) menus that can be used for the
+// user to input data. Supported OSK menus are:
+// - MENU_OSK_OSK_QWERTY: QWERTY type keyboard, to enter text, numbers and
+//   symbols.
+// - MENU_OSK_OSK_NUMERIC: Keyboard allowing entering only 0~9 digits.
+// - MENU_OSK_OSK_IPV4: Menu allowing to enter IPv4 addresses only.
+// These OSK menus allow to define callbacks to validate input data.
+//
+// In addition to the menu data, there are several strings that can be set:
+// - MenuMessage() overlays a simple "message box" to the current menu.
+// - MenuStatStrSet() sets the status string on the bottom right of the
+//   screen.
+// - MenuPanic() is used for critical error notifications.
+//
+// Menu transitions are tracked using an internal Menu variable. This allows
+// the user to navigate the menus going forward/back. This has forced to code
+// a memory pool management module in order to maintain the menu structures.
+// Memory is allocated while navigating deeper into menus, and is freed when
+// navigating menus back. Note that this might be dangerous because reaching
+// the deeper levels of the menu structures might exhaust the memory pool.
+// The pool floor is tracked when entering a menu, and freed when exiting it.
 #include "menu.h"
 #include "gamepad.h"
 #include <string.h>
