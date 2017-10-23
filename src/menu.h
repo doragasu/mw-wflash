@@ -152,7 +152,14 @@ typedef enum {
 /// Macro to help filling MenuString structures
 #define MENU_STR(string)	{(char*)(string), sizeof(string) - 1}
 
-/// String definition for menus, including its properties
+/// String definition for menus, including its properties. Other than its
+/// length, MenuStrings can have several properties:
+/// - Editable: String can be edited. When loading an editable string
+///   from a menu, its contents are copied to RAM up to length bytes. If
+///   not editable, string is maintained in ROM.
+/// - Empty: This property is only used with editable strings. If true, no
+//    contents from the string are copied to RAM, only memory up to length is
+//    reserved.
 typedef struct {
 	char *string;
 	uint8_t length;
@@ -217,7 +224,7 @@ typedef struct {
 	const MenuCb exit;			///< Callback for menu exit
 	const MenuCb cBut;			///< C button callback
 	union {
-		MenuItemEntry item;		///< Item list entries
+		MenuItemEntry mItem;	///< Item list entries
 		MenuOskEntry keyb;		///< On screen keyboard entries
 	};
 } MenuEntry;
@@ -225,10 +232,10 @@ typedef struct {
 /// Menu entity, contains the menu live data (that will be directly displayed
 /// on screen.
 typedef struct menuEntity {
-	MenuEntry mEntry;
-	struct menuEntity *prev;
-	uint8_t selItem;
-	uint8_t selPage;
+	MenuEntry mEntry;			///< Menu entry copy (on RAM)
+	struct menuEntity *prev;	///< Menu entity of the previous menu
+	uint8_t selItem;			///< Selected item in the menu
+	uint8_t selPage;			///< Selected menu page
 } MenuEntity;
 
 /// Coordinates of selected keyboard item
@@ -240,18 +247,14 @@ typedef struct {
 
 /// Dynamic data structure needed to display the menus
 typedef struct {
-	/// Menu entry for each menu level
-	const MenuEntry *me[MENU_NLEVELS];
+	/// Menu entry for the root menu
+	const MenuEntity *root;
+	/// Menu entry for the currently displayed menu
+	const MenuEntity *me;
 	/// Reserve space for the rContext string
 	char rConStr[MENU_LINE_CHARS_TOTAL];
 	MenuString rContext;		///< Right context string (bottom line)
 	uint8_t level;				///< Current menu level
-	/// Selected item, for each menu level. On keyboard menus, it holds
-	/// the cursor position.
-	uint8_t selItem[MENU_NLEVELS];
-	/// Selected menu item page (minus 1). On Qwerty keyboards, it holds
-	/// the CAPS status.
-	uint8_t selPage[MENU_NLEVELS];
 	/// Coordinates of selected keyboard item
 	MenuOskCoord coord;
 	/// Temporal string for data entry

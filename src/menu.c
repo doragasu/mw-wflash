@@ -50,6 +50,7 @@
 // one.
 #include "menu.h"
 #include "gamepad.h"
+#include "mpool.h"
 #include <string.h>
 #include "util.h"
 
@@ -111,7 +112,7 @@ static const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
 /// table
 static const MenuOskCoord qwertyRev[96] = {
 	// SP       !        "        #        $        &        '        (
-	{0,4,0}, {1,0,0}, {1,2,q10},{1,0,2}, {1,0,3}, {1,0,4}, {1,0,6}, {0,2,10},
+	{0,4,0}, {1,0,0}, {1,2,10},{1,0,2}, {1,0,3}, {1,0,4}, {1,0,6}, {0,2,10},
 	// (        )        *        +        ,        -        .        /
 	{1,0,8}, {1,0,9}, {1,0,7}, {0,3,10},{0,3,7}, {0,0,10},{0,3,8}, {0,3,9},
 	// 0        1        2        3        4        5        6        7
@@ -181,7 +182,7 @@ static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
 };
 
 /// Dynamic data needed to display the menus
-static Menu md;
+static Menu *md;
 
 /************************************************************************//**
  * Sets background to red, writes a panic message and loops forever.
@@ -592,6 +593,18 @@ void MenuDraw(uint8_t direction) {
 	MenuClearLines(0, MENU_NLINES_TOTAL, offset);
 }
 
+MenuEntity *MenuLoad(const MenuEntry *menu) {
+	MenuEntity *tmp;
+	// Allocate  for the new menu entry
+	tmp = MpAlloc(sizeof(MenuEntity));
+	memset(tmp, 0, sizeof(MenuEntity));
+	tmp->prev = md->me;
+	md->me = tmp;
+	// Copy the menu entry
+	md->mEntry = *menu;
+	return NULL;
+}
+
 /************************************************************************//**
  * Module initialization. Call this function before using any other one from
  * this module. This function initialzes the menu subsystem and displays the
@@ -602,14 +615,20 @@ void MenuDraw(uint8_t direction) {
  *                     context string.
  ****************************************************************************/
 void MenuInit(const MenuEntry *root, MenuString rContext) {
+	// Initialize memory pool used for the menus
+	MpInit();
+	// Allocate memory for the global MenuData structure
+	md = MpAlloc(sizeof(Menu);
 	// Zero module data
-	memset((void*)&md, 0, sizeof(Menu));
+	memset((void*)md, 0, sizeof(Menu));
 	// Set string to point to string data
-	md.rContext.string = md.rConStr;
-	memcpy(md.rConStr, rContext.string, rContext.length + 1);
-	md.rContext.length = rContext.length;
+	md->rContext.string = md->rConStr;
+	memcpy(md->rConStr, rContext.string, rContext.length + 1);
+	md->rContext.length = rContext.length;
+	// Load root menu and set menu entities
+	md->me = md->root = MenuLoad(root, NULL);
 	// Set root and curren menu entries
-	md.me[0] = root;
+	md->me = root;
 	// Set context string
 	strncpy(md.rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
 	md.rContext = rContext;
