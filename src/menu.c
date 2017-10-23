@@ -595,6 +595,9 @@ void MenuDraw(uint8_t direction) {
 
 MenuEntity *MenuLoad(const MenuEntry *menu) {
 	MenuEntity *tmp;
+	int i;
+	size_t len;
+
 	// Allocate  for the new menu entry
 	tmp = MpAlloc(sizeof(MenuEntity));
 	memset(tmp, 0, sizeof(MenuEntity));
@@ -602,7 +605,30 @@ MenuEntity *MenuLoad(const MenuEntry *menu) {
 	md->me = tmp;
 	// Copy the menu entry
 	md->mEntry = *menu;
-	return NULL;
+	// Alloc and copy entry data depending on menu type
+	switch (md->mEntry.type) {
+		case MENU_TYPE_ITEM:
+			// Copy items
+			len = md->mEntry.mItem.nItems * sizeof(MenuItem);
+			md->mEntry.mItem.items = MpAlloc(len);
+			memcpy(md->mEntry.mItem.items, menu->mItem.items, len);
+			// Copy menu strings when needed
+			if (md->mEntry.title.
+			break;
+
+		case MENU_TYPE_OSK_QWERTY:
+			break;
+
+		case MENU_TYPE_OSK_NUMERIC:
+			break;
+
+		case MENU_TYPE_OSK_IPV4:
+			break;
+
+		default:
+			break;
+	}
+	return tmp;
 }
 
 /************************************************************************//**
@@ -626,9 +652,8 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	memcpy(md->rConStr, rContext.string, rContext.length + 1);
 	md->rContext.length = rContext.length;
 	// Load root menu and set menu entities
-	md->me = md->root = MenuLoad(root, NULL);
-	// Set root and curren menu entries
-	md->me = root;
+	md->me = NULL;
+	md->me = md->root = MenuLoad(root);
 	// Set context string
 	strncpy(md.rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
 	md.rContext = rContext;
