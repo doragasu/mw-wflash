@@ -178,7 +178,7 @@ typedef struct {
 /// in a single MenuItem array.
 typedef struct {
 	MenuString caption;			///< Menu item text (editable)
-	const void *next;			///< Next MenuEntry (if item accepted)
+	void *next;					///< Next MenuEntry (if item accepted)
 	MenuCb cb;					///< Callback to run if option chosen
 	union {
 		struct {
@@ -193,36 +193,36 @@ typedef struct {
 
 /// Private items for item list Menu Entres.
 typedef struct {
-	const MenuItem *item;		///< Pointer to Menu Item array
-	const int8_t nItems;		///< Number of menu entries
-	const uint8_t spacing;		///< Line spacing between options
-	const uint8_t entPerPage;	///< Maximum entries per page
-	const uint8_t pages;		///< Number of entry pages minus 1
-	const struct {
-		MenuHAlign align:2;		///< Alignment for items
+	MenuItem *item;			///< Pointer to Menu Item array
+	int8_t nItems;			///< Number of menu entries
+	uint8_t spacing;		///< Line spacing between options
+	uint8_t entPerPage;		///< Maximum entries per page
+	uint8_t pages;			///< Number of entry pages minus 1
+	struct {
+		MenuHAlign align:2;	///< Alignment for items
 	};
 } MenuItemEntry;
 
 
 /// Private items for On Screen Keyboard Menu Entries
 typedef struct {
-	MenuString fieldName;		///< Field name
-	MenuString fieldData;		///< Editable field data
-	uint8_t maxLen;				///< Maximum length of fieldData string
-	uint8_t lineLen;			///< Maximum line length
+	MenuString fieldName;	///< Field name
+	MenuString fieldData;	///< Editable field data
+	uint8_t maxLen;			///< Maximum length of fieldData string
+	uint8_t lineLen;		///< Maximum line length
 } MenuOskEntry;
 
 /// Menu entry, supporting the different menu entry types that can be used.
 /// Entries are defined as const to be on ROM, and copied to a MenuEntity
 /// structure before displaying the menu entry data.
 typedef struct {
-	const uint8_t type;			///< Menu type
-	const uint8_t margin;		///< Margin
-	const MenuString title;		///< Menu title
-	const MenuString lContext;	///< Left context string (bottom line)
-	const MenuCb entry;			///< Callback for menu entry
-	const MenuCb exit;			///< Callback for menu exit
-	const MenuCb cBut;			///< C button callback
+	uint8_t type;				///< Menu type
+	uint8_t margin;				///< Margin
+	MenuString title;			///< Menu title
+	MenuString lContext;		///< Left context string (bottom line)
+	MenuCb entry;				///< Callback for menu entry
+	MenuCb exit;				///< Callback for menu exit
+	MenuCb cBut;				///< C button callback
 	union {
 		MenuItemEntry mItem;	///< Item list entries
 		MenuOskEntry keyb;		///< On screen keyboard entries
@@ -248,9 +248,9 @@ typedef struct {
 /// Dynamic data structure needed to display the menus
 typedef struct {
 	/// Menu entry for the root menu
-	const MenuEntity *root;
+	MenuEntity *root;
 	/// Menu entry for the currently displayed menu
-	const MenuEntity *me;
+	MenuEntity *me;
 	/// Reserve space for the rContext string
 	char rConStr[MENU_LINE_CHARS_TOTAL];
 	MenuString rContext;		///< Right context string (bottom line)

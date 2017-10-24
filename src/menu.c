@@ -82,9 +82,9 @@ const uint8_t scrDelta[] = {
 
 /// Returns the number of items on current page
 #define MenuNumPageItems()	\
-		(md.selPage[md.level] == md.me[md.level]->item.pages? \
-		md.me[md.level]->item.nItems - (md.me[md.level]->item.entPerPage * \
-		md.me[md.level]->item.pages):md.me[md.level]->item.entPerPage)
+		(md->me->selPage == md->me->mEntry.mItem.pages? \
+		md->me->mEntry.mItem.nItems - (md->me->mEntry.mItem.entPerPage * \
+		md->me->mEntry.mItem.pages):md->me->mEntry.mItem.entPerPage)
 
 /// Alphanumeric menu definition
 static const char qwerty[2 * MENU_OSK_QWERTY_ROWS][MENU_OSK_QWERTY_COLS] = {{
@@ -148,12 +148,12 @@ typedef enum {
 } MenuOskSpecialFuncs;
 
 /// Special function key labels
-const char qwertyFunc[MENU_OSK_NUM_FUNCS][4] = {
+static const char qwertyFunc[MENU_OSK_NUM_FUNCS][4] = {
 	"BACK", "DEL", " <-", " ->", "DONE"
 };
 
 /// Space key label
-const char qwertySpace[] = "[SPACE]";
+static const char qwertySpace[] = "[SPACE]";
 
 /// Number of columns of the IP OSK menu
 #define MENU_OSK_IP_COLS	3
@@ -191,7 +191,7 @@ static Menu *md;
  * \param[in] len    Length in characters of errStr string.
  ****************************************************************************/
 void MenuPanic(char errStr[], uint8_t len) {
-	const MenuString error = {errStr, len};
+	const MenuString error = {.string = errStr, .length = len, .flags = 0};
 
 	// Set background to red and write panic message
 	VdpRamWrite(VDP_CRAM_WR, 0x00, VDP_COLOR_RED);
@@ -256,17 +256,17 @@ void MenuClearLines(uint8_t first, uint8_t last, uint8_t offset) {
  ****************************************************************************/
 void MenuStatStrSet(MenuString statStr) {
 	// Current menu entry
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
-	memcpy(md.rContext.string, statStr.string, statStr.length + 1);
-	md.rContext.length = statStr.length;
+	memcpy(md->rContext.string, statStr.string, statStr.length + 1);
+	md->rContext.length = statStr.length;
 	// Redraw context string
 	MenuClearLines(MENU_LINE_CONTEXT, MENU_LINE_CONTEXT, 0);
 	VdpDrawText(VDP_PLANEA_ADDR, m->margin, MENU_LINE_CONTEXT,
 			MENU_COLOR_CONTEXT_L, m->lContext.length, m->lContext.string);
-	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(md.rContext, MENU_H_ALIGN_RIGHT,
+	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(md->rContext, MENU_H_ALIGN_RIGHT,
 			m->margin), MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R,
-			statStr.length, md.rContext.string);
+			statStr.length, md->rContext.string);
 }
 
 /************************************************************************//**
@@ -276,7 +276,7 @@ void MenuStatStrSet(MenuString statStr) {
  ****************************************************************************/
 void MenuDrawItemPage(uint8_t chrOff) {
 	// Current menu
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 	// Loop control
 	uint8_t i;
 	// Line to draw text in
@@ -293,34 +293,34 @@ void MenuDrawItemPage(uint8_t chrOff) {
 	// Get the number of items to draw on current page
 	pageItems = MenuNumPageItems();
 	// Keep selected item unless it points to a non existing option
-	if (md.selItem[md.level] >= pageItems)
-		md.selItem[md.level] =  pageItems - 1;
+	if (md->me->selItem >= pageItems)
+		md->me->selItem =  pageItems - 1;
 	// Draw menu items in page
-	for (i = 0, line = MENU_LINE_ITEM_FIRST, item = md.selPage[md.level]
-			* m->item.entPerPage; i < pageItems; i++,
-			line += m->item.spacing, item++) {
-		if (i == md.selItem[md.level]) {
+	for (i = 0, line = MENU_LINE_ITEM_FIRST, item = md->me->selPage *
+			m->mItem.entPerPage; i < pageItems; i++,
+			line += m->mItem.spacing, item++) {
+		if (i == md->me->selItem) {
 			color = MENU_COLOR_ITEM_SEL;
 		} else {
-			color = m->item.item[item].alt_color?MENU_COLOR_ITEM_ALT:
+			color = m->mItem.item[item].alt_color?MENU_COLOR_ITEM_ALT:
 				MENU_COLOR_ITEM;
 		}
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
-			m->item.item[item].caption, m->item.align, m->margin), line,
-			color, m->item.item[item].caption.length,
-			m->item.item[item].caption.string);
+			m->mItem.item[item].caption, m->mItem.align, m->margin), line,
+			color, m->mItem.item[item].caption.length,
+			m->mItem.item[item].caption.string);
 	}
 	// Draw page number and total, if number of pages greater than 1
-	if (m->item.pages > 0) {
+	if (m->mItem.pages > 0) {
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
 			MENU_DEF_RIGHT_MARGIN - 1, MENU_LINE_PAGER, MENU_COLOR_PAGER,
-			m->item.pages + 1);
+			m->mItem.pages + 1);
 		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
 			MENU_DEF_RIGHT_MARGIN - 2, MENU_LINE_PAGER, MENU_COLOR_PAGER, 1,
 			"/");
 		VdpDrawDec(VDP_PLANEA_ADDR, chrOff + MENU_LINE_CHARS_TOTAL - 
 			MENU_DEF_RIGHT_MARGIN - 3, MENU_LINE_PAGER, MENU_COLOR_PAGER,
-			md.selPage[md.level] + 1);
+			md->me->selPage + 1);
 	}
 }
 
@@ -366,31 +366,31 @@ void MenuXScroll(uint8_t direction) {
  ****************************************************************************/
 void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 	// Current menu entry
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 	char c;
 
 	switch (m->type) {
 		case MENU_TYPE_OSK_QWERTY:
 			// Check if we are in a special key
-			if (md.coord.col == MENU_OSK_QWERTY_COLS) c = 0x7F;
-			else if (md.coord.row == MENU_OSK_QWERTY_ROWS) c = ' ';
+			if (md->coord.col == MENU_OSK_QWERTY_COLS) c = 0x7F;
+			else if (md->coord.row == MENU_OSK_QWERTY_ROWS) c = ' ';
 			else
-				c = qwerty[md.coord.caps * 4 + md.coord.row][md.coord.col];
+				c = qwerty[md->coord.caps * 4 + md->coord.row][md->coord.col];
 			break;
 			
 		case MENU_TYPE_OSK_NUMERIC:
-			if (md.coord.col == MENU_OSK_NUM_COLS) c = 0x7F;
-			else c = num[md.coord.row][md.coord.col];
+			if (md->coord.col == MENU_OSK_NUM_COLS) c = 0x7F;
+			else c = num[md->coord.row][md->coord.col];
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
-			if (md.coord.col == MENU_OSK_IP_COLS) c = 0x7F;
-			else c = ip[md.coord.row][md.coord.col];
+			if (md->coord.col == MENU_OSK_IP_COLS) c = 0x7F;
+			else c = ip[md->coord.row][md->coord.col];
 			break;
 	}
 	// Draw the selected key with corresponding color
 	VdpDrawText(VDP_PLANEA_ADDR, offset + ((MENU_LINE_CHARS_TOTAL -
-			m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
+			m->keyb.maxLen)>>1) + md->me->selItem, MENU_LINE_OSK_DATA,
 			textColor, 1, &c);
 }
 
@@ -403,7 +403,7 @@ void MenuDrawOskFunc(uint16_t offset) {
 	uint8_t i, color, cols;
 
 	cols = 0;
-	switch(md.me[md.level]->type) {
+	switch(md->me->mEntry.type) {
 		case MENU_TYPE_OSK_QWERTY:
 			cols = MENU_OSK_QWERTY_COLS;
 			break;
@@ -417,7 +417,7 @@ void MenuDrawOskFunc(uint16_t offset) {
 			break;
 	}
 	for (i = 0; i < MENU_OSK_NUM_FUNCS; i++) {
-		if (md.coord.col == cols && md.coord.row == i)
+		if (md->coord.col == cols && md->coord.row == i)
 			color = MENU_COLOR_ITEM_SEL;
 		else color = MENU_COLOR_ITEM;
 		VdpDrawText(VDP_PLANEA_ADDR, offset + 2 * MENU_OSK_QWERTY_COLS +
@@ -436,7 +436,7 @@ void MenuDrawOsk(uint16_t offset) {
 	uint8_t color;
 
 	// Current menu entry
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
 	// Draw the field name to edit
 	VdpDrawText(VDP_PLANEA_ADDR, offset + m->margin, MENU_LINE_OSK_FIELD,
@@ -447,7 +447,7 @@ void MenuDrawOsk(uint16_t offset) {
 	// size of the data string.
 	VdpDrawText(VDP_PLANEA_ADDR, offset + ((MENU_LINE_CHARS_TOTAL -
 			m->keyb.maxLen)>>1), MENU_LINE_OSK_DATA, MENU_COLOR_OSK_DATA,
-			md.str.length, md.str.string);
+			md->str.length, md->str.string);
 	// Draw the selected key with corresponding color
 	MenuOskDrawEditKey(offset, MENU_COLOR_ITEM_SEL);
 
@@ -456,17 +456,17 @@ void MenuDrawOsk(uint16_t offset) {
 		case MENU_TYPE_OSK_QWERTY:	// Draw QWERTY OSK
 			for (i = 0; i < MENU_OSK_QWERTY_ROWS; i++) {
 				for (j = 0; j < MENU_OSK_QWERTY_COLS; j++) {
-					if (md.coord.row == i && md.coord.col == j)
+					if (md->coord.row == i && md->coord.col == j)
 						color = MENU_COLOR_ITEM_SEL;
 					else color = MENU_COLOR_ITEM;
 					VdpDrawText(VDP_PLANEA_ADDR, offset - 3 +
 						((MENU_LINE_CHARS_TOTAL - 2*MENU_OSK_QWERTY_COLS)>>1) +
 						2 * j, MENU_LINE_OSK_KEYS + 2 * i, color, 1,
-						(char*)&qwerty[i + md.coord.caps * 4][j]);
+						(char*)&qwerty[i + md->coord.caps * 4][j]);
 				}
 			}
 			// Draw space bar
-			if (md.coord.row == MENU_OSK_QWERTY_ROWS && md.coord.col != 
+			if (md->coord.row == MENU_OSK_QWERTY_ROWS && md->coord.col != 
 					MENU_OSK_QWERTY_COLS)
 					color = MENU_COLOR_ITEM_SEL;
 			else color = MENU_COLOR_ITEM;
@@ -483,7 +483,7 @@ void MenuDrawOsk(uint16_t offset) {
 		case MENU_TYPE_OSK_NUMERIC:	// Draw numeric OSK
 			for (i = 0; i < MENU_OSK_NUM_ROWS; i++) {
 				for (j = 0; j < MENU_OSK_NUM_COLS; j++) {
-					if (md.coord.row == i && md.coord.col == j)
+					if (md->coord.row == i && md->coord.col == j)
 						color = MENU_COLOR_ITEM_SEL;
 					else color = MENU_COLOR_ITEM;
 					VdpDrawText(VDP_PLANEA_ADDR, offset - 3 +
@@ -499,7 +499,7 @@ void MenuDrawOsk(uint16_t offset) {
 		case MENU_TYPE_OSK_IPV4:	// Draw IPv4 OSK
 			for (i = 0; i < MENU_OSK_IP_ROWS; i++) {
 				for (j = 0; j < MENU_OSK_IP_COLS; j++) {
-					if (md.coord.row == i && md.coord.col == j)
+					if (md->coord.row == i && md->coord.col == j)
 						color = MENU_COLOR_ITEM_SEL;
 					else color = MENU_COLOR_ITEM;
 					VdpDrawText(VDP_PLANEA_ADDR, offset - 3 +
@@ -530,7 +530,7 @@ void MenuDrawOsk(uint16_t offset) {
  ****************************************************************************/
 void MenuDraw(uint8_t direction) {
 	// Current menu entry
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 	uint16_t offset;
 
 	offset = direction == MENU_SCROLL_DIR_LEFT?MENU_SEPARATION_CHR:
@@ -543,10 +543,10 @@ void MenuDraw(uint8_t direction) {
 	VdpDrawText(VDP_PLANEA_ADDR, offset + MENU_DEF_LEFT_MARGIN,
 			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_L, m->lContext.length,
 			m->lContext.string);
-	VdpDrawText(VDP_PLANEA_ADDR, offset + MenuStrAlign(md.rContext,
+	VdpDrawText(VDP_PLANEA_ADDR, offset + MenuStrAlign(md->rContext,
 			MENU_H_ALIGN_RIGHT, MENU_DEF_RIGHT_MARGIN),
-			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R, md.rContext.length,
-			md.rContext.string);
+			MENU_LINE_CONTEXT, MENU_COLOR_CONTEXT_R, md->rContext.length,
+			md->rContext.string);
 	// Depending on menu type, draw menu page contents
 	switch (m->type) {
 		case MENU_TYPE_ITEM:
@@ -556,32 +556,32 @@ void MenuDraw(uint8_t direction) {
 
 		case MENU_TYPE_OSK_QWERTY:
 			// Copy string, place cursor at the end, and enter menu
-			MenuStringCopy(&md.str, &m->keyb.fieldData);
-			md.selItem[md.level] = md.str.length;
+			MenuStringCopy(&md->str, &m->keyb.fieldData);
+			md->me->selItem = md->str.length;
 			// Select the "DONE" item
-			md.coord.caps = 0;
-			md.coord.row = MENU_OSK_QWERTY_ROWS;
-			md.coord.col = MENU_OSK_QWERTY_COLS;
+			md->coord.caps = 0;
+			md->coord.row = MENU_OSK_QWERTY_ROWS;
+			md->coord.col = MENU_OSK_QWERTY_COLS;
 			MenuDrawOsk(offset);
 			break;
 
 		case MENU_TYPE_OSK_NUMERIC:
-			MenuStringCopy(&md.str, &m->keyb.fieldData);
-			md.selItem[md.level] = md.str.length;
+			MenuStringCopy(&md->str, &m->keyb.fieldData);
+			md->me->selItem = md->str.length;
 			// Select the "DONE" item
-			md.coord.caps = 0;
-			md.coord.row = MENU_OSK_NUM_ROWS;
-			md.coord.col = MENU_OSK_NUM_COLS;
+			md->coord.caps = 0;
+			md->coord.row = MENU_OSK_NUM_ROWS;
+			md->coord.col = MENU_OSK_NUM_COLS;
 			MenuDrawOsk(offset);
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
-			MenuStringCopy(&md.str, &m->keyb.fieldData);
-			md.selItem[md.level] = md.str.length;
+			MenuStringCopy(&md->str, &m->keyb.fieldData);
+			md->me->selItem = md->str.length;
 			// Select the "DONE" item
-			md.coord.caps = 0;
-			md.coord.row = MENU_OSK_IP_ROWS;
-			md.coord.col = MENU_OSK_IP_COLS;
+			md->coord.caps = 0;
+			md->coord.row = MENU_OSK_IP_ROWS;
+			md->coord.col = MENU_OSK_IP_COLS;
 			MenuDrawOsk(offset);
 		default:
 			break;
@@ -593,10 +593,44 @@ void MenuDraw(uint8_t direction) {
 	MenuClearLines(0, MENU_NLINES_TOTAL, offset);
 }
 
+/// Requires the string metadata to be previously copied, only loads the
+/// string contents when necessary.
+static void MenuStringLoad(MenuString *dst, const MenuString *org) {
+	// Only load editable strings (const strings can be kept at ROM)
+	if (org->editable) {
+		// Flags and length were already loaded
+//		dst->flags = org->flags;
+//		dst->length = org->length;
+		// Allocate memory for the string buffer
+		dst->string = MpAlloc(org->length);
+		// Copy the string data unless empty
+		memset(dst->string, 0, org->length);
+		if (!org->empty) memcpy(dst->string, org->string, org->length);
+	}
+}
+
+/// Loads menu items into a loaded MenuEntity
+static void MenuItemsLoad(MenuEntity *me, MenuEntry *menu) {
+	size_t len;
+	int i;
+
+	// Copy all items (excepting MenuString contents)
+	len = me->mEntry.mItem.nItems * sizeof(MenuItem);
+	me->mEntry.mItem.item = MpAlloc(len);
+	memcpy(me->mEntry.mItem.item, menu->mItem.item, len);
+	// Load MenuStrings
+	MenuStringLoad(&me->mEntry.title, &menu->title);
+	MenuStringLoad(&me->mEntry.lContext, &menu->lContext);
+	
+	for (i = 0; i < me->mEntry.mItem.nItems; i++) {
+		MenuStringLoad(&me->mEntry.mItem.item[i].caption,
+				&menu->mItem.item[i].caption);
+	}
+}
+
 MenuEntity *MenuLoad(const MenuEntry *menu) {
 	MenuEntity *tmp;
 	int i;
-	size_t len;
 
 	// Allocate  for the new menu entry
 	tmp = MpAlloc(sizeof(MenuEntity));
@@ -604,28 +638,20 @@ MenuEntity *MenuLoad(const MenuEntry *menu) {
 	tmp->prev = md->me;
 	md->me = tmp;
 	// Copy the menu entry
-	md->mEntry = *menu;
+	md->me->mEntry = *menu;
 	// Alloc and copy entry data depending on menu type
-	switch (md->mEntry.type) {
+	switch (md->me->mEntry.type) {
 		case MENU_TYPE_ITEM:
 			// Copy items
-			len = md->mEntry.mItem.nItems * sizeof(MenuItem);
-			md->mEntry.mItem.items = MpAlloc(len);
-			memcpy(md->mEntry.mItem.items, menu->mItem.items, len);
-			// Copy menu strings when needed
-			if (md->mEntry.title.
+			MenuItemsLoad(md->me, menu);
 			break;
 
 		case MENU_TYPE_OSK_QWERTY:
-			break;
-
 		case MENU_TYPE_OSK_NUMERIC:
-			break;
-
 		case MENU_TYPE_OSK_IPV4:
-			break;
-
-		default:
+			// Load MenuStrings
+			MenuStringLoad(&md->mEntry.keyb.fieldName, menu->keyb.fieldName);
+			MenuStringLoad(&md->mEntry.keyb.fieldData, menu->keyb.fieldData);
 			break;
 	}
 	return tmp;
@@ -645,6 +671,7 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	MpInit();
 	// Allocate memory for the global MenuData structure
 	md = MpAlloc(sizeof(Menu);
+	/// \todo Allocate memory for the required configuration structures
 	// Zero module data
 	memset((void*)md, 0, sizeof(Menu));
 	// Set string to point to string data
