@@ -79,7 +79,7 @@ int MegaWifiInit(void){
 
 /// Global initialization
 void Init(void) {
-	const MenuString str = {"Detecting WiFi...", 17};
+	const MenuString str = MENU_STR("Detecting WiFi...");
 	// Initialize VDP
 	VdpInit();
 	// Initialize gamepad
@@ -110,7 +110,7 @@ int main(void) {
 		pad = GpPressed();
 		// 4. If pad pressed, perform menu related actions. Else check
 		//    connection status.
-		if (~pad) MenuButtonAction(pad);
+		if (0xFF != pad) MenuButtonAction(pad);
 		else {
 			stat = MwSysStatGet();
 			// Find if connection has just been established

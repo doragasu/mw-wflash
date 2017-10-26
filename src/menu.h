@@ -149,8 +149,14 @@ typedef enum {
 	MENU_TYPE_OSK_IPV4			///< IPv4 address entry keyboard
 } MenuType;
 
-/// Macro to help filling MenuString structures
-#define MENU_STR(string)	{(char*)(string), sizeof(string) - 1}
+/// Macro to help filling MenuString structures. The string is set as not
+/// editable, not empty.
+#define MENU_STR(str)	{				\
+	.string = (char*)(str),				\
+	.length = sizeof(str) - 1,			\
+	.editable = FALSE,					\
+	.empty = FALSE,						\
+}
 
 /// String definition for menus, including its properties. Other than its
 /// length, MenuStrings can have several properties:
@@ -168,7 +174,6 @@ typedef struct {
 		struct {
 			uint8_t editable:1;	// String can be edited if TRUE
 			uint8_t empty:1;	// String is empty if TRUE
-			uint8_t reserved:6;	// Do not use (set to 0)
 		};
 	};
 } MenuString;
@@ -248,7 +253,7 @@ typedef struct {
 /// Dynamic data structure needed to display the menus
 typedef struct {
 	/// Menu entry for the root menu
-	MenuEntity *root;
+//	MenuEntity *root;
 	/// Menu entry for the currently displayed menu
 	MenuEntity *me;
 	/// Reserve space for the rContext string

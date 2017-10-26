@@ -261,7 +261,7 @@ int SfCycle(void) {
 					case -1: // Error
 						VdpDrawText(VDP_PLANEA_ADDR, 1, 4, VDP_TXT_COL_MAGENTA,
 								SF_LINE_MAXCHARS, "ERROR!");
-	
+						// fallthrough
 					case 1:	 // Finished
 						d.s = WF_IDLE;
 						VdpLineClear(VDP_PLANEA_ADDR, 3);

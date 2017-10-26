@@ -64,10 +64,11 @@ char *Str2UnsByte(char strIn[], uint8_t *result) {
 				*result = ((*strIn) - '0') * 100;
 				strIn++;
 			}
-
+			// fallthrough
 		case 2:
 			*result += ((*strIn) - '0') * 10;
 			strIn++;
+			// fallthrough
 		case 1:
 			*result += (*strIn) - '0';
 			strIn++;

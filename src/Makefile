@@ -13,8 +13,8 @@ LD      = ld
 OBJCOPY = objcopy
 MDMA   ?= $(HOME)/src/github/mw-mdma-cli/mdma
 PREFIX ?= /opt/toolchains/gen/m68k-elf/bin/m68k-elf-
-#EMU ?= wine $(HOME)/src/gendev/gens/gens.exe
-EMU ?= gens
+EMU ?= wine $(HOME)/src/gendev/gens/gens.exe
+#EMU ?= gens
 OBJDIR  = tmp
 
 CSRCS = $(wildcard *.c) $(wildcard mw/*.c)

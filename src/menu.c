@@ -77,8 +77,8 @@ const uint8_t scrDelta[] = {
 /// Obtains the number of scroll steps for the menu scroll function
 #define MENU_SCROLL_NSTEPS	(sizeof(scrDelta))
 
-#define MenuGetCurrentItemNum()		(md.selItem[md.level] + \
-		md.selPage[md.level] * md.me[md.level]->item.entPerPage)
+#define MenuGetCurrentItemNum()		(md->me->selItem + \
+		md->me->selPage * md->me->mEntry.mItem.entPerPage)
 
 /// Returns the number of items on current page
 #define MenuNumPageItems()	\
@@ -610,30 +610,29 @@ static void MenuStringLoad(MenuString *dst, const MenuString *org) {
 }
 
 /// Loads menu items into a loaded MenuEntity
-static void MenuItemsLoad(MenuEntity *me, MenuEntry *menu) {
+static void MenuItemsLoad(MenuEntry *dst, const MenuEntry *menu) {
 	size_t len;
 	int i;
 
 	// Copy all items (excepting MenuString contents)
-	len = me->mEntry.mItem.nItems * sizeof(MenuItem);
-	me->mEntry.mItem.item = MpAlloc(len);
-	memcpy(me->mEntry.mItem.item, menu->mItem.item, len);
+	len = dst->mItem.nItems * sizeof(MenuItem);
+	dst->mItem.item = MpAlloc(len);
+	memcpy(dst->mItem.item, menu->mItem.item, len);
 	// Load MenuStrings
-	MenuStringLoad(&me->mEntry.title, &menu->title);
-	MenuStringLoad(&me->mEntry.lContext, &menu->lContext);
+	MenuStringLoad(&dst->title, &menu->title);
+	MenuStringLoad(&dst->lContext, &menu->lContext);
 	
-	for (i = 0; i < me->mEntry.mItem.nItems; i++) {
-		MenuStringLoad(&me->mEntry.mItem.item[i].caption,
+	for (i = 0; i < dst->mItem.nItems; i++) {
+		MenuStringLoad(&dst->mItem.item[i].caption,
 				&menu->mItem.item[i].caption);
 	}
 }
 
 MenuEntity *MenuLoad(const MenuEntry *menu) {
 	MenuEntity *tmp;
-	int i;
 
 	// Allocate  for the new menu entry
-	tmp = MpAlloc(sizeof(MenuEntity));
+	if (!(tmp = MpAlloc(sizeof(MenuEntity)))) return NULL;
 	memset(tmp, 0, sizeof(MenuEntity));
 	tmp->prev = md->me;
 	md->me = tmp;
@@ -643,18 +642,28 @@ MenuEntity *MenuLoad(const MenuEntry *menu) {
 	switch (md->me->mEntry.type) {
 		case MENU_TYPE_ITEM:
 			// Copy items
-			MenuItemsLoad(md->me, menu);
+			MenuItemsLoad(&md->me->mEntry, menu);
 			break;
 
 		case MENU_TYPE_OSK_QWERTY:
 		case MENU_TYPE_OSK_NUMERIC:
 		case MENU_TYPE_OSK_IPV4:
 			// Load MenuStrings
-			MenuStringLoad(&md->mEntry.keyb.fieldName, menu->keyb.fieldName);
-			MenuStringLoad(&md->mEntry.keyb.fieldData, menu->keyb.fieldData);
+			MenuStringLoad(&md->me->mEntry.keyb.fieldName,
+						   &menu->keyb.fieldName);
+			MenuStringLoad(&md->me->mEntry.keyb.fieldData,
+						   &menu->keyb.fieldData);
 			break;
 	}
 	return tmp;
+}
+
+void MenuUnload(void) {
+	MenuEntity *tmp;
+
+	tmp = md->me;
+	md->me = md->me->prev;
+	MpFreeTo(tmp);
 }
 
 /************************************************************************//**
@@ -670,8 +679,9 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	// Initialize memory pool used for the menus
 	MpInit();
 	// Allocate memory for the global MenuData structure
-	md = MpAlloc(sizeof(Menu);
-	/// \todo Allocate memory for the required configuration structures
+	md = MpAlloc(sizeof(Menu));
+	/// \todo Allocate memory for the required configuration structures,
+	/// and maybe remove strBuf and str from Menu structure
 	// Zero module data
 	memset((void*)md, 0, sizeof(Menu));
 	// Set string to point to string data
@@ -680,13 +690,13 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	md->rContext.length = rContext.length;
 	// Load root menu and set menu entities
 	md->me = NULL;
-	md->me = md->root = MenuLoad(root);
+	MenuLoad(root);
 	// Set context string
-	strncpy(md.rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
-	md.rContext = rContext;
+	strncpy(md->rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
+	md->rContext = rContext;
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, 0);
 	// Initialize temp string
-	md.str.string = md.strBuf;
+	md->str.string = md->strBuf;
 
 	// Draw root menu
 	MenuDraw(MENU_SCROLL_DIR_LEFT);
@@ -696,17 +706,17 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
  * Advances page number to the next one (but does not draw the page).
  ****************************************************************************/
 static inline void MenuNextPage(void) {
-	md.selPage[md.level]++;
-	if (md.selPage[md.level] > md.me[md.level]->item.pages)
-		md.selPage[md.level] = 0;
+	md->me->selPage++;
+	if (md->me->selPage > md->me->mEntry.mItem.pages)
+		md->me->selPage = 0;
 }
 
 /************************************************************************//**
  * Sets page number to the previous one (but does not draw the page).
  ****************************************************************************/
 static inline void MenuPrevPage(void) {
-	md.selPage[md.level] = md.selPage[md.level]?md.selPage[md.level] - 1:
-		md.me[md.level]->item.pages;
+	md->me->selPage = md->me->selPage?md->me->selPage - 1:
+		md->me->mEntry.mItem.pages;
 }
 
 /************************************************************************//**
@@ -716,14 +726,14 @@ static inline void MenuPrevPage(void) {
  ****************************************************************************/
 static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 	uint8_t line, item;
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
-	line = MENU_LINE_ITEM_FIRST + md.selItem[md.level] * m->item.spacing;
-	item = md.selItem[md.level] + md.selPage[md.level] * m->item.entPerPage;
-	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(m->item.item[item].caption,
-			m->item.align, m->margin), line, txtColor,
-			m->item.item[item].caption.length,
-			m->item.item[item].caption.string);
+	line = MENU_LINE_ITEM_FIRST + md->me->selItem * m->mItem.spacing;
+	item = md->me->selItem + md->me->selPage * m->mItem.entPerPage;
+	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(m->mItem.item[item].caption,
+			m->mItem.align, m->margin), line, txtColor,
+			m->mItem.item[item].caption.length,
+			m->mItem.item[item].caption.string);
 }
 
 /************************************************************************//**
@@ -733,53 +743,52 @@ static inline void MenuDrawCurrentItem(uint8_t txtColor) {
  * \param[in] input Input key changes.
  ****************************************************************************/
 void MenuItemAction(uint8_t input) {
-	uint8_t tmp, i;
-	const MenuEntry *m = md.me[md.level];
+	uint16_t tmp, i;
+	const MenuEntry *m = &md->me->mEntry;
 
 	// Parse buttons before movement
 	if (input & GP_A_MASK) {
 		// If defined run callback, and perform item actions if authorized
 		tmp = MenuGetCurrentItemNum();
-		if ((m->item.item[tmp].cb) && (!m->item.item[tmp].cb(&md))) return;
+		if ((m->mItem.item[tmp].cb) && (!m->mItem.item[tmp].cb(&md))) return;
 		// Accept selected menu option
-		if (m->item.item[tmp].next) {
+		if (m->mItem.item[tmp].next) {
 			// Call exit callback before exiting menu
 			if (m->exit) m->exit(&md);
-			md.me[md.level + 1] = m->item.item[tmp].next;
-			// Level up!
-			if (md.level < MENU_NLEVELS) md.level++;
-			else MenuPanic("MENU LEVELS EXHAUSTED!", 22);
+			// Load next menu:
+			if (!MenuLoad(m->mItem.item[tmp].next))
+				MenuPanic("MENU LEVELS EXHAUSTED!", 22);
 			// Call menu entry callback
-			if (md.me[md.level]->entry) md.me[md.level]->entry(&md);
+			if (md->me->mEntry.entry) md->me->mEntry.entry(&md);
 			// Select page and item
-			for (i = 0; !md.me[md.level]->item.item[i].selectable; i++);
-			md.selItem[md.level] = i;
-			md.selPage[md.level] = 0;
+			for (i = 0; !md->me->mEntry.mItem.item[i].selectable; i++);
+			md->me->selItem = i;
+			md->me->selPage = 0;
 			// Draw menu
 			MenuDraw(MENU_SCROLL_DIR_LEFT);
 		}
 	} else if (input & GP_B_MASK) {
-		// Go back one menu level
-		if (md.level) {
+		// Only unload if we are not at the root menu
+		if (md->me->prev) {
 			// If there is exit callback, execute it
 			if (m->exit) m->exit(&md);
-			md.level--;
+			MenuUnload();
 			// Call menu entry callback
-			if (md.me[md.level]->entry) md.me[md.level]->entry(&md);
+			if (md->me->mEntry.entry) md->me->mEntry.entry(&md);
 			MenuDraw(MENU_SCROLL_DIR_RIGHT);
 		}
 	} else if (input & GP_UP_MASK) {
 		// Go up a menu item, and continue while item is not selectable
 		do {
-			if (md.selItem[md.level]) {
-				md.selItem[md.level]--;
+			if (md->me->selItem) {
+				md->me->selItem--;
 			} else {
 				// Go to previous page and select last item
 				MenuPrevPage();
-				md.selItem[md.level] = MenuNumPageItems() - 1;
+				md->me->selItem = MenuNumPageItems() - 1;
 			}
-		} while (md.me[md.level]->item.item[md.selPage[md.level] *
-				md.me[md.level]->item.entPerPage + md.selItem[md.level]].
+		} while (md->me->mEntry.mItem.item[md->me->selPage *
+				md->me->mEntry.mItem.entPerPage + md->me->selItem].
 				selectable == 0);
 		MenuDrawItemPage(0);
 	} else if (input & GP_DOWN_MASK) {
@@ -787,15 +796,15 @@ void MenuItemAction(uint8_t input) {
 		tmp = MenuNumPageItems() - 1;
 		// Advance once, and continue advancing while item not selectable
 		do {
-			if (md.selItem[md.level] < tmp) {
-				md.selItem[md.level]++;
+			if (md->me->selItem < tmp) {
+				md->me->selItem++;
 			} else {
 				// Advance to next page, and select first item
 				MenuNextPage();
-				md.selItem[md.level] = 0;
+				md->me->selItem = 0;
 			}
-		} while (md.me[md.level]->item.item[md.selPage[md.level] *
-				md.me[md.level]->item.entPerPage + md.selItem[md.level]].
+		} while (md->me->mEntry.mItem.item[md->me->selPage *
+				md->me->mEntry.mItem.entPerPage + md->me->selItem].
 				selectable == 0);
 		MenuDrawItemPage(0);
 	} else if (input & GP_LEFT_MASK) {
@@ -817,24 +826,24 @@ void MenuItemAction(uint8_t input) {
 void MenuOskQwertyDrawCurrent(uint8_t color) {
 	uint8_t i;
 	// Determine if we have to draw a special key
-	if (md.coord.col >= MENU_OSK_QWERTY_COLS) {
-		i = md.coord.row;
+	if (md->coord.col >= MENU_OSK_QWERTY_COLS) {
+		i = md->coord.row;
 		VdpDrawText(VDP_PLANEA_ADDR, 2 * MENU_OSK_QWERTY_COLS + 6 + 2,
 				MENU_LINE_OSK_KEYS + 2 * i, color, 4,
 				(char*)qwertyFunc[i]);
 	// Determine if we have to draw the space bar
-	} else if (md.coord.row >= MENU_OSK_QWERTY_ROWS) {
+	} else if (md->coord.row >= MENU_OSK_QWERTY_ROWS) {
 		VdpDrawText(VDP_PLANEA_ADDR, ((sizeof(qwertySpace) - 1)) - 3 +
 				((MENU_LINE_CHARS_TOTAL - 2*MENU_OSK_QWERTY_COLS)>>1) ,
 				MENU_LINE_OSK_KEYS + 2 * MENU_OSK_QWERTY_ROWS, color
 				, sizeof(qwertySpace) - 1, (char*)qwertySpace);
 	} else {
 		// Draw normal character
-		i = md.coord.caps * 4 + md.coord.row;
+		i = md->coord.caps * 4 + md->coord.row;
 		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL - 2 *
-				MENU_OSK_QWERTY_COLS)>>1) + 2 * md.coord.col - 3,
-				MENU_LINE_OSK_KEYS + 2 * md.coord.row, color, 1,
-				(char*)&qwerty[i][md.coord.col]);
+				MENU_OSK_QWERTY_COLS)>>1) + 2 * md->coord.col - 3,
+				MENU_LINE_OSK_KEYS + 2 * md->coord.row, color, 1,
+				(char*)&qwerty[i][md->coord.col]);
 	}
 }
 
@@ -845,23 +854,23 @@ void MenuOskQwertyDrawCurrent(uint8_t color) {
  * \param[in] c Character to add to the edited string.
  ****************************************************************************/
 void MenuAddChar(char c) {
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
 	// If we are at the end of the string, and there is room, add the
 	// character. If not at the end of the string, edit current caracter
 	// and advance one position.
-	if (md.selItem[md.level] == md.str.length) {
-		if (md.selItem[md.level] < m->keyb.maxLen) {
+	if (md->me->selItem == md->str.length) {
+		if (md->me->selItem < m->keyb.maxLen) {
 			/// \todo check if last position, and move to "DONE" in that case
 			MenuOskDrawEditKey(0, MENU_COLOR_OSK_DATA);
-			md.str.string[md.selItem[md.level]++] = c;
-			md.str.length = md.selItem[md.level];
+			md->str.string[md->me->selItem++] = c;
+			md->str.length = md->me->selItem;
 			MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 		}
 	} else {
 		// We are in the middle of the string, advance to next character
 		MenuOskDrawEditKey(0, MENU_COLOR_OSK_DATA);
-		md.str.string[md.selItem[md.level]++] = c;
+		md->str.string[md->me->selItem++] = c;
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 	}
 }
@@ -870,30 +879,30 @@ void MenuAddChar(char c) {
  * Deletes previous character edited on the on-screen keyboard.
  ****************************************************************************/
 void MenuOskKeyDel(void) {
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
 	// If currently at origin, key cannot be deleted
-	if (!md.selItem[md.level]) return;
+	if (!md->me->selItem) return;
 	// If we are at the last character, just clear it.
-	if (md.selItem[md.level] == md.str.length) {
+	if (md->me->selItem == md->str.length) {
 		// Clear current character
 		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL -
-				m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
+				m->keyb.maxLen)>>1) + md->me->selItem, MENU_LINE_OSK_DATA,
 				MENU_COLOR_OSK_DATA, 1, " ");
-		md.selItem[md.level]--;
+		md->me->selItem--;
 	} else {
 		// Not at the end of the string, copy all characters from this
 		// position, 1 character to the left
 		// First clear last character
 		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL -
-				m->keyb.maxLen)>>1) + md.str.length - 1, MENU_LINE_OSK_DATA,
+				m->keyb.maxLen)>>1) + md->str.length - 1, MENU_LINE_OSK_DATA,
 				MENU_COLOR_OSK_DATA, 1, " ");
-		strncpy(md.str.string + md.selItem[md.level] - 1, md.str.string +
-				md.selItem[md.level], md.str.length - md.selItem[md.level]);
-		md.str.string[md.str.length] = '\0';
-		md.selItem[md.level]--;
+		strncpy(md->str.string + md->me->selItem - 1, md->str.string +
+				md->me->selItem, md->str.length - md->me->selItem);
+		md->str.string[md->str.length] = '\0';
+		md->me->selItem--;
 	}
-	md.str.length--;
+	md->str.length--;
 	MenuDrawOsk(0);
 }
 
@@ -901,15 +910,16 @@ void MenuOskKeyDel(void) {
  * Commits and end the string edition using an on-screen keyboard.
  ****************************************************************************/
 void MenuOskDone(void) {
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
 	// Add null termination to string
-	md.strBuf[md.str.length] = '\0';	
+	md->strBuf[md->str.length] = '\0';	
 	// If exit callback defined, run it and perform transition if allowed.
 	if ((m->exit) && (!m->exit(&md))) return;
 	// Copy temporal string to menu entry string and scroll back
-	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md.str);
-	md.level--;
+	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md->str);
+	// Free menu resources and go back to the previous menu
+	MenuUnload();
 	MenuDraw(MENU_SCROLL_DIR_RIGHT);
 }
 
@@ -917,15 +927,15 @@ void MenuOskDone(void) {
  * Performs a cursor shift to the left for on-screen keyboards.
  ****************************************************************************/
 void MenuOskEditLeft(void) {
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
 	// If we are at the origin, ignore key
-	if (md.selItem[md.level] == 0) return;
+	if (md->me->selItem == 0) return;
 	// Clear current character
 	VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL -
-			m->keyb.maxLen)>>1) + md.selItem[md.level], MENU_LINE_OSK_DATA,
+			m->keyb.maxLen)>>1) + md->me->selItem, MENU_LINE_OSK_DATA,
 			MENU_COLOR_OSK_DATA, 1, " ");
-	md.selItem[md.level]--;
+	md->me->selItem--;
 	MenuDrawOsk(0);
 }
 
@@ -934,8 +944,8 @@ void MenuOskEditLeft(void) {
  ****************************************************************************/
 void MenuOskEditRight(void) {
 	// If we are at the end, ignore key
-	if (md.selItem[md.level] == md.str.length) return;
-	md.selItem[md.level]++;
+	if (md->me->selItem == md->str.length) return;
+	md->me->selItem++;
 	MenuDrawOsk(0);
 }
 
@@ -945,7 +955,7 @@ void MenuOskEditRight(void) {
 void MenuOskKeyPress(void) {
 	uint8_t cols;
 
-	switch (md.me[md.level]->type) {
+	switch (md->me->mEntry.type) {
 		case MENU_TYPE_OSK_QWERTY:
 			cols = MENU_OSK_QWERTY_COLS;
 			break;
@@ -962,11 +972,12 @@ void MenuOskKeyPress(void) {
 			cols = 0;
 	}
 	// Find if a special key has been pressed
-	if (md.coord.col == cols) {
+	if (md->coord.col == cols) {
 		// Parse special virtual keys
-		switch (md.coord.row) {
+		switch (md->coord.row) {
 			case MENU_OSK_FUNC_CANCEL:
-				md.level--;
+				// Free menu resources and go to the previous menu
+				MenuUnload();
 				MenuDraw(MENU_SCROLL_DIR_RIGHT);
 				break;
 
@@ -989,24 +1000,24 @@ void MenuOskKeyPress(void) {
 		}
 	} else {
 		// Parse normal key depending on keyboard type
-		switch (md.me[md.level]->type) {
+		switch (md->me->mEntry.type) {
 			case MENU_TYPE_OSK_QWERTY:
-			   	if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
+			   	if (md->coord.row == MENU_OSK_QWERTY_ROWS) {
 					// Space pressed
 					MenuAddChar(' ');
 				} else {
 					// Normal character pressed
-					MenuAddChar(qwerty[md.coord.caps * 4 +
-							md.coord.row][md.coord.col]);
+					MenuAddChar(qwerty[md->coord.caps * 4 +
+							md->coord.row][md->coord.col]);
 				}
 				break;
 
 			case MENU_TYPE_OSK_NUMERIC:
-				MenuAddChar(num[md.coord.row][md.coord.col]);
+				MenuAddChar(num[md->coord.row][md->coord.col]);
 				break;
 
 		case MENU_TYPE_OSK_IPV4:
-			MenuAddChar(ip[md.coord.row][md.coord.col]);
+			MenuAddChar(ip[md->coord.row][md->coord.col]);
 			break;
 		} // switch()
 	}
@@ -1025,7 +1036,7 @@ void MenuOskQwertyActions(uint8_t input) {
 		// Delete current character
 		MenuOskKeyDel();
 	} else if (input & GP_C_MASK) {
-		md.coord.caps ^= 1;
+		md->coord.caps ^= 1;
 		MenuDrawOsk(0);
 	} else if (input & GP_START_MASK) {
 		MenuOskDone();
@@ -1033,7 +1044,7 @@ void MenuOskQwertyActions(uint8_t input) {
 		// Draw current key with not selected color
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM);
 		// Decrement row and draw key as selected.
-		md.coord.row = md.coord.row?md.coord.row - 1:MENU_OSK_QWERTY_ROWS;
+		md->coord.row = md->coord.row?md->coord.row - 1:MENU_OSK_QWERTY_ROWS;
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
@@ -1041,8 +1052,8 @@ void MenuOskQwertyActions(uint8_t input) {
 		// Draw current key with not selected color
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM);
 		// Increment row and draw key as selected.
-		md.coord.row = md.coord.row == MENU_OSK_QWERTY_ROWS?0:
-			md.coord.row + 1;
+		md->coord.row = md->coord.row == MENU_OSK_QWERTY_ROWS?0:
+			md->coord.row + 1;
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
@@ -1052,11 +1063,12 @@ void MenuOskQwertyActions(uint8_t input) {
 		// Decrement col and draw key as selected.
 		// Special case: if we are on the last line, change between space
 		// and bottom special key
-		if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
-			md.coord.col = md.coord.col == MENU_OSK_QWERTY_COLS?0:
+		if (md->coord.row == MENU_OSK_QWERTY_ROWS) {
+			md->coord.col = md->coord.col == MENU_OSK_QWERTY_COLS?0:
 				MENU_OSK_QWERTY_COLS;
 		} else {
-			md.coord.col = md.coord.col?md.coord.col - 1:MENU_OSK_QWERTY_COLS;
+			md->coord.col = md->coord.col?md->coord.col - 1:
+				MENU_OSK_QWERTY_COLS;
 		}
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
@@ -1067,12 +1079,12 @@ void MenuOskQwertyActions(uint8_t input) {
 		// Increment row and draw key as selected.
 		// Special case: if we are on the last line, change between space
 		// and bottom special key
-		if (md.coord.row == MENU_OSK_QWERTY_ROWS) {
-			md.coord.col = md.coord.col == MENU_OSK_QWERTY_COLS?0:
+		if (md->coord.row == MENU_OSK_QWERTY_ROWS) {
+			md->coord.col = md->coord.col == MENU_OSK_QWERTY_COLS?0:
 				MENU_OSK_QWERTY_COLS;
 		} else {
-			md.coord.col = md.coord.col == MENU_OSK_QWERTY_COLS?0:
-				md.coord.col + 1;
+			md->coord.col = md->coord.col == MENU_OSK_QWERTY_COLS?0:
+				md->coord.col + 1;
 		}
 		MenuOskQwertyDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
@@ -1089,18 +1101,18 @@ void MenuOskIpDrawCurrent(uint8_t textColor) {
 	uint8_t i;
 
 	// Determine if we have to draw a special key
-	if (md.coord.col >= MENU_OSK_IP_COLS) {
-		i = md.coord.row;
+	if (md->coord.col >= MENU_OSK_IP_COLS) {
+		i = md->coord.row;
 		VdpDrawText(VDP_PLANEA_ADDR, 2 * MENU_OSK_QWERTY_COLS + 6 + 2,
 				MENU_LINE_OSK_KEYS + 2 * i, textColor, 4,
 				(char*)qwertyFunc[i]);
 	} else {
 		// Draw normal character
-		i = md.coord.row;
+		i = md->coord.row;
 		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL - 2 *
-				MENU_OSK_IP_COLS)>>1) + 2 * md.coord.col - 3,
-				MENU_LINE_OSK_KEYS + 2 * md.coord.row, textColor, 1,
-				(char*)&ip[i][md.coord.col]);
+				MENU_OSK_IP_COLS)>>1) + 2 * md->coord.col - 3,
+				MENU_LINE_OSK_KEYS + 2 * md->coord.row, textColor, 1,
+				(char*)&ip[i][md->coord.col]);
 	}
 }
 
@@ -1128,9 +1140,9 @@ void MenuOskIpActions(uint8_t input) {
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
 		// Decrement row and draw key as selected. Note that if we are on last
 		// row, the limit changes
-		limit = md.coord.col < MENU_OSK_IP_COLS?MENU_OSK_IP_ROWS:
+		limit = md->coord.col < MENU_OSK_IP_COLS?MENU_OSK_IP_ROWS:
 			MENU_OSK_NUM_FUNCS;
-			md.coord.row = md.coord.row?md.coord.row - 1:limit - 1;
+			md->coord.row = md->coord.row?md->coord.row - 1:limit - 1;
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
@@ -1138,9 +1150,9 @@ void MenuOskIpActions(uint8_t input) {
 		// Draw current key with not selected color
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
 		// Increment row and draw key as selected.
-		limit = md.coord.col < MENU_OSK_IP_COLS?MENU_OSK_IP_ROWS:
+		limit = md->coord.col < MENU_OSK_IP_COLS?MENU_OSK_IP_ROWS:
 			MENU_OSK_NUM_FUNCS;
-		md.coord.row = md.coord.row < limit - 1?md.coord.row + 1:0;
+		md->coord.row = md->coord.row < limit - 1?md->coord.row + 1:0;
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
@@ -1148,8 +1160,8 @@ void MenuOskIpActions(uint8_t input) {
 		// Draw current key with not selected color
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
 		// Decrement col if not on the last column
-		if (md.coord.row < MENU_OSK_IP_ROWS) {
-			md.coord.col = md.coord.col?md.coord.col - 1:MENU_OSK_IP_COLS;
+		if (md->coord.row < MENU_OSK_IP_ROWS) {
+			md->coord.col = md->coord.col?md->coord.col - 1:MENU_OSK_IP_COLS;
 		}
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
@@ -1158,8 +1170,9 @@ void MenuOskIpActions(uint8_t input) {
 		// Draw current key with not selected color
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM);
 		// Increment row if not on last line
-		if (md.coord.row < MENU_OSK_IP_ROWS) {
-			md.coord.col = md.coord.col == MENU_OSK_IP_COLS?0:md.coord.col + 1;
+		if (md->coord.row < MENU_OSK_IP_ROWS) {
+			md->coord.col = md->coord.col == MENU_OSK_IP_COLS?0:
+				md->coord.col + 1;
 		}
 		MenuOskIpDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
@@ -1176,18 +1189,18 @@ void MenuOskNumDrawCurrent(uint8_t textColor) {
 	uint8_t i;
 
 	// Determine if we have to draw a special key
-	if (md.coord.col >= MENU_OSK_NUM_COLS) {
-		i = md.coord.row;
+	if (md->coord.col >= MENU_OSK_NUM_COLS) {
+		i = md->coord.row;
 		VdpDrawText(VDP_PLANEA_ADDR, 2 * MENU_OSK_QWERTY_COLS + 6 + 2,
 				MENU_LINE_OSK_KEYS + 2 * i, textColor, 4,
 				(char*)qwertyFunc[i]);
 	} else {
 		// Draw normal character
-		i = md.coord.row;
+		i = md->coord.row;
 		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL - 2 *
-				MENU_OSK_NUM_COLS)>>1) + 2 * md.coord.col - 3,
-				MENU_LINE_OSK_KEYS + 2 * md.coord.row, textColor, 1,
-				(char*)&num[i][md.coord.col]);
+				MENU_OSK_NUM_COLS)>>1) + 2 * md->coord.col - 3,
+				MENU_LINE_OSK_KEYS + 2 * md->coord.row, textColor, 1,
+				(char*)&num[i][md->coord.col]);
 	}
 }
 
@@ -1196,7 +1209,7 @@ void MenuOskNumDrawCurrent(uint8_t textColor) {
  *
  * \param[in] input Key press changes, as obtained by GpPressed() function.
  ****************************************************************************/
-void MenuOskNumActions(input) {
+void MenuOskNumActions(uint8_t input) {
 	uint8_t limit;
 
 	if (input & GP_A_MASK) {
@@ -1214,13 +1227,13 @@ void MenuOskNumActions(input) {
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
 		// Decrement row and draw key as selected. Note that if we are on last
 		// row, the limit changes
-		limit = md.coord.col < MENU_OSK_NUM_COLS?MENU_OSK_NUM_ROWS:
+		limit = md->coord.col < MENU_OSK_NUM_COLS?MENU_OSK_NUM_ROWS:
 			MENU_OSK_NUM_FUNCS;
-		if (md.coord.row) {
-			md.coord.row = md.coord.row - 1;
+		if (md->coord.row) {
+			md->coord.row = md->coord.row - 1;
 		} else {
-			md.coord.row = limit - 1;
-			if (md.coord.col < MENU_OSK_NUM_COLS) md.coord.col = 1;
+			md->coord.row = limit - 1;
+			if (md->coord.col < MENU_OSK_NUM_COLS) md->coord.col = 1;
 		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
@@ -1229,16 +1242,16 @@ void MenuOskNumActions(input) {
 		// Draw current key with not selected color
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
 		// Increment row and draw key as selected.
-		if (md.coord.col < MENU_OSK_NUM_COLS) {
-			if (md.coord.row < (MENU_OSK_NUM_ROWS - 1)) {
-				md.coord.row++;
-				if (md.coord.row >= (MENU_OSK_NUM_ROWS - 1))
-					md.coord.col = 1;
-			} else md.coord.row = 0;
+		if (md->coord.col < MENU_OSK_NUM_COLS) {
+			if (md->coord.row < (MENU_OSK_NUM_ROWS - 1)) {
+				md->coord.row++;
+				if (md->coord.row >= (MENU_OSK_NUM_ROWS - 1))
+					md->coord.col = 1;
+			} else md->coord.row = 0;
 		} else {
-			if (md.coord.row < (MENU_OSK_NUM_FUNCS - 1))
-					md.coord.row++;
-			else md.coord.row = 0;
+			if (md->coord.row < (MENU_OSK_NUM_FUNCS - 1))
+					md->coord.row++;
+			else md->coord.row = 0;
 		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
@@ -1247,18 +1260,18 @@ void MenuOskNumActions(input) {
 		// Draw current key with not selected color
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
 		// Decrement col if not on the last column
-		if (md.coord.col < MENU_OSK_NUM_COLS) {
+		if (md->coord.col < MENU_OSK_NUM_COLS) {
 			// We are on numeric keys
-			if ((!md.coord.col) ||
-					(md.coord.row >= (MENU_OSK_NUM_ROWS - 1)))
-				md.coord.col = MENU_OSK_NUM_COLS;
-			else md.coord.col--;
+			if ((!md->coord.col) ||
+					(md->coord.row >= (MENU_OSK_NUM_ROWS - 1)))
+				md->coord.col = MENU_OSK_NUM_COLS;
+			else md->coord.col--;
 		} else {
 			// We are on special keys
-			if (md.coord.row < MENU_OSK_NUM_ROWS) {
-				if (md.coord.row < (MENU_OSK_NUM_ROWS - 1))
-					md.coord.col--;
-				else md.coord.col = 1;
+			if (md->coord.row < MENU_OSK_NUM_ROWS) {
+				if (md->coord.row < (MENU_OSK_NUM_ROWS - 1))
+					md->coord.col--;
+				else md->coord.col = 1;
 			}
 		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
@@ -1268,18 +1281,18 @@ void MenuOskNumActions(input) {
 		// Draw current key with not selected color
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM);
 		// Increment row if not on last line
-		if (md.coord.col < MENU_OSK_NUM_COLS) {
+		if (md->coord.col < MENU_OSK_NUM_COLS) {
 			// We are on numeric keys
-			if ((md.coord.col < MENU_OSK_NUM_COLS) &&
-					(md.coord.row < MENU_OSK_NUM_ROWS - 1))
-				md.coord.col++;
-			else md.coord.col = MENU_OSK_NUM_COLS;
+			if ((md->coord.col < MENU_OSK_NUM_COLS) &&
+					(md->coord.row < MENU_OSK_NUM_ROWS - 1))
+				md->coord.col++;
+			else md->coord.col = MENU_OSK_NUM_COLS;
 		} else {
 			// We are on special keys
-			if (md.coord.row < MENU_OSK_NUM_ROWS) {
-				if (md.coord.row < (MENU_OSK_NUM_ROWS - 1))
-					md.coord.col = 0;
-				else md.coord.col = 1;
+			if (md->coord.row < MENU_OSK_NUM_ROWS) {
+				if (md->coord.row < (MENU_OSK_NUM_ROWS - 1))
+					md->coord.col = 0;
+				else md->coord.col = 1;
 			}
 		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
@@ -1296,7 +1309,7 @@ void MenuOskNumActions(input) {
  * \param[in] input Key press changes, as obtained by GpPressed() function.
  ****************************************************************************/
 void MenuButtonAction(uint8_t input) {
-	const MenuEntry *m = md.me[md.level];
+	const MenuEntry *m = &md->me->mEntry;
 
 	input = ~input;
 	// Parse button presses depending on current menu type
@@ -1401,6 +1414,7 @@ char *MenuNumIsU8(char num[]) {
 				return NULL;
 
 		// If length is 2 or 1 characters, the number fits in 8 bits.
+		// fallthrough
 		case 2:
 		case 1:
 			return num + i;

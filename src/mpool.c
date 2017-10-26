@@ -24,7 +24,7 @@
 
 /// BSS end symbol, defined in linker script. Pool grows from here to the
 /// end of the RAM
-extern uint8_t *_bend;
+extern uint8_t _bend;
 
 /// End of the memory POOL
 #define MP_POOL_END		((void*)0x01000000)
@@ -41,7 +41,7 @@ typedef struct {
 } MpData;
 
 /// Local module data
-static MpData md;
+MpData md;
 
 /************************************************************************//**
  * \brief Pool initialization. 
@@ -50,7 +50,7 @@ static MpData md;
  ****************************************************************************/
 void MpInit(void) {
 	// Ensure the origin is aligned and initialize current position
-	md.floor = MP_ALIGN_COMP(_bend);
+	md.floor = MP_ALIGN_COMP(&_bend);
 	md.pos = md.floor;
 }
 
