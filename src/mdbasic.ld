@@ -61,25 +61,29 @@ SECTIONS
   AT ( ADDR (.text) + _stext )
   {
     *(.data .data.*)
-    _edata = .;
+	. = ALIGN(0x4);
+    _edata = . ;
   } > ram
   _sdata = SIZEOF(.data);
 
   .bss _edata :
   {
-    _sbss = . ;
+    _obss = . ;
     *(.bss .bss.*)
     *(COMMON)
+	. = ALIGN(0x4);
     _ebss = . ;
-  }
+  } > ram
   /* Code and rodata needed for the flash read/write routines */
   .flash _ebss :
-  AT ( ADDR (.text) + _stext + _sdata )
+  AT ( LOADADDR(.data) + _sdata )
   {
+	_oflash = . ;
     *(.flash .flash.*)
     _eflash = .;
   } > ram
   _sflash = SIZEOF(.flash);
+  _lflash = LOADADDR(.flash);
 
   .stab 0 (NOLOAD) :
   {
