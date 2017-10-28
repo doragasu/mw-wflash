@@ -212,26 +212,6 @@ uint8_t FlashWriteBuf(uint32_t addr, uint16_t data[], uint8_t wLen) {
 }
 
 /************************************************************************//**
- * Enables the "Unlock Bypass" status, allowing to issue several commands
- * (like the Unlock Bypass Programm) using less write cycles.
- ****************************************************************************/
-void FlashUnlockBypass(void) {
-	uint8_t i;
-
-	FlashUnlock();
-	FLASH_WRITE_CMD(FLASH_UL_BYP, i);
-}
-
-/************************************************************************//**
- * Ends the "Unlock Bypass" state, returning to default read mode.
- ****************************************************************************/
-void FlashUnlockBypassReset(void) {
-	// Write reset command. Addresses are don't care
-	FlashWrite(0, FLASH_UL_BYP_RST[0]);
-	FlashWrite(0, FLASH_UL_BYP_RST[1]);
-}
-
-/************************************************************************//**
  * Erases the complete flash chip.
  *
  * \return '0' the if erase operation completed successfully, '1' otherwise.

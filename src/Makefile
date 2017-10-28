@@ -2,7 +2,7 @@
 # Written by Jesus Alonso (doragasu)
 
 TARGET  = wflash
-CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
+CFLAGS  = -Os -g -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
 AFLAGS  = --register-prefix-optional -m68000
 #LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
 LFLAGS  = -T $(LFILE) -Wl,-gc-sections

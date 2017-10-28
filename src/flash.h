@@ -20,6 +20,12 @@
 /// Write data buffer length in words
 #define FLASH_CHIP_WBUFLEN	16
 
+/// Put data in section .flash.rodata.[name]
+#define FS_RO(name)	SECTION(.flash.rodata.name)
+
+/// Put function in section .flash.text.[name]
+#define FS_T(name)	SECTION(.flash.text.name)
+
 /// Data used to perform different flash commands.
 typedef struct {
 	uint16_t addr;	///< Flash address
@@ -35,14 +41,14 @@ typedef struct {
 /// Number of write cycles to reset Flash interface
 #define FLASH_RESET_CYC 1
 /// Reset command data
-static const FlashCmd FLASH_RESET[FLASH_RESET_CYC] SECTION(.flash.data) = {
+static const FlashCmd FLASH_RESET[FLASH_RESET_CYC] FS_RO(RESET) = {
 	{0xAAB, 0xF0}
 };
 
 /// Number of cycles to unlock
 #define FLASH_UNLOCK_CYC 2
 /// Unlock command addresses and data
-static const FlashCmd FLASH_UNLOCK[FLASH_UNLOCK_CYC] = {
+static const FlashCmd FLASH_UNLOCK[FLASH_UNLOCK_CYC] FS_RO(UNLOCK) = {
 	{0xAAB, 0xAA}, {0x555, 0x55},
 };
 
@@ -54,28 +60,28 @@ static const FlashCmd FLASH_UNLOCK[FLASH_UNLOCK_CYC] = {
 /// Number of cycles of the autoselect command
 #define FLASH_AUTOSEL_CYC 1
 /// Autosel command addresses and data
-static const FlashCmd FLASH_AUTOSEL[FLASH_AUTOSEL_CYC] = {
+static const FlashCmd FLASH_AUTOSEL[FLASH_AUTOSEL_CYC] FS_RO(AUTOSEL) = {
 	{0xAAB, 0x90},
 };
 
 /// Number of cycles of the manufacturer ID request command.
 #define FLASH_MANID_CYC 1
 /// Manufacturer ID request data. Read must be prefixed by FLASH_AUTOSEL.
-static const uint16_t FLASH_MANID_RD[FLASH_MANID_CYC] = {
+static const uint16_t FLASH_MANID_RD[FLASH_MANID_CYC] FS_RO(MANID_RD) = {
 	0x001
 };
 
 /// Number of cycles of the device ID request command.
 #define FLASH_DEVID_CYC 3
 /// Device ID request data. Read must be prefixed by FLASH_AUTOSEL.
-static const uint16_t FLASH_DEVID_RD[FLASH_DEVID_CYC] = {
+static const uint16_t FLASH_DEVID_RD[FLASH_DEVID_CYC] FS_RO(DEVID_RD) = {
 	0x003, 0x01D, 0x01F
 };
 
 /// Number of cycles of the program command.
 #define FLASH_PROG_CYC 1
 /// Program. Must be prefixed by FLASH_UNLOCK, and followed by a write cycle.
-static const FlashCmd FLASH_PROG[FLASH_PROG_CYC] = {
+static const FlashCmd FLASH_PROG[FLASH_PROG_CYC] FS_RO(PROG) = {
 	{0xAAB, 0xA0}
 };
 
@@ -83,18 +89,18 @@ static const FlashCmd FLASH_PROG[FLASH_PROG_CYC] = {
 #define FLASH_WR_BUF_CYC 1
 /// Write to buffer. Must be prefixed with FLASH_UNLOCK, and followed with
 /// buffer write sequence. On this cycle, address must be SA (see datasheet).
-static const uint8_t FLASH_WR_BUF[FLASH_WR_BUF_CYC] = {0x25};
+static const uint8_t FLASH_WR_BUF[FLASH_WR_BUF_CYC] FS_RO(WR_BUF) = {0x25};
 
 /// Number of cycles of the program buffer to flash command.
 #define FLASH_PRG_BUF_CYC	1
 /// Program buffer to flash data.
 /// \note Address must be SA (see datasheet), but data is fixed.
-static const uint8_t FLASH_PRG_BUF[FLASH_PRG_BUF_CYC] = {0x29};
+static const uint8_t FLASH_PRG_BUF[FLASH_PRG_BUF_CYC] FS_RO(BUF_CYC) = {0x29};
 
 /// Number of cycles of the unlock bypass command.
 #define FLASH_UL_BYP_CYC 1
 /// Unlock bypass command data. Must be prefixed with FLASH_UNLOCK.
-static const FlashCmd FLASH_UL_BYP[FLASH_UL_BYP_CYC] = {
+static const FlashCmd FLASH_UL_BYP[FLASH_UL_BYP_CYC] FS_RO(UL_BYP) = {
 	{0xAAB, 0x20}
 };
 
@@ -102,17 +108,20 @@ static const FlashCmd FLASH_UL_BYP[FLASH_UL_BYP_CYC] = {
 #define FLASH_UL_BYP_PROG_CYC 1
 /// Unlock bypass program data. \note address is don't care. Must be followed
 /// by a write cycle.
-static const uint8_t FLASH_UL_BYP_PROG[FLASH_UL_BYP_PROG_CYC] = {0xA0};
+static const uint8_t FLASH_UL_BYP_PROG[FLASH_UL_BYP_PROG_CYC]
+	FS_RO(UL_BYP_PROG) = {0xA0};
 
 /// Number of cycles of the unlock bypass reset command.
 #define FLASH_UL_BYP_RST_CYC 2
 /// Unlock bypass reset data. \note addresses are don't care
-static const uint8_t FLASH_UL_BYP_RST[FLASH_UL_BYP_RST_CYC] = {0x90, 0x00};
+static const uint8_t FLASH_UL_BYP_RST[FLASH_UL_BYP_RST_CYC]
+	FS_RO(UL_BYP_RST) = {0x90, 0x00};
 
 /// Number of cycles of the chip erase command.
 #define FLASH_CHIP_ERASE_CYC 4
 /// Chip erase data. Must be prefixed with FLASH_UNLOCK.
-static const FlashCmd FLASH_CHIP_ERASE[FLASH_CHIP_ERASE_CYC] = {
+static const FlashCmd FLASH_CHIP_ERASE[FLASH_CHIP_ERASE_CYC]
+	FS_RO(CHIP_ERASE) = {
 	{0xAAB, 0x80}, {0xAAB, 0xAA}, {0x555, 0x55}, {0xAAB, 0x10}
 };
 
@@ -120,12 +129,13 @@ static const FlashCmd FLASH_CHIP_ERASE[FLASH_CHIP_ERASE_CYC] = {
 #define FLASH_SEC_ERASE_CYC 3
 /// Sector erase. Must be prefixed with FLASH_UNLOCK. Address on last cycle
 /// must be SA (see datasheet).
-static const FlashCmd FLASH_SEC_ERASE[FLASH_SEC_ERASE_CYC] = {
+static const FlashCmd FLASH_SEC_ERASE[FLASH_SEC_ERASE_CYC]
+	FS_RO(SEC_ERASE) = {
 	{0xAAB, 0x80}, {0xAAB, 0xAA}, {0x555, 0x55}
 };
 
 /// Data to be written along with sector address after FLASH_SEC_ERASE
-static const uint8_t FLASH_SEC_ERASE_WR[1] = {0x30};
+static const uint8_t FLASH_SEC_ERASE_WR[1] FS_RO(SEC_ERASE) = {0x30};
 
 /*
  * Public functions
@@ -141,11 +151,6 @@ extern "C" {
 void FlashInit(void);
 
 /************************************************************************//**
- * \brief Set flash ports to default (idle) values.
- ****************************************************************************/
-void FlashIdle(void);
-
-/************************************************************************//**
  * \brief Writes a word to specified address.
  *
  * \param[in] addr Address to which data will be written.
@@ -153,7 +158,7 @@ void FlashIdle(void);
  *
  * \note Do not mistake this function with the program ones.
  ****************************************************************************/
-SECTION(.flash.text)
+FS_T(Write)
 static inline void FlashWrite(uint32_t addr, uint8_t data) {
 	*((volatile uint8_t*)addr) = data;
 }
@@ -166,6 +171,7 @@ static inline void FlashWrite(uint32_t addr, uint8_t data) {
  *
  * \note Do not mistake this function with the program ones.
  ****************************************************************************/
+FS_T(WriteW)
 static inline void FlashWriteW(uint32_t addr, uint16_t data) {
 	*((volatile uint16_t*)addr) = data;
 }
@@ -177,6 +183,7 @@ static inline void FlashWriteW(uint32_t addr, uint16_t data) {
  *
  * \return Readed word.
  ****************************************************************************/
+FS_T(Read)
 static inline uint8_t FlashRead(uint32_t addr) {
 	return *((volatile uint8_t*)addr);
 }
@@ -188,6 +195,7 @@ static inline uint8_t FlashRead(uint32_t addr) {
  *
  * \return Readed word.
  ****************************************************************************/
+FS_T(ReadW)
 static inline uint16_t FlashReadW(uint32_t addr) {
 	return *((volatile uint16_t*)addr);
 }
@@ -197,6 +205,7 @@ static inline uint16_t FlashReadW(uint32_t addr) {
  * 
  * \param[in] The command data structure to write to the flash chip.
  ****************************************************************************/
+FS_T(WriteCmd)
 static inline void FlashWriteCmd(FlashCmd cmd) {
 	FlashWrite(cmd.addr, cmd.data);
 }
@@ -213,6 +222,7 @@ static inline void FlashWriteCmd(FlashCmd cmd) {
  * \brief Writes the flash unlock command to the flash chip. This command
  * must be used as part of other larger commands.
  ****************************************************************************/
+FS_T(Unlock)
 static inline void FlashUnlock(void) {
 	uint8_t i;
 	
@@ -223,6 +233,7 @@ static inline void FlashUnlock(void) {
  * \brief Writes the flash autoselect command to the flash chip. This command
  * must be used as part of other larger commands.
  ****************************************************************************/
+FS_T(Autoselect)
 static inline void FlashAutoselect(void) {
 	uint8_t i;
 
@@ -233,6 +244,7 @@ static inline void FlashAutoselect(void) {
 /************************************************************************//**
  * \brief Sends the reset command, to return to array read mode.
  ****************************************************************************/
+FS_T(Reset)
 static inline void FlashReset(void) {
 	uint8_t i;
 	FLASH_WRITE_CMD(FLASH_RESET, i);
@@ -243,6 +255,7 @@ static inline void FlashReset(void) {
  *
  * \return The manufacturer ID code.
  ****************************************************************************/
+FS_T(GetMainId)
 uint8_t FlashGetManId(void);
 
 /************************************************************************//**
@@ -250,7 +263,7 @@ uint8_t FlashGetManId(void);
  *
  * \param[out] devId The device ID code, consisting of 3 words.
  ****************************************************************************/
-SECTION(.flash.text)
+FS_T(GetDevId)
 void FlashGetDevId(uint8_t devId[3]);
 
 /************************************************************************//**
@@ -261,6 +274,7 @@ void FlashGetDevId(uint8_t devId[3]);
  *
  * \warning Doesn't poll until programming is complete
  ****************************************************************************/
+FS_T(Prog)
 void FlashProg(uint32_t addr, uint16_t data);
 
 /************************************************************************//**
@@ -277,17 +291,24 @@ void FlashProg(uint32_t addr, uint16_t data);
  *       is advisable to write to addresses having the lower 4 bits (A1~A5)
  *       equal to 0.
  ****************************************************************************/
-SECTION(.flash.text)
+FS_T(WriteBuf)
 uint8_t FlashWriteBuf(uint32_t addr, uint16_t data[], uint8_t wLen);
 
 /************************************************************************//**
  * Enables the "Unlock Bypass" status, allowing to issue several commands
  * (like the Unlock Bypass Programm) using less write cycles.
  ****************************************************************************/
-void FlashUnlockBypass(void);
+FS_T(UnlockBypass)
+static inline void FlashUnlockBypass(void) {
+	uint8_t i;
+
+	FlashUnlock();
+	FLASH_WRITE_CMD(FLASH_UL_BYP, i);
+}
 
 // Warning: must be issued after a FlashUnlockBypass command
 // Warning: doesn't poll until programming is complete
+FS_T(UnlockProgram)
 static inline void FlashUnlockProgram(uint32_t addr, uint8_t data) {
 	// Write unlock bypass program command
 	FlashWrite(addr, FLASH_UL_BYP_PROG[0]);
@@ -299,13 +320,19 @@ static inline void FlashUnlockProgram(uint32_t addr, uint8_t data) {
 /************************************************************************//**
  * Ends the "Unlock Bypass" state, returning to default read mode.
  ****************************************************************************/
-void FlashUnlockBypassReset(void);
+FS_T(UnlockBypassReset)
+static inline void FlashUnlockBypassReset(void) {
+	// Write reset command. Addresses are don't care
+	FlashWrite(0, FLASH_UL_BYP_RST[0]);
+	FlashWrite(0, FLASH_UL_BYP_RST[1]);
+}
 
 /************************************************************************//**
  * Erases the complete flash chip.
  *
  * \return '0' the if erase operation completed successfully, '1' otherwise.
  ****************************************************************************/
+FS_T(ChipErase)
 uint8_t FlashChipErase(void);
 
 /************************************************************************//**
@@ -314,6 +341,7 @@ uint8_t FlashChipErase(void);
  * \param[in] addr Address contained in the sector that will be erased.
  * \return '0' if the erase operation completed successfully, '1' otherwise.
  ****************************************************************************/
+FS_T(SectErase)
 uint8_t FlashSectErase(uint32_t addr);
 
 /************************************************************************//**
@@ -333,6 +361,7 @@ uint8_t FlashRangeErase(uint32_t addr, uint32_t len);
  * \param[in] data Data written to addr address.
  * \return 0 if OK, 1 if error during program operation.
  ****************************************************************************/
+FS_T(DataPoll)
 uint8_t FlashDataPoll(uint32_t addr, uint8_t data);
 
 /************************************************************************//**
@@ -349,6 +378,7 @@ uint8_t FlashDataPoll(uint32_t addr, uint8_t data);
  * \warning Currently the function does not check if the input range covers
  * the sector/s containing the bootloader.
  ****************************************************************************/
+FS_T(ErasePoll)
 uint8_t FlashErasePoll(uint32_t addr);
 
 #ifdef __cplusplus
