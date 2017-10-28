@@ -14,6 +14,11 @@
 #define NULL ((void*)0)
 #endif
 
+/// Section attribute definition for variables and functions. Examples:
+/// - int a SECTION(data);
+/// - void foo(void) SECTION(text);
+#define SECTION(name)	__attribute__((section(#name)))
+
 /// Remove compiler warnings when not using a function parameter
 #define UNUSED_PARAM(x)		(void)x
 

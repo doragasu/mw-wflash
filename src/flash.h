@@ -12,6 +12,7 @@
 #define _FLASH_H_
 
 #include <stdint.h>
+#include "util.h"
 
 /// Flash chip length: 4 MiB
 #define FLASH_CHIP_LENGTH	(4LU*1024LU*1024LU)
@@ -34,14 +35,14 @@ typedef struct {
 /// Number of write cycles to reset Flash interface
 #define FLASH_RESET_CYC 1
 /// Reset command data
-const static FlashCmd FLASH_RESET[FLASH_RESET_CYC] = {
+static const FlashCmd FLASH_RESET[FLASH_RESET_CYC] SECTION(.flash.data) = {
 	{0xAAB, 0xF0}
 };
 
 /// Number of cycles to unlock
 #define FLASH_UNLOCK_CYC 2
 /// Unlock command addresses and data
-const static FlashCmd FLASH_UNLOCK[FLASH_UNLOCK_CYC] = {
+static const FlashCmd FLASH_UNLOCK[FLASH_UNLOCK_CYC] = {
 	{0xAAB, 0xAA}, {0x555, 0x55},
 };
 
@@ -53,28 +54,28 @@ const static FlashCmd FLASH_UNLOCK[FLASH_UNLOCK_CYC] = {
 /// Number of cycles of the autoselect command
 #define FLASH_AUTOSEL_CYC 1
 /// Autosel command addresses and data
-const static FlashCmd FLASH_AUTOSEL[FLASH_AUTOSEL_CYC] = {
+static const FlashCmd FLASH_AUTOSEL[FLASH_AUTOSEL_CYC] = {
 	{0xAAB, 0x90},
 };
 
 /// Number of cycles of the manufacturer ID request command.
 #define FLASH_MANID_CYC 1
 /// Manufacturer ID request data. Read must be prefixed by FLASH_AUTOSEL.
-const static uint16_t FLASH_MANID_RD[FLASH_MANID_CYC] = {
+static const uint16_t FLASH_MANID_RD[FLASH_MANID_CYC] = {
 	0x001
 };
 
 /// Number of cycles of the device ID request command.
 #define FLASH_DEVID_CYC 3
 /// Device ID request data. Read must be prefixed by FLASH_AUTOSEL.
-const static uint16_t FLASH_DEVID_RD[FLASH_DEVID_CYC] = {
+static const uint16_t FLASH_DEVID_RD[FLASH_DEVID_CYC] = {
 	0x003, 0x01D, 0x01F
 };
 
 /// Number of cycles of the program command.
 #define FLASH_PROG_CYC 1
 /// Program. Must be prefixed by FLASH_UNLOCK, and followed by a write cycle.
-const static FlashCmd FLASH_PROG[FLASH_PROG_CYC] = {
+static const FlashCmd FLASH_PROG[FLASH_PROG_CYC] = {
 	{0xAAB, 0xA0}
 };
 
@@ -82,18 +83,18 @@ const static FlashCmd FLASH_PROG[FLASH_PROG_CYC] = {
 #define FLASH_WR_BUF_CYC 1
 /// Write to buffer. Must be prefixed with FLASH_UNLOCK, and followed with
 /// buffer write sequence. On this cycle, address must be SA (see datasheet).
-const static uint8_t FLASH_WR_BUF[FLASH_WR_BUF_CYC] = {0x25};
+static const uint8_t FLASH_WR_BUF[FLASH_WR_BUF_CYC] = {0x25};
 
 /// Number of cycles of the program buffer to flash command.
 #define FLASH_PRG_BUF_CYC	1
 /// Program buffer to flash data.
 /// \note Address must be SA (see datasheet), but data is fixed.
-const static uint8_t FLASH_PRG_BUF[FLASH_PRG_BUF_CYC] = {0x29};
+static const uint8_t FLASH_PRG_BUF[FLASH_PRG_BUF_CYC] = {0x29};
 
 /// Number of cycles of the unlock bypass command.
 #define FLASH_UL_BYP_CYC 1
 /// Unlock bypass command data. Must be prefixed with FLASH_UNLOCK.
-const static FlashCmd FLASH_UL_BYP[FLASH_UL_BYP_CYC] = {
+static const FlashCmd FLASH_UL_BYP[FLASH_UL_BYP_CYC] = {
 	{0xAAB, 0x20}
 };
 
@@ -101,17 +102,17 @@ const static FlashCmd FLASH_UL_BYP[FLASH_UL_BYP_CYC] = {
 #define FLASH_UL_BYP_PROG_CYC 1
 /// Unlock bypass program data. \note address is don't care. Must be followed
 /// by a write cycle.
-const static uint8_t FLASH_UL_BYP_PROG[FLASH_UL_BYP_PROG_CYC] = {0xA0};
+static const uint8_t FLASH_UL_BYP_PROG[FLASH_UL_BYP_PROG_CYC] = {0xA0};
 
 /// Number of cycles of the unlock bypass reset command.
 #define FLASH_UL_BYP_RST_CYC 2
 /// Unlock bypass reset data. \note addresses are don't care
-const static uint8_t FLASH_UL_BYP_RST[FLASH_UL_BYP_RST_CYC] = {0x90, 0x00};
+static const uint8_t FLASH_UL_BYP_RST[FLASH_UL_BYP_RST_CYC] = {0x90, 0x00};
 
 /// Number of cycles of the chip erase command.
 #define FLASH_CHIP_ERASE_CYC 4
 /// Chip erase data. Must be prefixed with FLASH_UNLOCK.
-const static FlashCmd FLASH_CHIP_ERASE[FLASH_CHIP_ERASE_CYC] = {
+static const FlashCmd FLASH_CHIP_ERASE[FLASH_CHIP_ERASE_CYC] = {
 	{0xAAB, 0x80}, {0xAAB, 0xAA}, {0x555, 0x55}, {0xAAB, 0x10}
 };
 
@@ -119,12 +120,12 @@ const static FlashCmd FLASH_CHIP_ERASE[FLASH_CHIP_ERASE_CYC] = {
 #define FLASH_SEC_ERASE_CYC 3
 /// Sector erase. Must be prefixed with FLASH_UNLOCK. Address on last cycle
 /// must be SA (see datasheet).
-const static FlashCmd FLASH_SEC_ERASE[FLASH_SEC_ERASE_CYC] = {
+static const FlashCmd FLASH_SEC_ERASE[FLASH_SEC_ERASE_CYC] = {
 	{0xAAB, 0x80}, {0xAAB, 0xAA}, {0x555, 0x55}
 };
 
 /// Data to be written along with sector address after FLASH_SEC_ERASE
-const static uint8_t FLASH_SEC_ERASE_WR[1] = {0x30};
+static const uint8_t FLASH_SEC_ERASE_WR[1] = {0x30};
 
 /*
  * Public functions
@@ -152,6 +153,7 @@ void FlashIdle(void);
  *
  * \note Do not mistake this function with the program ones.
  ****************************************************************************/
+SECTION(.flash.text)
 static inline void FlashWrite(uint32_t addr, uint8_t data) {
 	*((volatile uint8_t*)addr) = data;
 }
@@ -248,6 +250,7 @@ uint8_t FlashGetManId(void);
  *
  * \param[out] devId The device ID code, consisting of 3 words.
  ****************************************************************************/
+SECTION(.flash.text)
 void FlashGetDevId(uint8_t devId[3]);
 
 /************************************************************************//**
@@ -274,6 +277,7 @@ void FlashProg(uint32_t addr, uint16_t data);
  *       is advisable to write to addresses having the lower 4 bits (A1~A5)
  *       equal to 0.
  ****************************************************************************/
+SECTION(.flash.text)
 uint8_t FlashWriteBuf(uint32_t addr, uint16_t data[], uint8_t wLen);
 
 /************************************************************************//**

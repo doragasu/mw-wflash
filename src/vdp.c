@@ -29,7 +29,7 @@ const uint16_t cdMask[VDP_RAM_TYPE_MAX] = {
 };
 
 /// Default values for VDP registers
-const static uint8_t vdpRegDefaults[19] = {
+static const uint8_t vdpRegDefaults[19] = {
 	// Mode 1:
 	// - No 8 left pixels blank
 	// - No HINT

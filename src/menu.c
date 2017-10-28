@@ -628,6 +628,8 @@ static void MenuItemsLoad(MenuEntry *dst, const MenuEntry *menu) {
 	}
 }
 
+/// Loads the specified menu, and adds it to the menu list. Currently active
+/// menu when this function is called, is added to the new menu ->prev entry.
 MenuEntity *MenuLoad(const MenuEntry *menu) {
 	MenuEntity *tmp;
 

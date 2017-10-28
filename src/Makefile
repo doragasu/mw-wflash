@@ -2,7 +2,7 @@
 # Written by Jesus Alonso (doragasu)
 
 TARGET  = wflash
-CFLAGS  = -Os -Wall -Wextra -m68000 -ffunction-sections
+CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
 AFLAGS  = --register-prefix-optional -m68000
 #LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
 LFLAGS  = -T $(LFILE) -Wl,-gc-sections
@@ -12,7 +12,8 @@ AS      = as
 LD      = ld
 OBJCOPY = objcopy
 MDMA   ?= $(HOME)/src/github/mw-mdma-cli/mdma
-PREFIX ?= /opt/toolchains/gen/m68k-elf/bin/m68k-elf-
+#PREFIX ?= /opt/toolchains/gen/m68k-elf/bin/m68k-elf-
+PREFIX ?= m68k-elf-
 EMU ?= wine $(HOME)/src/gendev/gens/gens.exe
 #EMU ?= gens
 OBJDIR  = tmp

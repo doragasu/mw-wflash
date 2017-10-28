@@ -89,7 +89,7 @@ ClearRam:
         dbra    %d1,ClearRam
 
 * copy initialized variables from ROM to Work RAM
-        lea     _sboot,%a0
+        lea     _etext,%a0
         lea     0xFF0000,%a1
         move.l  #_sdata,%d0
         lsr.l   #1,%d0

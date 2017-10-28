@@ -4,10 +4,16 @@
  * cartridge header) and a boot sector at the bottom of the 32 Mbit
  * ROM. All the space inbetween is unused.
  *
- * The code and initialized data at the 8 KiB boot sector are copied to the
- * RAM by the startup code, for the bootloader to run from RAM. This is
- * necessary because Flash cannot be accessed during erase/program
- * operations.
+ * Some routienes and read-only data from flash module must be copied to RAM
+ * to run from there. This is required because these routienes handle flash
+ * erase and program routines. And while these routines are in progress, the
+ * CPU cannot read code/data from ROM/Flash.
+ *
+ * The flash sector at RAM is placed at the end of the .bss section. The
+ * copy from Flash to RAM can be done at startup (by the sega.s code), or
+ * alternatively if you want to be able to reuse this chunk of RAM (e.g.
+ * for dynamic allocation), the data can be copied dynamically when needed.
+ * 
  */
 
 OUTPUT_ARCH(m68k)
@@ -30,16 +36,11 @@ PROVIDE (__stack = 0x01000000);
 
 SECTIONS
 {
-  .text.boot 0x00000000 :
+  /* Code and read-only data */
+  .text 0x000000 :
   {
-    KEEP(*(.text.boot)) *(.text.boot)
-  }
-  _sboot = SIZEOF(.text.boot);
-
-  .text 0xFF0000 :
-  AT (ADDR(.text.boot) + SIZEOF(.text.boot))
-  {
-	*(.text.*) *(.text)
+	/* Make sure boot sector is not discarded by the linker */
+	KEEP(*(.text.boot)) *(.text .text.*)
 	. = ALIGN(4);
     *(.rodata .rodata.*)
 
@@ -53,23 +54,32 @@ SECTIONS
     SHORT (0x4E75)	/* rts */
 
     _etext = .;
-  } > ram
+  } > rom
+  _stext = SIZEOF(.text);
 
-  .data 0xFF0000 + SIZEOF(.text) :
-  AT ( ADDR (.text.boot) + SIZEOF (.text.boot) + SIZEOF (.text))
+  .data 0xFF0000 :
+  AT ( ADDR (.text) + _stext )
   {
     *(.data .data.*)
     _edata = .;
   } > ram
-  _sdata = SIZEOF(.text) + SIZEOF(.data);
+  _sdata = SIZEOF(.data);
 
   .bss _edata :
   {
-    _start = . ;
+    _sbss = . ;
     *(.bss .bss.*)
     *(COMMON)
-    _bend = . ;
+    _ebss = . ;
+  }
+  /* Code and rodata needed for the flash read/write routines */
+  .flash _ebss :
+  AT ( ADDR (.text) + _stext + _sdata )
+  {
+    *(.flash .flash.*)
+    _eflash = .;
   } > ram
+  _sflash = SIZEOF(.flash);
 
   .stab 0 (NOLOAD) :
   {
