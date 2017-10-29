@@ -4,6 +4,8 @@
 #include "mw/megawifi.h"
 #include <string.h>
 
+#define _FAKE_WIFI
+
 /// Maximum number of dynamic menu items
 #define WF_MENU_MAX_DYN_ITEMS 		20
 
@@ -724,60 +726,90 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 //	
 //	return 1;
 //}
-//
-///// Fills confEntry items
-///// \todo Add a marker to default configuration
-//int MenuConfEntryCb(void* m) {
-//	int8_t i;
-//	uint16_t offset;
-//	uint16_t copied;
-//	char *ssid;
-//	UNUSED_PARAM(m);
-//
-//	// Load MegaWiFi configurations and fill entries with available SSIDs
-//	for (i = 0, offset = 0; i < 3; i++) {
-//		dynItems[i].caption.string = dynPool + offset;
-//		dynItems[i].cb = MenuConfEntrySet;
-//		dynItems[i].next = &confEntryData;
-//		dynItems[i].selectable = 1;
-//		dynItems[i].alt_color = 0;
-//		dynPool[offset++] = '1' + i;
-//		dynPool[offset++] = ':';
-//		dynPool[offset++] = ' ';
-//
-//		// Obtains configurations and fill SSIDs
-//		if ((MwApCfgGet(i, &ssid, NULL) != MW_OK) || (*ssid == '\0')) {
-//			strcpy(dynPool + offset, "<EMPTY>");
-//			dynItems[i].caption.length = 10;
-//			offset += 8;
-//		} else {
-//			copied = MenuStrCpy(dynPool + offset, ssid, 32);
-//			if (copied == 32) dynPool[offset + 32] = '\0';
-//			dynItems[i].caption.length = copied;
-//			offset += copied + 1;
-//		}
-//	}
-//
-//	return 0;
-//}
-//
-//const MenuEntry confEntry = {
-//	MENU_TYPE_ITEM,					// Menu type
-//	1,								// Margin
-//	MENU_STR("CONFIGURATION"),		// Title
-//	MENU_STR(stdContext),			// Left context
-//	MenuConfEntryCb,				// entry
-//	NULL,							// exit
-//	NULL,							// cBut callback
-//	.item = {
-//		dynItems,					// item
-//		3,							// nItems
-//		3,							// spacing
-//		3,							// entPerPage
-//		0,							// pages
-//		{MENU_H_ALIGN_LEFT}			// align
-//	}
-//};
+
+/// Fills confEntry items
+/// \todo Add a marker to default configuration
+int MenuConfEntryCb(void* m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+	int8_t i;
+#ifndef _FAKE_WIFI
+	uint16_t copied;
+	char *ssid;
+#endif
+
+	// Load MegaWiFi configurations and fill entries with available SSIDs
+	for (i = 0; i < 3; i++) {
+		item[i].caption.string[0] = '1' + i;
+		item[i].caption.string[1] = ':';
+		item[i].caption.string[2] = ' ';
+
+#ifdef _FAKE_WIFI
+		// Fake AP data
+		strcpy(item[i].caption.string + 3, "FAKE_AP_1");
+		item[i].caption.string[11] += i;
+		item[i].caption.length = 12;
+#else
+		// Obtains configurations and fill SSIDs
+		if ((MwApCfgGet(i, &ssid, NULL) != MW_OK) || (*ssid == '\0')) {
+			strcpy(item[i].caption.string + 3, "<EMPTY>");
+			item[i].caption.length = 10;
+		} else {
+			copied = MenuStrCpy(item[i].caption.string + 3, ssid, 32);
+			if (copied == 32) item[i].caption.string[3 + 32] = '\0';
+			item[i].caption.length = copied + 3;
+		}
+#endif //_FAKE_WIFI
+	}
+
+	return 0;
+}
+
+/// Supported configuration items
+const MenuItem confItem[] = {
+	{
+		// Default caption (will be dynamically modified)
+		MENU_ESTR(strEmptyText, 3 + 32 + 1),
+//		&confEntryData,				// Next
+//		MenuConfEntrySet,			// Callback
+		NULL,						// Next
+		NULL,						// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_ESTR(strEmptyText, 3 + 32 + 1),
+//		&confEntryData,				// Next
+//		MenuConfEntrySet,			// Callback
+		NULL,						// Next
+		NULL,						// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_ESTR(strEmptyText, 3 + 32 + 1),
+//		&confEntryData,				// Next
+//		MenuConfEntrySet,			// Callback
+		NULL,						// Next
+		NULL,						// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}
+};
+
+
+const MenuEntry confEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	1,								// Margin
+	MENU_STR("CONFIGURATION"),		// Title
+	MENU_STR(stdContext),			// Left context
+	MenuConfEntryCb,				// entry
+	NULL,							// exit
+	NULL,							// cBut callback
+	.mItem = {
+		(MenuItem*)confItem,		// item
+		3,							// nItems
+		3,							// spacing
+		3,							// entPerPage
+		0,							// pages
+		{MENU_H_ALIGN_LEFT}			// align
+	}
+};
 
 /// Root menu items
 const MenuItem rootItem[] = { {
@@ -787,8 +819,7 @@ const MenuItem rootItem[] = { {
 		{{1, 1, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_STR("CONFIGURATION"),
-//		&confEntry,					// Next: Configuration entry
-		NULL,						// Next: Configuration entry
+		(void*)&confEntry,			// Next: Configuration entry
 		NULL,
 		{{1, 0, 0}}
 	}

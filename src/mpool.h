@@ -62,7 +62,7 @@ void *MpAlloc(uint16_t length);
  * recommended) way of using this function is calling it with pos set to the
  * value of the last MpAlloc() call.
  *
- * \warning This function might free memory requested by several MpAlloc()
+ * \warning This function will free memory requested by several MpAlloc()
  * calls if the input pos pointer is not the last returned by MpAlloc(). E.g.
  * if MpAlloc() is called consecutively three times, and MpFreeTo() is called
  * with the pointer returned by the second call, the memory granted by the

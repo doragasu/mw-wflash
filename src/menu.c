@@ -750,16 +750,16 @@ void MenuItemAction(uint8_t input) {
 	if (input & GP_A_MASK) {
 		// If defined run callback, and perform item actions if authorized
 		tmp = MenuGetCurrentItemNum();
-		if ((m->mItem.item[tmp].cb) && (!m->mItem.item[tmp].cb(&md))) return;
+		if ((m->mItem.item[tmp].cb) && (!m->mItem.item[tmp].cb(md))) return;
 		// Accept selected menu option
 		if (m->mItem.item[tmp].next) {
 			// Call exit callback before exiting menu
-			if (m->exit) m->exit(&md);
+			if (m->exit) m->exit(md);
 			// Load next menu:
 			if (!MenuLoad(m->mItem.item[tmp].next))
 				MenuPanic("MENU LEVELS EXHAUSTED!", 22);
 			// Call menu entry callback
-			if (md->me->mEntry.entry) md->me->mEntry.entry(&md);
+			if (md->me->mEntry.entry) md->me->mEntry.entry(md);
 			// Select page and item
 			for (i = 0; !md->me->mEntry.mItem.item[i].selectable; i++);
 			md->me->selItem = i;
@@ -771,10 +771,10 @@ void MenuItemAction(uint8_t input) {
 		// Only unload if we are not at the root menu
 		if (md->me->prev) {
 			// If there is exit callback, execute it
-			if (m->exit) m->exit(&md);
+			if (m->exit) m->exit(md);
 			MenuUnload();
 			// Call menu entry callback
-			if (md->me->mEntry.entry) md->me->mEntry.entry(&md);
+			if (md->me->mEntry.entry) md->me->mEntry.entry(md);
 			MenuDraw(MENU_SCROLL_DIR_RIGHT);
 		}
 	} else if (input & GP_UP_MASK) {

@@ -158,6 +158,15 @@ typedef enum {
 	.empty = FALSE,						\
 }
 
+/// Macro to help filling MenuString structures. The string is set as
+/// editable, not empty.
+#define MENU_ESTR(str, maxLen)	{		\
+	.string = (char*)(str),				\
+	.length = maxLen,					\
+	.editable = TRUE,					\
+	.empty = FALSE,						\
+}
+
 /// String definition for menus, including its properties. Other than its
 /// length, MenuStrings can have several properties:
 /// - Editable: String can be edited. When loading an editable string
