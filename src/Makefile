@@ -2,7 +2,9 @@
 # Written by Jesus Alonso (doragasu)
 
 TARGET  = wflash
-CFLAGS  = -Os -g -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
+PREFIX ?= m68k-elf-
+#CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
+CFLAGS  = -Og -g -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
 AFLAGS  = --register-prefix-optional -m68000
 #LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
 LFLAGS  = -T $(LFILE) -Wl,-gc-sections
@@ -10,10 +12,10 @@ LFILE   = mdbasic.ld
 CC      = gcc
 AS      = as
 LD      = ld
+GDB     = cgdb -d $(PREFIX)gdb --
 OBJCOPY = objcopy
 MDMA   ?= $(HOME)/src/github/mw-mdma-cli/mdma
 #PREFIX ?= /opt/toolchains/gen/m68k-elf/bin/m68k-elf-
-PREFIX ?= m68k-elf-
 EMU ?= wine $(HOME)/src/gendev/gens/gens.exe
 #EMU ?= gens
 OBJDIR  = tmp
@@ -28,16 +30,16 @@ all: $(TARGET)
 .PHONY: cart
 cart: head.bin tail.bin
 	@$(MDMA) -s 0
-	@$(MDMA) -s 0x1FC000
-	@$(MDMA) -s 0x1FD000
-	@$(MDMA) -s 0x1FE000
-	@$(MDMA) -s 0x1FF000
+	@$(MDMA) -r 0x1FC000:0x1FFFFF
 	@$(MDMA) -Vf head.bin
 	@$(MDMA) -Vf tail.bin:0x1FC000
 
-.PHONY: emu
+.PHONY: emu debug
 emu: $(TARGET).bin
 	@$(EMU) $< 2>/dev/null &
+
+debug: $(TARGET).bin
+	$(GDB) $(TARGET).elf -ex "target remote | blastem -D $(TARGET).bin"
 
 $(TARGET): $(TARGET).bin
 	dd if=$< of=$@ bs=8k conv=sync

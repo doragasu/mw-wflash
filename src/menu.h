@@ -256,15 +256,14 @@ typedef struct {
 //	MenuEntity *root;
 	/// Menu entry for the currently displayed menu
 	MenuEntity *me;
+	MenuString rContext;		///< Right context string (bottom line)
 	/// Reserve space for the rContext string
 	char rConStr[MENU_LINE_CHARS_TOTAL];
-	MenuString rContext;		///< Right context string (bottom line)
-	uint8_t level;				///< Current menu level
 	/// Coordinates of selected keyboard item
 	MenuOskCoord coord;
 	/// Temporal string for data entry
-	char strBuf[MENU_STR_MAX_LEN + 1];
 	MenuString str;
+	char strBuf[MENU_STR_MAX_LEN + 1];
 } Menu;
 
 /************************************************************************//**

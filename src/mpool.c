@@ -68,15 +68,16 @@ void MpInit(void) {
  * \todo Maybe allocation should be tested against the stack pointer
  ****************************************************************************/
 void *MpAlloc(uint16_t length) {
-	void *ret;
+	void *tmp, *ret;
 
 	// Adjust length depending on alignmentnforcement
 	length = (length + MP_ALIGN_MASK) & ~MP_ALIGN_MASK;
 
 	// Check there is enough room
-	ret = length + md.pos;
-	if (ret >= MP_POOL_END) return NULL;
-	md.pos = ret;
+	tmp = length + md.pos;
+	if (tmp >= MP_POOL_END) return NULL;
+	ret = md.pos;
+	md.pos = tmp;
 
 	return ret;
 }

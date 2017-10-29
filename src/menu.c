@@ -686,16 +686,14 @@ void MenuInit(const MenuEntry *root, MenuString rContext) {
 	/// and maybe remove strBuf and str from Menu structure
 	// Zero module data
 	memset((void*)md, 0, sizeof(Menu));
-	// Set string to point to string data
-	md->rContext.string = md->rConStr;
-	memcpy(md->rConStr, rContext.string, rContext.length + 1);
-	md->rContext.length = rContext.length;
 	// Load root menu and set menu entities
 	md->me = NULL;
 	MenuLoad(root);
-	// Set context string
-	strncpy(md->rConStr, rContext.string, MENU_LINE_CHARS_TOTAL);
+	// Set string to point to string data and copy input context
 	md->rContext = rContext;
+	md->rContext.string = md->rConStr;
+	strncpy(md->rConStr, rContext.string, rContext.length);
+
 	VdpRamWrite(VDP_VRAM_WR, VDP_HSCROLL_ADDR, 0);
 	// Initialize temp string
 	md->str.string = md->strBuf;
