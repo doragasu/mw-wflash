@@ -2,6 +2,7 @@
 #define _WF_MENU_H_
 
 #include "menu.h"
+#include "mpool.h"
 
 void WfMenuInit(MenuString statStr);
 

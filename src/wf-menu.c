@@ -6,6 +6,8 @@
 
 #define _FAKE_WIFI
 
+#define WF_IP_MAXLEN	16
+
 /// Maximum number of dynamic menu items
 #define WF_MENU_MAX_DYN_ITEMS 		20
 
@@ -163,17 +165,17 @@ const char strNetParLen[WF_NET_CFG_PARAMS] = {
 ////};
 
 
-///// Module global menu data structure
-//typedef struct {
-//	/// Pointers to menu configuration entries being edited
-//	char *netParPtr[WF_NET_CFG_PARAMS];
-//	/// Selected network configuration item (from 0 to 2)
-//	uint8_t selConfig;
-//} WfMenuData;
-//
-///// Module global data (other than item buffers)
-//static WfMenuData wd;
-//
+/// Module global menu data structure
+typedef struct {
+	/// Pointers to menu configuration entries being edited
+	char *netParPtr[WF_NET_CFG_PARAMS];
+	/// Selected network configuration item (from 0 to 2)
+	uint8_t selConfig;
+} WfMenuData;
+
+/// Module global data (other than item buffers)
+static WfMenuData *wd;
+
 ///// Pool for dynamically created strings
 //static char dynPool[WF_MENU_MAX_DYN_ITEMS * WF_MENU_AVG_STR_LEN];
 ///// Pool for dynamically created items
@@ -591,7 +593,7 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 //	return MwDefApCfg(wd.selConfig);
 //}
 //
-//int MenuConfDataEntryCb(void *m) {
+int MenuConfDataEntryCb(void *m) {
 //	UNUSED_PARAM(m);
 //	char *ssid, *pass;
 //	uint16_t offset;
@@ -686,46 +688,107 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 //		dynItems[i].selectable = 0;
 //		dynItems[i].alt_color = 1;
 //	}
-//	return 0;
-//}
-//
-//// Menu structure:
-//// SSID:    <data>
-//// PASS:	<data>
-//// IP:      <MANUAL,AUTO>
-//// MASK:    <DATA>
-//// GATEWAY: <DATA>
-//// DNS1:    <DATA>
-//// DNS2:    <DATA>
-//// [BLANK]
-//// EDIT
-//// SET AS DEFAULT
-//const MenuEntry confEntryData = {
-//	MENU_TYPE_ITEM,					// Menu type
-//	8,								// Margin
-//	MENU_STR("NETWORK CONFIGURATION"),	// Title
-//	MENU_STR(stdContext),			// Left context
-//	MenuConfDataEntryCb,			// entry callback
-//	NULL,							// exit callback
-//	NULL,							// cBut callback
-//	.item = {
-//		dynItems,					// item
-//		10,							// nItems
-//		2,							// spacing
-//		10,							// entPerPage
-//		0,							// pages
-//		{MENU_H_ALIGN_LEFT}			// align
-//	}
-//};
-//
-///// Sets the selected menu entry configuration variable
-//int MenuConfEntrySet(void *m) {
-//	Menu *md = (Menu*)m;
-//
-//	wd.selConfig = md->selItem[md->level];
-//	
-//	return 1;
-//}
+	return 0;
+}
+
+// Menu structure:
+// SSID:    <data>
+// PASS:	<data>
+// IP:      <MANUAL,AUTO>
+// MASK:    <DATA>
+// GATEWAY: <DATA>
+// DNS1:    <DATA>
+// DNS2:    <DATA>
+// [BLANK]
+// EDIT
+// SET AS DEFAULT
+/// Network parameters menu
+const MenuItem confNetPar[] = {
+	{
+		// Editable SSID
+		MENU_ESTR(strSsid, 3 + 32 + 1),
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable PASS
+		MENU_ESTR(strPass, 3 + 32 + 1),
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable IP
+		MENU_ESTR(strIp, 9 + WF_IP_MAXLEN),
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable netmask
+		MENU_ESTR(strMask, 9 + WF_IP_MAXLEN),
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable gateway
+		MENU_ESTR(strGw, 9 + WF_IP_MAXLEN),
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable DNS1
+		MENU_ESTR(strDns1, 9 + WF_IP_MAXLEN),
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable DNS2
+		MENU_ESTR(strDns2, 9 + WF_IP_MAXLEN),
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(0),				// [EMPTY]
+		NULL,						// Next
+		NULL,						// Callback
+		{{0, 0, 1}}					// Selectable, alt_color, hide
+	}, {
+		MENU_ESTR(strEdit, 9 + 5),	// EDIT
+		NULL,						// Next
+		NULL,						// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_ESTR(strAct, 9 + 14),	// Set as active
+		NULL,						// Next
+		NULL,						// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}
+};
+
+
+
+const MenuEntry confEntryData = {
+	MENU_TYPE_ITEM,					// Menu type
+	8,								// Margin
+	MENU_STR("NETWORK CONFIGURATION"),	// Title
+	MENU_STR(stdContext),			// Left context
+	MenuConfDataEntryCb,			// entry callback
+	NULL,							// exit callback
+	NULL,							// cBut callback
+	.mItem = {
+		// rootItem, nItems, spacing, enPerPage, pages
+		MENU_ENTRY_ITEM(confNetPar, 2),
+		{MENU_H_ALIGN_LEFT}			// align
+	}
+};
+
+/// Sets the selected menu entry configuration variable
+int MenuConfEntrySet(void *m) {
+	Menu *md = (Menu*)m;
+
+	wd->selConfig = md->me->prev->selItem;
+	
+	return 1;
+}
 
 /// Fills confEntry items
 /// \todo Add a marker to default configuration
@@ -770,24 +833,18 @@ const MenuItem confItem[] = {
 	{
 		// Default caption (will be dynamically modified)
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-//		&confEntryData,				// Next
-//		MenuConfEntrySet,			// Callback
-		NULL,						// Next
-		NULL,						// Callback
+		(void*)&confEntryData,		// Next
+		MenuConfEntrySet,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-//		&confEntryData,				// Next
-//		MenuConfEntrySet,			// Callback
-		NULL,						// Next
-		NULL,						// Callback
+		(void*)&confEntryData,		// Next
+		MenuConfEntrySet,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-//		&confEntryData,				// Next
-//		MenuConfEntrySet,			// Callback
-		NULL,						// Next
-		NULL,						// Callback
+		(void*)&confEntryData,		// Next
+		MenuConfEntrySet,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}
 };
@@ -802,11 +859,8 @@ const MenuEntry confEntry = {
 	NULL,							// exit
 	NULL,							// cBut callback
 	.mItem = {
-		(MenuItem*)confItem,		// item
-		3,							// nItems
-		3,							// spacing
-		3,							// entPerPage
-		0,							// pages
+		// rootItem, nItems, spacing, enPerPage, pages
+		MENU_ENTRY_ITEM(confItem, 3),
 		{MENU_H_ALIGN_LEFT}			// align
 	}
 };
@@ -842,6 +896,7 @@ const MenuEntry rootMenu = {
 };
 
 void WfMenuInit(MenuString statStr) {
+	wd = MpAlloc(sizeof(WfMenuData));
 	MenuInit(&rootMenu, statStr);
 }
 
