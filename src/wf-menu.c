@@ -167,8 +167,8 @@ const char strNetParLen[WF_NET_CFG_PARAMS] = {
 
 /// Module global menu data structure
 typedef struct {
-	/// Pointers to menu configuration entries being edited
-	char *netParPtr[WF_NET_CFG_PARAMS];
+	/// Data of the menu configuration entries being edited
+	char *netParPtr[WF_NET_CFG_PARAMS][12];
 	/// Selected network configuration item (from 0 to 2)
 	uint8_t selConfig;
 } WfMenuData;
@@ -190,6 +190,22 @@ uint32_t MenuIpStr2Bin(char ip[]) {
 		ip++;
 	}
 	return addr.addr;
+}
+
+/// Converts an IP address in uint32_t binary representation to
+/// string representation. Returns resulting string length.
+uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
+	uint8_t i;
+
+	i  = Byte2UnsStr(addr>>24, str);
+	str[i++] = '.';
+	i += Byte2UnsStr(addr>>16, str + i);
+	str[i++] = '.';
+	i += Byte2UnsStr(addr>>8, str + i);
+	str[i++] = '.';
+	i += Byte2UnsStr(addr, str + i);
+	str[i] = '\0';
+	return i;
 }
 
 ///// Fills dynItems with network parameters. Does NOT fill callbacks,
@@ -495,50 +511,71 @@ uint32_t MenuIpStr2Bin(char ip[]) {
 //	}
 //};
 
-/// Converts an IP address in uint32_t binary representation to
-/// string representation. Returns resulting string length.
-uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
-	uint8_t i;
+uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip) {
+	int i = *startItem;
+	char addr[16];
 
-	i  = Byte2UnsStr(addr>>24, str);
-	str[i++] = '.';
-	i += Byte2UnsStr(addr>>16, str + i);
-	str[i++] = '.';
-	i += Byte2UnsStr(addr>>8, str + i);
-	str[i++] = '.';
-	i += Byte2UnsStr(addr, str + i);
-	str[i] = '\0';
-	return i;
+	addr[15] = '\0';
+	// IP
+	MenuBin2IpStr(ip->addr, addr);
+	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+			addr, MW_SSID_MAXLEN);
+	i++;
+	// MASK
+	MenuBin2IpStr(ip->mask, addr);
+	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+			addr, MW_SSID_MAXLEN);
+	i++;
+	// GATEWAY
+	MenuBin2IpStr(ip->gateway, addr);
+	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+			addr, MW_SSID_MAXLEN);
+	i++;
+	// DNS1
+	MenuBin2IpStr(ip->dns1, addr);
+	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+			addr, MW_SSID_MAXLEN);
+	i++;
+	// DNS1
+	MenuBin2IpStr(ip->dns2, addr);
+	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+			addr, MW_SSID_MAXLEN);
+	i++;
+
+	*startItem = i;
+
+	return 0;
 }
 
-//int MenuWiFiScan(void *m) {
-//	UNUSED_PARAM(m);
-//	MenuString str;
-//	char *apData;
-//	uint16_t pos;
-//	MwApData apd;
-//	int16_t dataLen;
-//	uint8_t i;
-//	uint16_t strPos;
-//
-//	// Clear previously drawn items, and print the WiFi scan message
-//	str.string = (char*)strScan;
-//	str.length = sizeof(strScan) - 1;
-//	MenuMessage(str, 0);
-//
-//	// Disconnect from network
-//	MwApLeave();
-//	// Scan networks
-//	if ((dataLen = MwApScan(&apData)) == MW_ERROR) {
-//		str.string = (char*)strScanFail;	
-//		str.length = sizeof(strScanFail) - 1;
-//		MenuMessage(str, 120);
-//		return FALSE;
-//	}
-//	str.string = (char*)"SCAN OK!!!";
-//	str.length = 10;
-//	MenuMessage(str, 120);
-//	// Scan complete, fill in MenuItem information.
+int MenuWiFiScan(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+	MenuString str;
+	char *apData;
+	uint16_t pos;
+	MwApData apd;
+	int16_t dataLen;
+	uint8_t i;
+	uint16_t strPos;
+
+	// Clear previously drawn items, and print the WiFi scan message
+	str.string = (char*)strScan;
+	str.length = sizeof(strScan) - 1;
+	MenuMessage(str, 0);
+
+	// Disconnect from network
+	MwApLeave();
+	// Scan networks
+	if ((dataLen = MwApScan(&apData)) == MW_ERROR) {
+		str.string = (char*)strScanFail;	
+		str.length = sizeof(strScanFail) - 1;
+		MenuMessage(str, 120);
+		return FALSE;
+	}
+	str.string = (char*)"SCAN OK!!!";
+	str.length = 10;
+	MenuMessage(str, 120);
+	// Scan complete, fill in MenuItem information.
 //	pos = 0;
 //	for (i = 0, pos = 0, strPos = 0; (pos = MwApFillNext(apData, pos, &apd,
 //			dataLen) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
@@ -560,11 +597,11 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 //		dynItems[i].selectable = 1;
 //		dynItems[i].alt_color = 0;
 //	}
-//
-//	
-//	return 0;
-//}
-//
+
+	
+	return 0;
+}
+
 ///// \note This entry is not const because the number of entries is unknown
 ///// until the scan is performed
 //MenuEntry confSsidSelEntry = {
@@ -584,110 +621,69 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 //		{MENU_H_ALIGN_LEFT}			// align
 //	}
 //};
-//
-///// \todo Set active configuration
-//int MenuConfSetActive(void *m) {
-//	UNUSED_PARAM(m);
-//
-//	// Set default config to selected entry
-//	return MwDefApCfg(wd.selConfig);
-//}
-//
+
+/// Set active configuration
+int MenuConfSetActive(void *m) {
+	UNUSED_PARAM(m);
+
+	// Set default config to selected entry
+	return MwDefApCfg(wd->selConfig);
+
+	/// \todo Notify user? Go back a menu level?
+	/// Maybe using MenuMessage()
+	
+}
+
 int MenuConfDataEntryCb(void *m) {
-//	UNUSED_PARAM(m);
-//	char *ssid, *pass;
-//	uint16_t offset;
-//	uint8_t i;
-//	uint8_t strLen;
-//	uint8_t error = FALSE;
-//
-//	// It is assumed that the configuration item is stored on previous level
-//	// data, as it corresponds to the selected option.
-//	i = 0;
-//	// Get the SSID and password
-//	if ((MwApCfgGet(wd.selConfig, &ssid, &pass) != MW_OK) || (*ssid == '\0')) {
-//		// Configuration request failed, fill all items as empty
-//		// SSID
-//		error = TRUE;
-//		strLen  = MenuStrCpy(dynPool, strSsid, 0);	// "SSID: "
-//		wd.netParPtr[i] = NULL;	// No SSID, inform with NULL pointer
-//		strLen += MenuStrCpy(dynPool + strLen, strEmptyText, 0);
-//		dynItems[i].caption.string = dynPool;
-//		dynItems[i++].caption.length = strLen;
-//		offset = strLen + 1;
-//		// PASS
-//		strLen  = MenuStrCpy(dynPool + offset, strPass, 0); // "PASS: "
-//		wd.netParPtr[i] = NULL;	// No SSID, inform with NULL pointer
-//		strLen += MenuStrCpy(dynPool + offset + strLen, strEmptyText, 0);
-//		dynItems[i].caption.string = dynPool + offset;
-//		dynItems[i++].caption.length = strLen;
-//		offset += strLen + 1;
-//	} else {
-//		strLen  = MenuStrCpy(dynPool, strSsid, 0);	// "SSID: "
-//		wd.netParPtr[i] = dynPool + strLen;		// Store ptr to param
-//		strLen += MenuStrCpy(dynPool + strLen, ssid, MW_SSID_MAXLEN);
-//		// If SSID is 32 bytes, it might not be null terminated
-//		if (dynPool[strLen] != '\0') {
-//			strLen++;
-//			dynPool[strLen] = '\0';
-//		}
-//		dynItems[i].caption.string = dynPool;
-//		dynItems[i++].caption.length = strLen;
-//		offset = strLen + 1;
-//		// PASS
-//		strLen  = MenuStrCpy(dynPool + offset, strPass, 0); // "PASS: "
-//		wd.netParPtr[i] = dynPool + offset + strLen;	// Store ptr to param
-//		strLen += MenuStrCpy(dynPool + offset + strLen, pass, MW_SSID_MAXLEN);
-//		if (dynPool[offset + strLen] != '\0') {
-//			strLen++;
-//			dynPool[offset + strLen] = '\0';
-//		}
-//		dynItems[i].caption.string = dynPool + offset;
-//		dynItems[i++].caption.length = strLen;
-//		offset += strLen + 1;
-//	}
-//	// If no error, fill IP configuration
-//	if (error || MenuIpConfFill(&i, &offset, wd.selConfig)) {
-//			error = TRUE;
-//			MenuIpConfFillDhcp(&i, &offset);
-//	}
-//	// [BLANK]
-//	dynItems[i].caption.length = sizeof(strEdit) - 1;
-//	*(dynPool + offset) = '\0';
-//	dynItems[i].cb = NULL;
-//	dynItems[i].next = NULL;
-//	dynItems[i].selectable = 0;
-//	dynItems[i].alt_color = 0;
-//	dynItems[i++].caption.length = 0;
-//	// EDIT
-//	dynItems[i].caption.string = dynPool + offset;
-//	dynItems[i].caption.length = sizeof(strEdit) - 1;
-//	dynItems[i].cb = MenuWiFiScan;
-//	dynItems[i].next = NULL;
-//	dynItems[i].selectable = 1;
-//	dynItems[i++].alt_color = 0;
-//	offset += 1 + MenuStrCpy(dynPool + offset, strEdit, 0);
-//	// SET AS ACTIVE
-//	dynItems[i].caption.string = dynPool + offset;
-//	dynItems[i].caption.length = sizeof(strAct) - 1;
-//	dynItems[i].next = NULL;
-//	if (error) {
-//		dynItems[i].selectable = 0;
-//		dynItems[i].alt_color = 1;
-//		dynItems[i].cb = NULL;
-//	} else {
-//		dynItems[i].selectable = 1;
-//		dynItems[i].alt_color = 0;
-//		dynItems[i].cb = MenuConfSetActive;
-//	}
-//	offset += 1 + MenuStrCpy(dynPool + offset, strAct, 0);
-//	// Fill remaining fields
-//	for (i = 0; i < 7; i++) {
-//		dynItems[i].cb = NULL;
-//		dynItems[i].next = NULL;
-//		dynItems[i].selectable = 0;
-//		dynItems[i].alt_color = 1;
-//	}
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+	char *ssid, *pass;
+	MwIpCfg *ip;
+	uint8_t i;
+	uint8_t error = FALSE;
+
+	i = 0;
+	// Get the SSID and password
+	if ((MwApCfgGet(wd->selConfig, &ssid, &pass) != MW_OK) || (*ssid == '\0')) {
+		// Configuration request failed, fill all items as empty
+		// SSID
+		error = TRUE;
+		
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				strEmptyText, 0);
+		i++;
+		// PASS
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				strEmptyText, 0);
+		i++;
+	} else {
+		// SSID
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				ssid, MW_SSID_MAXLEN);
+		i++;
+		// PASS
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				pass, MW_SSID_MAXLEN);
+		i++;
+	}
+	// If no error, fill IP configuration
+	if (error || (MW_OK != MwIpCfgGet(wd->selConfig, &ip))) {
+			error = TRUE;
+	} else MenuIpConfFillDhcp(&i, item, ip);
+	// [BLANK]
+	// EDIT
+	// SET AS ACTIVE
+	i = 9;
+	if (error) {
+		item[i].selectable = 0;
+		item[i].alt_color = 1;
+		item[i].cb = NULL;
+	} else {
+		item[i].selectable = 1;
+		item[i].alt_color = 0;
+//		item[i].cb = MenuConfSetActive;
+	}
+	i++;
 	return 0;
 }
 
@@ -721,31 +717,31 @@ const MenuItem confNetPar[] = {
 		MENU_ESTR(strIp, 9 + WF_IP_MAXLEN),
 		NULL,						// Next
 		NULL,						// Callback
-		{{0, 1, 0}}					// Selectable, alt_color, hide
+		{{0, 1, 1}}					// Selectable, alt_color, hide
 	}, {
 		// Editable netmask
 		MENU_ESTR(strMask, 9 + WF_IP_MAXLEN),
 		NULL,						// Next
 		NULL,						// Callback
-		{{0, 1, 0}}					// Selectable, alt_color, hide
+		{{0, 1, 1}}					// Selectable, alt_color, hide
 	}, {
 		// Editable gateway
 		MENU_ESTR(strGw, 9 + WF_IP_MAXLEN),
 		NULL,						// Next
 		NULL,						// Callback
-		{{0, 1, 0}}					// Selectable, alt_color, hide
+		{{0, 1, 1}}					// Selectable, alt_color, hide
 	}, {
 		// Editable DNS1
 		MENU_ESTR(strDns1, 9 + WF_IP_MAXLEN),
 		NULL,						// Next
 		NULL,						// Callback
-		{{0, 1, 0}}					// Selectable, alt_color, hide
+		{{0, 1, 1}}					// Selectable, alt_color, hide
 	}, {
 		// Editable DNS2
 		MENU_ESTR(strDns2, 9 + WF_IP_MAXLEN),
 		NULL,						// Next
 		NULL,						// Callback
-		{{0, 1, 0}}					// Selectable, alt_color, hide
+		{{0, 1, 1}}					// Selectable, alt_color, hide
 	}, {
 		MENU_EESTR(0),				// [EMPTY]
 		NULL,						// Next
@@ -753,7 +749,7 @@ const MenuItem confNetPar[] = {
 		{{0, 0, 1}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEdit, 9 + 5),	// EDIT
-		NULL,						// Next
+		MenuWiFiScan,
 		NULL,						// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {

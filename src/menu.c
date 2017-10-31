@@ -299,16 +299,18 @@ void MenuDrawItemPage(uint8_t chrOff) {
 	for (i = 0, line = MENU_LINE_ITEM_FIRST, item = md->me->selPage *
 			m->mItem.entPerPage; i < pageItems; i++,
 			line += m->mItem.spacing, item++) {
-		if (i == md->me->selItem) {
-			color = MENU_COLOR_ITEM_SEL;
-		} else {
-			color = m->mItem.item[item].alt_color?MENU_COLOR_ITEM_ALT:
-				MENU_COLOR_ITEM;
+		if (!m->mItem.item[item].hide) {
+			if (i == md->me->selItem) {
+				color = MENU_COLOR_ITEM_SEL;
+			} else {
+				color = m->mItem.item[item].alt_color?MENU_COLOR_ITEM_ALT:
+					MENU_COLOR_ITEM;
+			}
+			VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
+				m->mItem.item[item].caption, m->mItem.align, m->margin), line,
+				color, m->mItem.item[item].caption.length,
+				m->mItem.item[item].caption.string);
 		}
-		VdpDrawText(VDP_PLANEA_ADDR, chrOff + MenuStrAlign(
-			m->mItem.item[item].caption, m->mItem.align, m->margin), line,
-			color, m->mItem.item[item].caption.length,
-			m->mItem.item[item].caption.string);
 	}
 	// Draw page number and total, if number of pages greater than 1
 	if (m->mItem.pages > 0) {
