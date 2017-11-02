@@ -749,8 +749,8 @@ const MenuItem confNetPar[] = {
 		{{0, 0, 1}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEdit, 9 + 5),	// EDIT
-		MenuWiFiScan,
-		NULL,						// Callback
+		NULL,						// Next
+		MenuWiFiScan,				// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strAct, 9 + 14),	// Set as active
