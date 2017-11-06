@@ -91,6 +91,10 @@ const char strNetParLen[WF_NET_CFG_PARAMS] = {
 	4, 4, 2, 4, 7, 4, 4
 };
 
+// Private prototypes
+int MenuWiFiScan(void *m);
+
+	
 ////char editableIp[16] = "192.168.1.60";
 ////char editableNum[9] = "123456";
 ////
@@ -511,6 +515,30 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 //	}
 //};
 
+/****************************************************************************
+ * WiFi APs menu
+ *
+ * This menu entry is not populated with items because they are dynamically
+ * populated by the entry callback function.
+ ****************************************************************************/
+const MenuEntry confSsidSelEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	8,								// Margin
+	MENU_STR("WIFI NETWORK"),		// Title
+	MENU_STR(strScanContext),		// Left context
+	NULL,							// entry callback
+	NULL,							// exit callback
+	NULL,							// cBut callback
+	.mItem = {
+		NULL,					// item
+		0,							// nItems
+		2,							// spacing
+		0,							// entPerPage
+		0,							// pages
+		{MENU_H_ALIGN_LEFT}			// align
+	}
+};
+
 uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip) {
 	int i = *startItem;
 	char addr[16];
@@ -547,6 +575,15 @@ uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip) {
 	return 0;
 }
 
+//#ifdef _FAKE_WIFI
+//// Order is:
+//// - Auth
+//// - channel
+//// - 
+//const char fakeScanData[] = {
+//	0, 1, 25, 3, 'A', 'P', '1',
+//};
+//#else
 int MenuWiFiScan(void *m) {
 	Menu *md = (Menu*)m;
 	MenuItem *item = md->me->mEntry.mItem.item;
@@ -556,7 +593,7 @@ int MenuWiFiScan(void *m) {
 	MwApData apd;
 	int16_t dataLen;
 	uint8_t i;
-	uint16_t strPos;
+	uint8_t aps;
 
 	// Clear previously drawn items, and print the WiFi scan message
 	str.string = (char*)strScan;
@@ -566,7 +603,7 @@ int MenuWiFiScan(void *m) {
 	// Disconnect from network
 	MwApLeave();
 	// Scan networks
-	if ((dataLen = MwApScan(&apData)) == MW_ERROR) {
+	if ((dataLen = MwApScan(&apData, &aps)) == MW_ERROR) {
 		str.string = (char*)strScanFail;	
 		str.length = sizeof(strScanFail) - 1;
 		MenuMessage(str, 120);
@@ -576,51 +613,40 @@ int MenuWiFiScan(void *m) {
 	str.length = 10;
 	MenuMessage(str, 120);
 	// Scan complete, fill in MenuItem information.
-//	pos = 0;
-//	for (i = 0, pos = 0, strPos = 0; (pos = MwApFillNext(apData, pos, &apd,
-//			dataLen) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
-//		// Fill a dynEntry. Format is: signal_strength(3) auth(4) SSID(29)
-//		/// \todo check we do not overflow string buffer
-//		dynItems[i].caption.string = dynPool + strPos;
-//		if (apd.auth < MW_AUTH_OPEN || apd.auth > MW_AUTH_UNKNOWN)
-//			apd.auth = MW_AUTH_UNKNOWN;
-//		Byte2UnsStr(apd.str, dynPool + strPos);
-//		strPos += 4;
-//		strPos += MenuStrCpy(dynPool + strPos, security[(uint8_t)apd.auth], 0);
-//		strPos += MenuStrCpy(dynPool + strPos, apd.ssid, apd.ssidLen);
-//		dynPool[strPos++] = '\0';
-//		dynItems[i].caption.length = dynPool + strPos -
-//			dynItems[i].caption.string;
-//
-//		dynItems[i].next = &MenuIpCfgEntry;
-//		dynItems[i].cb = NULL;
-//		dynItems[i].selectable = 1;
-//		dynItems[i].alt_color = 0;
-//	}
+	// Allocate memory for the item descriptors
+	item = MpAlloc(aps * sizeof(MenuItem));
+	memset(item, 0, aps * sizeof(MenuItem));
+	pos = 0;
+	for (i = 0, pos = 0; (pos = MwApFillNext(apData, pos, &apd,
+			dataLen) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
+		// Fill a dynEntry. Format is: signal_strength(3) auth(4) SSID(29)
+		/// \todo check we do not overflow string buffer
+		// Allocate memory for SSID plus strength (4) plus security (5)
+		// plus null termination
+		item[i].caption.string = MpAlloc(apd.ssidLen + 9 + 1);
+		// Copy strength
+		item[i].caption.length = Byte2UnsStr(apd.str, item[i].caption.string);
+		// Copy security type
+		item[i].caption.string[item[i].caption.length++] = ' ';
+		if (apd.auth < MW_AUTH_OPEN || apd.auth > MW_AUTH_UNKNOWN)
+			apd.auth = MW_AUTH_UNKNOWN;
+		item[i].caption.length += MenuStrCpy(item[i].caption.string +
+				item[i].caption.length, security[(int)apd.auth], 0);
+		// Copy SSID
+		item[i].caption.string[item[i].caption.length++] = ' ';
+		memcpy(item[i].caption.string + item[i].caption.length, apd.ssid,
+				apd.ssidLen);
+		item[i].caption.length = apd.ssidLen;
+		item[i].caption.string[(int)apd.ssidLen] = '\0';
 
-	
+//		item[i].next = &MenuIpCfgEntry;
+		item[i].cb = NULL;
+		item[i].selectable = 1;
+		item[i].alt_color = 0;
+	}
 	return 0;
 }
-
-///// \note This entry is not const because the number of entries is unknown
-///// until the scan is performed
-//MenuEntry confSsidSelEntry = {
-//	MENU_TYPE_ITEM,					// Menu type
-//	8,								// Margin
-//	MENU_STR("WIFI NETWORK"),		// Title
-//	MENU_STR(strScanContext),		// Left context
-//	MenuWiFiScan,					// entry callback
-//	NULL,							// exit callback
-//	MenuWiFiScan,					// cBut callback
-//	.item = {
-//		dynItems,					// item
-//		0,							// nItems
-//		2,							// spacing
-//		0,							// entPerPage
-//		0,							// pages
-//		{MENU_H_ALIGN_LEFT}			// align
-//	}
-//};
+//#endif //_FAKE_WIFI
 
 /// Set active configuration
 int MenuConfSetActive(void *m) {

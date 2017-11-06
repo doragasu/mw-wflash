@@ -297,18 +297,21 @@ int MwIpCfgGet(uint8_t index, MwIpCfg **ip) {
  *
  * \param[out] apData Data of the found access points. Each entry has the
  *             format specified on the MwApData structure.
+ * \param[out] aps    Number of found access points.
  *
  * \return Length in bytes of the output data if operation completes
  *         successfully, or MW_ERROR if scan fails.
  ****************************************************************************/
-int MwApScan(char *apData[]) {
+int MwApScan(char *apData[], uint8_t *aps) {
 	if (!mwReady) return MW_ERROR;
 
 	cmd->cmd = MW_CMD_AP_SCAN;
 	cmd->datalen = 0;
 	MW_TRY_CMD_SEND(cmd, MW_ERROR);
 	MW_TRY_REP_RECV(cmd, MW_ERROR);
-	*apData = (char*)cmd->data;
+	// Fill number of APs and skip it for the apData array
+	*aps = *cmd->data;
+	*apData = ((char*)cmd->data) + 1;
 
 	return cmd->datalen;
 }

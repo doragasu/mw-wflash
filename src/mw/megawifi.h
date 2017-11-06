@@ -161,11 +161,12 @@ int MwIpCfgGet(uint8_t index, MwIpCfg **ip);
  *
  * \param[out] apData Data of the found access points. Each entry has the
  *             format specified on the MwApData structure.
+ * \param[out] aps    Number of found access points.
  *
  * \return Length in bytes of the output data if operation completes
  *         successfully, or MW_ERROR if scan fails.
  ****************************************************************************/
-int MwApScan(char *apData[]);
+int MwApScan(char *apData[], uint8_t *aps);
 
 /************************************************************************//**
  * \brief Parses received AP data and fills information of the AP at "pos".

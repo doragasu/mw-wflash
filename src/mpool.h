@@ -53,7 +53,7 @@ void MpInit(void);
  *
  * \todo Maybe allocation should be tested against the stack pointer
  ****************************************************************************/
-void *MpAlloc(uint16_t length);
+void *MpAlloc(uint16_t length) __attribute__((malloc));
 
 /************************************************************************//**
  * \brief Free memory up to the one pointed by pos.
