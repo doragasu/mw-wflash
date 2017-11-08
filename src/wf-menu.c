@@ -91,8 +91,23 @@ const char strNetParLen[WF_NET_CFG_PARAMS] = {
 	4, 4, 2, 4, 7, 4, 4
 };
 
+/// Module global menu data structure
+typedef struct {
+	/// Menu items of the scanned WiFi APs.
+	MenuItem *item;
+	/// Data of the menu configuration entries being edited
+	char *netParPtr[WF_NET_CFG_PARAMS][12];
+	/// Selected network configuration item (from 0 to 2)
+	uint8_t selConfig;
+	/// Number of scanned APs
+	uint8_t aps;
+} WfMenuData;
+
 // Private prototypes
 int MenuWiFiScan(void *m);
+int MenuSsidLink(void *m);
+int MenuConfEntrySet(void *m);
+int MenuConfEntryCb(void* m);
 
 	
 ////char editableIp[16] = "192.168.1.60";
@@ -168,14 +183,6 @@ int MenuWiFiScan(void *m);
 ////	}
 ////};
 
-
-/// Module global menu data structure
-typedef struct {
-	/// Data of the menu configuration entries being edited
-	char *netParPtr[WF_NET_CFG_PARAMS][12];
-	/// Selected network configuration item (from 0 to 2)
-	uint8_t selConfig;
-} WfMenuData;
 
 /// Module global data (other than item buffers)
 static WfMenuData *wd;
@@ -523,21 +530,33 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
  ****************************************************************************/
 const MenuEntry confSsidSelEntry = {
 	MENU_TYPE_ITEM,					// Menu type
-	8,								// Margin
+	1,								// Margin
 	MENU_STR("WIFI NETWORK"),		// Title
 	MENU_STR(strScanContext),		// Left context
-	NULL,							// entry callback
+	MenuSsidLink,					// entry callback
 	NULL,							// exit callback
 	NULL,							// cBut callback
 	.mItem = {
-		NULL,					// item
+		NULL,						// item
 		0,							// nItems
 		2,							// spacing
-		0,							// entPerPage
+		MENU_ITEM_NLINES/2,			// entPerPage
 		0,							// pages
 		{MENU_H_ALIGN_LEFT}			// align
 	}
 };
+
+int MenuSsidLink(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItemEntry *mie = &md->me->mEntry.mItem;
+
+	// Fill scanned item data
+	mie->item = wd->item;
+	mie->nItems = wd->aps;
+	mie->pages = mie->nItems / mie->entPerPage;
+	if (0 != (mie->nItems % mie->entPerPage)) mie->entPerPage--;
+	return TRUE;
+}
 
 uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip) {
 	int i = *startItem;
@@ -575,15 +594,21 @@ uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip) {
 	return 0;
 }
 
-//#ifdef _FAKE_WIFI
-//// Order is:
-//// - Auth
-//// - channel
-//// - 
-//const char fakeScanData[] = {
-//	0, 1, 25, 3, 'A', 'P', '1',
-//};
-//#else
+#ifdef _FAKE_WIFI
+/// \brief Fake scan data. Field order is:
+/// - Auth
+/// - channel
+/// - str
+/// - ssidLen
+/// - ssid
+static const char fakeScanData[] = {
+	0, 1, 25, 3, 'A', 'P', '1',
+	0, 2, 50, 3, 'A', 'P', '2',
+	0, 3, 75, 3, 'A', 'P', '3'
+};
+#define _FAKE_WIFI_APS		3
+#endif
+
 int MenuWiFiScan(void *m) {
 	Menu *md = (Menu*)m;
 	MenuItem *item = md->me->mEntry.mItem.item;
@@ -602,6 +627,11 @@ int MenuWiFiScan(void *m) {
 
 	// Disconnect from network
 	MwApLeave();
+#ifdef _FAKE_WIFI
+	aps = _FAKE_WIFI_APS;
+	apData = (char*)fakeScanData;
+	dataLen = sizeof(fakeScanData);
+#else //_FAKE_WIFI
 	// Scan networks
 	if ((dataLen = MwApScan(&apData, &aps)) == MW_ERROR) {
 		str.string = (char*)strScanFail;	
@@ -609,16 +639,17 @@ int MenuWiFiScan(void *m) {
 		MenuMessage(str, 120);
 		return FALSE;
 	}
+#endif //_FAKE_WIFI
 	str.string = (char*)"SCAN OK!!!";
 	str.length = 10;
-	MenuMessage(str, 120);
+	MenuMessage(str, 30);
 	// Scan complete, fill in MenuItem information.
 	// Allocate memory for the item descriptors
 	item = MpAlloc(aps * sizeof(MenuItem));
 	memset(item, 0, aps * sizeof(MenuItem));
 	pos = 0;
-	for (i = 0, pos = 0; (pos = MwApFillNext(apData, pos, &apd,
-			dataLen) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
+	for (i = 0; ((pos = MwApFillNext(apData, pos, &apd,
+			dataLen)) > 0) && (i < WF_MENU_MAX_DYN_ITEMS); i++) {
 		// Fill a dynEntry. Format is: signal_strength(3) auth(4) SSID(29)
 		/// \todo check we do not overflow string buffer
 		// Allocate memory for SSID plus strength (4) plus security (5)
@@ -628,25 +659,27 @@ int MenuWiFiScan(void *m) {
 		item[i].caption.length = Byte2UnsStr(apd.str, item[i].caption.string);
 		// Copy security type
 		item[i].caption.string[item[i].caption.length++] = ' ';
-		if (apd.auth < MW_AUTH_OPEN || apd.auth > MW_AUTH_UNKNOWN)
+		if ((apd.auth < MW_AUTH_OPEN) || (apd.auth > MW_AUTH_UNKNOWN))
 			apd.auth = MW_AUTH_UNKNOWN;
 		item[i].caption.length += MenuStrCpy(item[i].caption.string +
-				item[i].caption.length, security[(int)apd.auth], 0);
+				item[i].caption.length, security[(int)apd.auth], 4);
 		// Copy SSID
 		item[i].caption.string[item[i].caption.length++] = ' ';
 		memcpy(item[i].caption.string + item[i].caption.length, apd.ssid,
 				apd.ssidLen);
-		item[i].caption.length = apd.ssidLen;
-		item[i].caption.string[(int)apd.ssidLen] = '\0';
+		item[i].caption.length += apd.ssidLen;
+		item[i].caption.string[item[i].caption.length] = '\0';
 
 //		item[i].next = &MenuIpCfgEntry;
 		item[i].cb = NULL;
 		item[i].selectable = 1;
 		item[i].alt_color = 0;
 	}
-	return 0;
+	// Store scanned data, that will be loaded by the entry callback
+	wd->item = item;
+	wd->aps = aps;
+	return TRUE;
 }
-//#endif //_FAKE_WIFI
 
 /// Set active configuration
 int MenuConfSetActive(void *m) {
@@ -775,7 +808,7 @@ const MenuItem confNetPar[] = {
 		{{0, 0, 1}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEdit, 9 + 5),	// EDIT
-		NULL,						// Next
+		(void*)&confSsidSelEntry,	// Next
 		MenuWiFiScan,				// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
@@ -799,6 +832,50 @@ const MenuEntry confEntryData = {
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
 		MENU_ENTRY_ITEM(confNetPar, 2),
+		{MENU_H_ALIGN_LEFT}			// align
+	}
+};
+
+/****************************************************************************
+ * Configuration items
+ *
+ * Title: CONFIGURATION
+ *
+ * Start game (currently disabled) and configuration entries.
+ ****************************************************************************/
+/// Supported configuration items
+const MenuItem confItem[] = {
+	{
+		// Default caption (will be dynamically modified)
+		MENU_ESTR(strEmptyText, 3 + 32 + 1),
+		(void*)&confEntryData,		// Next
+		MenuConfEntrySet,			// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_ESTR(strEmptyText, 3 + 32 + 1),
+		(void*)&confEntryData,		// Next
+		MenuConfEntrySet,			// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_ESTR(strEmptyText, 3 + 32 + 1),
+		(void*)&confEntryData,		// Next
+		MenuConfEntrySet,			// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}
+};
+
+
+const MenuEntry confEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	1,								// Margin
+	MENU_STR("CONFIGURATION"),		// Title
+	MENU_STR(stdContext),			// Left context
+	MenuConfEntryCb,				// entry
+	NULL,							// exit
+	NULL,							// cBut callback
+	.mItem = {
+		// rootItem, nItems, spacing, enPerPage, pages
+		MENU_ENTRY_ITEM(confItem, 3),
 		{MENU_H_ALIGN_LEFT}			// align
 	}
 };
@@ -850,43 +927,15 @@ int MenuConfEntryCb(void* m) {
 	return 0;
 }
 
-/// Supported configuration items
-const MenuItem confItem[] = {
-	{
-		// Default caption (will be dynamically modified)
-		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-		(void*)&confEntryData,		// Next
-		MenuConfEntrySet,			// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}, {
-		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-		(void*)&confEntryData,		// Next
-		MenuConfEntrySet,			// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}, {
-		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-		(void*)&confEntryData,		// Next
-		MenuConfEntrySet,			// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}
-};
 
 
-const MenuEntry confEntry = {
-	MENU_TYPE_ITEM,					// Menu type
-	1,								// Margin
-	MENU_STR("CONFIGURATION"),		// Title
-	MENU_STR(stdContext),			// Left context
-	MenuConfEntryCb,				// entry
-	NULL,							// exit
-	NULL,							// cBut callback
-	.mItem = {
-		// rootItem, nItems, spacing, enPerPage, pages
-		MENU_ENTRY_ITEM(confItem, 3),
-		{MENU_H_ALIGN_LEFT}			// align
-	}
-};
-
+/****************************************************************************
+ * Root menu.
+ *
+ * Title: WFLASH BOOTLOADER
+ *
+ * Start game (currently disabled) and configuration entries.
+ ****************************************************************************/
 /// Root menu items
 const MenuItem rootItem[] = { {
 		MENU_STR("START"),			// Caption
@@ -918,7 +967,7 @@ const MenuEntry rootMenu = {
 };
 
 void WfMenuInit(MenuString statStr) {
-	wd = MpAlloc(sizeof(WfMenuData));
 	MenuInit(&rootMenu, statStr);
+	wd = MpAlloc(sizeof(WfMenuData));
 }
 
