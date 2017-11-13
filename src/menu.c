@@ -595,8 +595,15 @@ void MenuDraw(uint8_t direction) {
 	MenuClearLines(0, MENU_NLINES_TOTAL, offset);
 }
 
-/// Requires the string metadata to be previously copied, only loads the
-/// string contents when necessary.
+/************************************************************************//**
+ * \brief Loads a menu string.
+ *
+ *  Requires the string metadata to be previously copied, only loads the
+ *  string contents when necessary.
+ *
+ * \param[out] dst  String to which the new string will be added.
+ * \param[in]  menu String that will be loaded into dst.
+ ****************************************************************************/
 static void MenuStringLoad(MenuString *dst, const MenuString *org) {
 	// Only load editable strings (const strings can be kept at ROM)
 	if (org->editable) {
@@ -611,7 +618,12 @@ static void MenuStringLoad(MenuString *dst, const MenuString *org) {
 	}
 }
 
-/// Loads menu items into a loaded MenuEntity
+/************************************************************************//**
+ * \brief Loads menu items into a previously loaded MenuEntity
+ *
+ * \param[out] dst  Menu entry to which items will be added.
+ * \param[in]  menu Menu entry array to add to dst Menu entry.
+ ****************************************************************************/
 static void MenuItemsLoad(MenuEntry *dst, const MenuEntry *menu) {
 	size_t len;
 	int i;
@@ -630,9 +642,17 @@ static void MenuItemsLoad(MenuEntry *dst, const MenuEntry *menu) {
 	}
 }
 
-/// Loads the specified menu, and adds it to the menu list. Currently active
-/// menu when this function is called, is added to the new menu ->prev entry.
-MenuEntity *MenuLoad(const MenuEntry *menu) {
+/************************************************************************//**
+ * \brief Loads the specified menu.
+ *
+ * Loaded menu is added to the menu list. Currently active menu when this
+ * function is called, is added to the new menu ->prev entry.
+ *
+ * \param[in] Menu entry to load.
+ *
+ * \return Pointer to the neuly loaded Menu Entity
+ ****************************************************************************/
+static MenuEntity *MenuLoad(const MenuEntry *menu) {
 	MenuEntity *tmp;
 
 	// Allocate  for the new menu entry
@@ -662,7 +682,12 @@ MenuEntity *MenuLoad(const MenuEntry *menu) {
 	return tmp;
 }
 
-void MenuUnload(void) {
+
+/************************************************************************//**
+ * \brief Frees the memory used by the last menu level, and points the
+ * current menu to the previous entry.
+ ****************************************************************************/
+static void MenuUnload(void) {
 	MenuEntity *tmp;
 
 	tmp = md->me;
@@ -739,10 +764,31 @@ static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 }
 
 /************************************************************************//**
- * Perform menu actions for a MENU_TYPE_ITEM menu, depending in the pressed
- * key.
+ * Goes back one menu level, unless in the root menu.
+ ****************************************************************************/
+void MenuBack(void) {
+	const MenuEntry *m = &md->me->mEntry;
+
+	// Only unload if we are not at the root menu
+	if (md->me->prev) {
+		// If there is exit callback, execute it
+		if (m->exit) m->exit(md);
+		MenuUnload();
+		// Call menu entry callback
+		if (md->me->mEntry.entry) md->me->mEntry.entry(md);
+		MenuDraw(MENU_SCROLL_DIR_RIGHT);
+	}
+}
+
+/************************************************************************//**
+ * \brief Perform menu actions for a MENU_TYPE_ITEM menu, depending in the
+ * pressed key.
  *
  * \param[in] input Input key changes.
+ *
+ * \note To go back one menu level from the implemented menu structures
+ * (i.e. without the user pressing the 'B' button, call MenuBack() from the
+ * item run callback, and then make the callback return FALSE.
  ****************************************************************************/
 void MenuItemAction(uint8_t input) {
 	uint16_t tmp, i;
@@ -759,7 +805,7 @@ void MenuItemAction(uint8_t input) {
 			if (m->exit) m->exit(md);
 			// Load next menu:
 			if (!MenuLoad(m->mItem.item[tmp].next))
-				MenuPanic("MENU LEVELS EXHAUSTED!", 22);
+				MenuPanic("MEMORY EXHAUSTED!", 17);
 			// Call menu entry callback
 			if (md->me->mEntry.entry) md->me->mEntry.entry(md);
 			// Select page and item
@@ -770,15 +816,8 @@ void MenuItemAction(uint8_t input) {
 			MenuDraw(MENU_SCROLL_DIR_LEFT);
 		}
 	} else if (input & GP_B_MASK) {
-		// Only unload if we are not at the root menu
-		if (md->me->prev) {
-			// If there is exit callback, execute it
-			if (m->exit) m->exit(md);
-			MenuUnload();
-			// Call menu entry callback
-			if (md->me->mEntry.entry) md->me->mEntry.entry(md);
-			MenuDraw(MENU_SCROLL_DIR_RIGHT);
-		}
+        // Go back one menu level
+        MenuBack();
 	} else if (input & GP_UP_MASK) {
 		// Go up a menu item, and continue while item is not selectable
 		do {
