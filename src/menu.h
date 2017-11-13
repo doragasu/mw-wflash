@@ -327,6 +327,11 @@ void MenuButtonAction(uint8_t input);
 void MenuForceLoad(MenuEntry *me, uint8_t level);
 
 /************************************************************************//**
+ * Goes back one menu level, unless in the root menu.
+ ****************************************************************************/
+void MenuBack(void);
+
+/************************************************************************//**
  * Draw a message "box" over the current menu. The function allows choosing
  * if the message is kept during a fixed amount of frames, or if it is
  * indefinitely kept.
