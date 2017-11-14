@@ -84,6 +84,8 @@ const char strScanFail[] = "SCAN FAILED!";
 const char strCfgFail[] = "CONFIGURATION FAILED!";
 const char strDhcp[] = "AUTO";
 const char strOk[] = "OK";
+const char strDone[] = "DONE!";
+const char strFailed[] = "FAILED!";
 const char *strNetPar[WF_NET_CFG_PARAMS] = {
 	"SSID", "PASS", "IP", "MASK", "GATEWAY", "DNS1", "DNS2"
 };
@@ -102,7 +104,9 @@ typedef struct {
 	/// Number of scanned APs
 	uint8_t aps;
 	/// SSID being edited
-	char ssid[33];
+    MenuString ssid;
+    /// SSID buffer
+	char ssidBuf[33];
 //	/// Password being edited
 //	char pass[65];
 } WfMenuData;
@@ -114,6 +118,7 @@ int MenuConfEntrySet(void *m);
 int MenuConfEntryCb(void* m);
 uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip);
 static int MenuApPassExitCb(void *m);
+int MenuSsidCopySelected(void *m);
 
 ////char editableIp[16] = "192.168.1.60";
 ////char editableNum[9] = "123456";
@@ -516,10 +521,10 @@ int MenuConfSetActive(void *m) {
 
 	// Set default config to selected entry
 	if (MW_OK != MwDefApCfg(wd->selConfig)) {
-		str.string = (char*)"FAILED!";
+		str.string = (char*)strFailed;
 		str.length = 7;
 	} else {
-		str.string = (char*)"DONE!";
+		str.string = (char*)strDone;
 		str.length = 5;
 	}
 
@@ -691,8 +696,19 @@ const MenuEntry apPass = {
 
 static int MenuApPassExitCb(void *m) {
 	Menu *md = (Menu*)m;
+    MenuString msg;
 
-	// Copy resulting strings and go back one extra level
+	// Set resulting SSID and password configuration
+    if (MW_OK == MwApCfgSet(wd->selConfig, wd->ssidBuf,
+                md->me->mEntry.keyb.fieldName.string)) {
+        msg.string = (char*)strDone;
+        msg.length = 5;
+    } else {
+        msg.string = (char*)strFailed;
+        msg.length = 7;
+    }
+    MenuMessage(msg, 30);
+    // Go back an extra level
 	MenuBack();
 
 	return TRUE;
@@ -710,7 +726,7 @@ const MenuEntry confSsidSelEntry = {
 	MENU_STR("WIFI NETWORK"),		// Title
 	MENU_STR(strScanContext),		// Left context
 	MenuSsidLink,					// entry callback
-	NULL,							// exit callback
+	MenuSsidCopySelected,			// exit callback
 	NULL,							// cBut callback
 	.mItem = {
 		NULL,						// item
@@ -732,6 +748,21 @@ int MenuSsidLink(void *m) {
 	mie->pages = mie->nItems / mie->entPerPage;
 	if (0 != (mie->nItems % mie->entPerPage)) mie->entPerPage--;
 	return TRUE;
+}
+
+int MenuSsidCopySelected(void *m) {
+    int i;
+	Menu *md = (Menu*)m;
+	MenuItem *item = &md->me->mEntry.mItem.item[md->me->selItem];
+
+    // Copy SSID data
+    wd->ssid.string = wd->ssidBuf;
+    wd->ssid.length = item->caption.length - 8;
+    for (i = 0; i < wd->ssid.length; i++)
+        wd->ssid.string[i] = item->caption.string[8 + i];
+    wd->ssid.string[i] = '\0';
+
+    return TRUE;
 }
 
 uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip) {
