@@ -764,15 +764,27 @@ static inline void MenuDrawCurrentItem(uint8_t txtColor) {
 }
 
 /************************************************************************//**
+ * Silently goes back one menu level (does not update screen and does not
+ * run menu exit/entry callbacks.
+ ****************************************************************************/
+void MenuUnlink(void) {
+	// Only unload if we are not at the root menu
+	if (md->me->prev) {
+		MenuUnload();
+	}
+}
+
+/************************************************************************//**
  * Goes back one menu level, unless in the root menu.
  ****************************************************************************/
 void MenuBack(void) {
-	const MenuEntry *m = &md->me->mEntry;
+//	const MenuEntry *m = &md->me->mEntry;
 
 	// Only unload if we are not at the root menu
 	if (md->me->prev) {
-		// If there is exit callback, execute it
-		if (m->exit) m->exit(md);
+		// Not sure if we should run exit callbacks. I think it is better
+		// not doing it.
+//		if (m->exit) m->exit(md);
 		MenuUnload();
 		// Call menu entry callback
 		if (md->me->mEntry.entry) md->me->mEntry.entry(md);

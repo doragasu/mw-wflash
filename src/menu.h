@@ -326,6 +326,8 @@ void MenuButtonAction(uint8_t input);
  ****************************************************************************/
 void MenuForceLoad(MenuEntry *me, uint8_t level);
 
+void MenuUnlink(void);
+
 /************************************************************************//**
  * Goes back one menu level, unless in the root menu.
  ****************************************************************************/

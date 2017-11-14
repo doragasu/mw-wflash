@@ -113,6 +113,7 @@ int MenuSsidLink(void *m);
 int MenuConfEntrySet(void *m);
 int MenuConfEntryCb(void* m);
 uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item, MwIpCfg *ip);
+static int MenuApPassExitCb(void *m);
 
 ////char editableIp[16] = "192.168.1.60";
 ////char editableNum[9] = "123456";
@@ -510,14 +511,25 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 /// Set active configuration
 
 int MenuConfSetActive(void *m) {
+	MenuString str;
 	UNUSED_PARAM(m);
 
 	// Set default config to selected entry
-	return MwDefApCfg(wd->selConfig);
+	if (MW_OK != MwDefApCfg(wd->selConfig)) {
+		str.string = (char*)"FAILED!";
+		str.length = 7;
+	} else {
+		str.string = (char*)"DONE!";
+		str.length = 5;
+	}
 
-	/// \todo Notify user? Go back a menu level?
-	/// Maybe using MenuMessage()
-	
+	// Notify user and go back one menu level
+	MenuMessage(str, 30);
+	MenuUnlink();
+	MenuBack();
+
+	// Return false to avoid loading next entry
+	return FALSE;
 }
 
 /// \brief Menu configuration data entry callback. Fills menu entries with
@@ -532,7 +544,8 @@ int MenuConfDataEntryCb(void *m) {
 
 	i = 0;
 	// Get the SSID and password
-	if ((MwApCfgGet(wd->selConfig, &ssid, &pass) != MW_OK) || (*ssid == '\0')) {
+	if ((MwApCfgGet(wd->selConfig, &ssid, &pass) != MW_OK) ||
+			(*ssid == '\0')) {
 		// Configuration request failed, fill all items as empty
 		// SSID
 		error = TRUE;
@@ -569,7 +582,7 @@ int MenuConfDataEntryCb(void *m) {
 	} else {
 		item[i].selectable = 1;
 		item[i].alt_color = 0;
-//		item[i].cb = MenuConfSetActive;
+		item[i].cb = MenuConfSetActive;
 	}
 	i++;
 	return 0;
@@ -667,7 +680,7 @@ const MenuEntry apPass = {
 	MENU_STR("PASSWORD"),			// Title
 	MENU_STR(oskQwertyContext),		// Left context
 	NULL,							// cbEntry
-	NULL,							// cbExit
+	MenuApPassExitCb,				// cbExit
 	.keyb = {
 		MENU_STR("Enter AP password:"),
 		MENU_EESTR(32),
@@ -675,6 +688,15 @@ const MenuEntry apPass = {
 		32
 	}
 };
+
+static int MenuApPassExitCb(void *m) {
+	Menu *md = (Menu*)m;
+
+	// Copy resulting strings and go back one extra level
+	MenuBack();
+
+	return TRUE;
+}
 
 /****************************************************************************
  * WiFi APs menu
@@ -861,8 +883,8 @@ const MenuItem confEditItems[] = {
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_STR("SET AS DEFAULT"),
-		NULL,		// Next
-		NULL,						// Callback
+		NULL,						// Next
+		MenuConfSetActive,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}
 };
