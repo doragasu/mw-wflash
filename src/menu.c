@@ -968,9 +968,11 @@ void MenuOskDone(void) {
 	// Add null termination to string
 	md->strBuf[md->str.length] = '\0';	
 	// If exit callback defined, run it and perform transition if allowed.
-	if ((m->exit) && (!m->exit(&md))) return;
+	if ((m->exit) && (!m->exit(md))) return;
 	// Copy temporal string to menu entry string and scroll back
-	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md->str);
+    /// \todo Does not make sense copying the string to then unload the
+    /// string memory
+//	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md->str);
 	// Free menu resources and go back to the previous menu
 	MenuUnload();
 	MenuDraw(MENU_SCROLL_DIR_RIGHT);
@@ -1454,7 +1456,7 @@ char *MenuNumIsU8(char num[]) {
 	uint8_t i;
 
 	// Skip leading zeros
-	while (*num == '0') num++;
+	while (num[0] == '0' && (num[1] >= '0' && num[1] <= '9')) num++;
 	// Determine number length (up to 4 characters)
 	for (i = 0; (i < 4) && (num[i] >= '0') && (num[i] <= '9'); i++);
 	
@@ -1509,3 +1511,4 @@ int MenuIpValidate(void *m) {
 	if (*str != '\0') return FALSE;	
 	return TRUE;
 }
+

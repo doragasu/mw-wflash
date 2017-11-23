@@ -82,7 +82,7 @@ const char oskNumIpContext[] = "A-OK, B-Del, S-Done";
 const char strEmptyText[] = "<EMPTY>";
 const char strSsid[] = "SSID:    ";
 const char strPass[] = "PASS:    ";
-const char strIp[] =   "IP:      ";
+const char strIp[] =   "ADDRESS: ";
 const char strMask[] = "MASK:    ";
 const char strGw[] =   "GATEWAY: ";
 const char strDns1[] = "DNS1:    ";
@@ -102,7 +102,7 @@ const char *strNetPar[WF_NET_CFG_PARAMS] = {
 	"SSID", "PASS", "IP", "MASK", "GATEWAY", "DNS1", "DNS2"
 };
 const char strNetParLen[WF_NET_CFG_PARAMS] = {
-	4, 4, 2, 4, 7, 4, 4
+	4, 4, 7, 4, 7, 4, 4
 };
 
 /// Module global menu data structure
@@ -543,8 +543,7 @@ const MenuEntry ipAddrOsk = {
 	MENU_STR("IP ADDRESS"),			// Title
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
-    NULL,
-//	MenuIpValidate, 				// cbExit
+	MenuIpValidate, 				// cbExit
 	.keyb = {
 		MENU_STR("Enter IPv4 address:"),
 		MENU_EESTR(0),
