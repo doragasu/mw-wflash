@@ -4,6 +4,7 @@
 #include "menu.h"
 #include "mpool.h"
 
+/// WiFi Menu structure initialization
 void WfMenuInit(MenuString statStr);
 
 /// Converts an IP address in uint32_t binary representation to

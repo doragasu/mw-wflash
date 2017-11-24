@@ -1400,10 +1400,23 @@ void MenuMessage(MenuString str, uint16_t frames) {
 	MenuClearLines(11, 13, 0);
 	VdpDrawText(VDP_PLANEA_ADDR, MenuStrAlign(str, MENU_H_ALIGN_CENTER, 0),
 			12, MENU_COLOR_ITEM_ALT, str.length, str.string);
-	if (frames) {
-		VdpFramesWait(120);
-		MenuDrawItemPage(0);
-	}
+
+	if (frames) VdpFramesWait(frames);
+
+    switch (md->me->mEntry.type) {
+        case MENU_TYPE_ITEM:
+        	MenuDrawItemPage(md->me->selPage);
+            break;
+
+        case MENU_TYPE_OSK_QWERTY:
+        case MENU_TYPE_OSK_NUMERIC:
+        case MENU_TYPE_OSK_IPV4:
+        	MenuClearLines(11, 13, 0);
+            MenuDrawOsk(0);
+        default:
+            break;
+
+    }
 }
 
 /************************************************************************//**

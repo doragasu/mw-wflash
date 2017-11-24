@@ -98,12 +98,19 @@ const char strDhcp[] = "AUTO";
 const char strOk[] = "OK";
 const char strDone[] = "DONE!";
 const char strFailed[] = "FAILED!";
+const char strWrongIp[] = "WRONG IP!";
 const char *strNetPar[WF_NET_CFG_PARAMS] = {
 	"SSID", "PASS", "IP", "MASK", "GATEWAY", "DNS1", "DNS2"
 };
 const char strNetParLen[WF_NET_CFG_PARAMS] = {
 	4, 4, 7, 4, 7, 4, 4
 };
+
+const char strDefIp[] =     "192.168.1.64";
+const char strDefMask[] =   "255.255.255.0";
+const char strDefGw[] =     "192.168.1.1";
+const char strDefDns1[] =   "192.168.1.1";
+const char strDefDns2[] =   "8.8.8.8";
 
 /// Module global menu data structure
 typedef struct {
@@ -128,12 +135,16 @@ int MenuWiFiScan(void *m);
 int MenuSsidLink(void *m);
 int MenuConfEntrySet(void *m);
 int MenuConfEntryCb(void* m);
-int MenuIpOskEnter(void *m);
+static int MenuIpOskEnter(void *m);
+static int MenuIpOskExit(void *m);
 uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item);
 static int MenuApPassExitCb(void *m);
 int MenuSsidCopySelected(void *m);
 int MenuIpConfToggle(void *m);
 void MenuFillNetPar(MwIpCfg *ip);
+void MenuFillDefaultNetPar(void);
+static void MenuIpConfShow(MenuItem* item);
+static void MenuIpConfHide(MenuItem* item);
 
 ////char editableIp[16] = "192.168.1.60";
 ////char editableNum[9] = "123456";
@@ -537,13 +548,28 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
  *
  * AP password input screen.
  ****************************************************************************/
+const MenuEntry ipSsidOsk = {
+	MENU_TYPE_OSK_QWERTY,		    // QWERTY keyboard
+	8,								// Margin
+	MENU_STR("SSID"),			    // Title
+	MENU_STR(oskQwertyContext),		// Left context
+	MenuIpOskEnter,					// cbEntry
+	MenuIpOskExit, 				    // cbExit
+	.keyb = {
+		MENU_STR("Enter access point SSID:"),
+		MENU_EESTR(0),
+		33,
+	    33
+	}
+};
+
 const MenuEntry ipAddrOsk = {
 	MENU_TYPE_OSK_IPV4,			    // IPv4 entry
 	8,								// Margin
 	MENU_STR("IP ADDRESS"),			// Title
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
-	MenuIpValidate, 				// cbExit
+	MenuIpOskExit, 				    // cbExit
 	.keyb = {
 		MENU_STR("Enter IPv4 address:"),
 		MENU_EESTR(0),
@@ -558,7 +584,7 @@ const MenuEntry ipMaskOsk = {
 	MENU_STR("NET MASK"),			// Title
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
-	MenuIpValidate, 				// cbExit
+	MenuIpOskExit, 				    // cbExit
 	.keyb = {
 		MENU_STR("Enter subnet mask:"),
 		MENU_EESTR(0),
@@ -573,7 +599,7 @@ const MenuEntry ipGwOsk = {
 	MENU_STR("GATEWAY"),			// Title
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
-	MenuIpValidate, 				// cbExit
+	MenuIpOskExit, 				    // cbExit
 	.keyb = {
 		MENU_STR("Enter Gateway:"),
 		MENU_EESTR(0),
@@ -588,7 +614,7 @@ const MenuEntry ipDns1Osk = {
 	MENU_STR("PRIMARY DNS"),		// Title
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
-	MenuIpValidate, 				// cbExit
+	MenuIpOskExit, 				    // cbExit
 	.keyb = {
 		MENU_STR("Enter primary DNS address:"),
 		MENU_EESTR(0),
@@ -603,7 +629,7 @@ const MenuEntry ipDns2Osk = {
 	MENU_STR("SECONDARY DNS"),		// Title
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
-	MenuIpValidate, 				// cbExit
+	MenuIpOskExit, 				    // cbExit
 	.keyb = {
 		MENU_STR("Enter secondary DNS address:"),
 		MENU_EESTR(0),
@@ -612,17 +638,74 @@ const MenuEntry ipDns2Osk = {
 	}
 };
 
+/// Menu entries for the network configuration menu
+enum {
+	MENU_NET_CONF_SSID = 0,		///< SSID entry
+	MENU_NET_CONF_PASS,			///< Password entry (hidden text)
+	MENU_NET_CONF_IP_TYPE,		///< IP type (AUTOMATIC/MANUAL)
+	MENU_NET_CONF_IP,			///< IP address
+	MENU_NET_CONF_MASK,			///< Net mask
+	MENU_NET_CONF_GATEWAY,		///< Gateway address
+	MENU_NET_CONF_DNS1,			///< Primary DNS
+	MENU_NET_CONF_DNS2,			///< Secondary DNS
+	MENU_NET_CONF_EMPTY,		///< Empty entry
+	MENU_NET_CONF_OK,			///< Save configuration
+	MENU_NET_CONF_NUM_ENTRIES	///< Number of menu entries
+};
+
 /// Sets the MenuString data of the IP address to be edited
-int MenuIpOskEnter(void *m) {
+static int MenuIpOskEnter(void *m) {
 	Menu *md = (Menu*)m;
     int sel;
 
     // Set text caption depending on selected entry
     sel = md->me->prev->selItem;
-    md->me->mEntry.keyb.fieldData.string = wd->ipPar[sel - WF_IP_ADDR];
+    md->me->mEntry.keyb.fieldData.string = wd->ipPar[sel - WF_NET_IP - 1];
     md->me->mEntry.keyb.fieldData.length =
         strlen(md->me->mEntry.keyb.fieldData.string);
 
+    return TRUE;
+}
+
+static int MenuIpOskExit(void *m) {
+	Menu *md = (Menu*)m;
+    MenuString msg;
+    int sel;
+
+    // Get selected option
+    sel = md->me->prev->selItem;
+
+    // Validate selected text
+    switch (sel) {
+        case MENU_NET_CONF_SSID:
+            break;
+
+        case MENU_NET_CONF_PASS:
+            break;
+
+        case MENU_NET_CONF_IP_TYPE:
+        case MENU_NET_CONF_IP:
+        case MENU_NET_CONF_MASK:
+        case MENU_NET_CONF_GATEWAY:
+        case MENU_NET_CONF_DNS1:
+        case MENU_NET_CONF_DNS2:
+            // Check entered string is a valid IP address
+            if (!MenuIpValidate(m)) {
+                msg.string = (char*)strWrongIp;
+                msg.length = sizeof(strWrongIp) - 1;
+                MenuMessage(msg, 60);
+                return FALSE;
+            }
+            break;
+
+        case MENU_NET_CONF_EMPTY:
+        case MENU_NET_CONF_OK:
+        case MENU_NET_CONF_NUM_ENTRIES:
+        default:
+            break;
+    }
+    // Copy string to its corresponding entry
+    
     return TRUE;
 }
 
@@ -702,36 +785,25 @@ int MenuConfDataEntryCb(void *m) {
 		item[i].caption.length = sizeof(strIpManual) - 1;
 	}
 	i++;
-	// If no error, fill IP configuration
-	if (!error) {
-	// Fill IP character strings
+    // If error, set default IP configuration
+    if (error) {
+        MenuFillDefaultNetPar();
+        MenuIpConfHide(item);
+    	MenuIpConfFillDhcp(&i, item);
+    } else {
 		MenuFillNetPar(ip);
-		MenuIpConfFillDhcp(&i, item);
+    	MenuIpConfFillDhcp(&i, item);
+        MenuIpConfShow(item);
 	}
 	return 0;
 }
-
-/// Menu entries for the network configuration menu
-enum {
-	MENU_NET_CONF_SSID = 0,		///< SSID entry
-	MENU_NET_CONF_PASS,			///< Password entry (hidden text)
-	MENU_NET_CONF_IP_TYPE,		///< IP type (AUTOMATIC/MANUAL)
-	MENU_NET_CONF_IP,			///< IP address
-	MENU_NET_CONF_MASK,			///< Net mask
-	MENU_NET_CONF_GATEWAY,		///< Gateway address
-	MENU_NET_CONF_DNS1,			///< Primary DNS
-	MENU_NET_CONF_DNS2,			///< Secondary DNS
-	MENU_NET_CONF_EMPTY,		///< Empty entry
-	MENU_NET_CONF_OK,			///< Save configuration
-	MENU_NET_CONF_NUM_ENTRIES	///< Number of menu entries
-};
 
 /// Network parameters menu
 const MenuItem confNetPar[] = {
 	{
 		// Editable SSID
 		MENU_ESTR(strSsid, 3 + 32 + 1),
-		NULL,						// Next
+		(void*)&ipSsidOsk,			// Next
 		NULL,						// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
@@ -817,15 +889,12 @@ int MenuIpConfToggle(void *m) {
 		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
 		// Fill in IP configuration data
 		MenuIpConfFillDhcp(&i, item);
+        MenuIpConfShow(item);
 	} else {
 		// Toggle IP configuration to auto
 		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpAuto;
 		// Hide IP related configuration entries
-		while (i < (MENU_NET_CONF_IP + 5)) {
-			item[i].hide = TRUE;
-			item[i].selectable = FALSE;
-			i++;
-		}
+        MenuIpConfHide(item);
 	}
 
 	// Redraw page
@@ -928,6 +997,15 @@ int MenuSsidCopySelected(void *m) {
     return TRUE;
 }
 
+/// Fills wd->netPar with default IP configuration data
+void MenuFillDefaultNetPar(void) {
+    strcpy(wd->ipPar[WF_IP_ADDR], strDefIp);
+    strcpy(wd->ipPar[WF_IP_MASK], strDefMask);
+    strcpy(wd->ipPar[WF_IP_GATEWAY], strDefGw);
+    strcpy(wd->ipPar[WF_IP_DNS1], strDefDns1);
+    strcpy(wd->ipPar[WF_IP_DNS2], strDefDns2);
+}
+
 /// Fills wd->netPar with IP configuration data
 void MenuFillNetPar(MwIpCfg *ip) {
 	int i = WF_NET_IP;
@@ -946,37 +1024,47 @@ uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item) {
 	// IP
 	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
 			wd->ipPar[WF_IP_ADDR], MW_SSID_MAXLEN);
-	item[i].hide = FALSE;
-	item[i].selectable = TRUE;
 	i++;
 	// MASK
 	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
 			wd->ipPar[WF_IP_MASK], MW_SSID_MAXLEN);
-	item[i].hide = FALSE;
-	item[i].selectable = TRUE;
 	i++;
 	// GATEWAY
 	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
 			wd->ipPar[WF_IP_GATEWAY], MW_SSID_MAXLEN);
-	item[i].hide = FALSE;
-	item[i].selectable = TRUE;
 	i++;
 	// DNS1
 	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
 			wd->ipPar[WF_IP_DNS1], MW_SSID_MAXLEN);
-	item[i].hide = FALSE;
-	item[i].selectable = TRUE;
 	i++;
 	// DNS2
 	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-			wd->ipPar[WF_IP_DNS1], MW_SSID_MAXLEN);
-	item[i].hide = FALSE;
-	item[i].selectable = TRUE;
+			wd->ipPar[WF_IP_DNS2], MW_SSID_MAXLEN);
 	i++;
 
 	*startItem = i;
 
 	return 0;
+}
+
+/// Show IP configuration items
+static void MenuIpConfShow(MenuItem* item) {
+	int i = MENU_NET_CONF_IP;
+
+    for (i = MENU_NET_CONF_IP; i < MENU_NET_CONF_EMPTY; i++) {
+    	item[i].hide = FALSE;
+    	item[i].selectable = TRUE;
+    }
+}
+
+/// Hide IP configuration items
+static void MenuIpConfHide(MenuItem* item) {
+	int i = MENU_NET_CONF_IP;
+
+    for (i = MENU_NET_CONF_IP; i < MENU_NET_CONF_EMPTY; i++) {
+    	item[i].hide = TRUE;
+    	item[i].selectable = FALSE;
+    }
 }
 
 #ifdef _FAKE_WIFI
