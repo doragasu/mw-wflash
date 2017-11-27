@@ -21,7 +21,7 @@
 #define MENU_ENTRY_NUMS(numItems, spacing)	(numItems),(spacing), \
 	MENU_ITEM_NLINES/(spacing),(numItems)/(MENU_ITEM_NLINES/(spacing))
 
-/// Macro to fill on MenuEntry structures:
+/// \brief Macro to fill on MenuEntry structures:
 /// rootItem, nItems, spacing, enPerPage, pages
 #define MENU_ENTRY_ITEM(item, spacing)	\
 	(MenuItem*)(item), MENU_ENTRY_NUMS(MENU_NITEMS(item),(spacing))
@@ -54,20 +54,7 @@ typedef union {
 	uint8_t byte[4];
 } IpAddr;
 
-////int TestCb(void* md) {
-////	Menu *m = (Menu*)md;
-////	const MenuEntry* me = m->me[m->level];
-////	uint8_t i;
-////
-////	VdpDrawText(VDP_PLANEA_ADDR, 1, 1, MENU_COLOR_OSK_DATA, me->title.length,
-////			me->title.string);
-////
-////	for (i = 0; i < 120; i++) VdpVBlankWait();
-////
-////	return TRUE;
-//////	return FALSE;
-////}
-
+/// Strings for the supported auth types
 const char security[][4] = {
 	"OPEN", "WEP ", "WPA1", "WPA2", "WPA ", "??? "
 };
@@ -95,6 +82,8 @@ const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
 const char strScanFail[] = "SCAN FAILED!";
 const char strCfgFail[] = "CONFIGURATION FAILED!";
 const char strDhcp[] = "AUTO";
+const char strStartScan[] = "SCAN...";
+const char strSave[] = "SAVE!";
 const char strOk[] = "OK";
 const char strDone[] = "DONE!";
 const char strFailed[] = "FAILED!";
@@ -124,10 +113,12 @@ typedef struct {
 	uint8_t aps;
 	/// SSID being edited
     MenuString ssid;
+    /// Password being edited
+    MenuString pass;
     /// SSID buffer
 	char ssidBuf[33];
-//	/// Password being edited
-//	char pass[65];
+	/// Password being edited
+	char passBuf[65];
 } WfMenuData;
 
 // Private prototypes
@@ -363,7 +354,7 @@ static int MenuIpOskExit(void *m) {
                 return FALSE;
             }
             strcpy(wd->ipPar[sel - MENU_NET_CONF_IP], md->strBuf);
-            i = 3;
+            i = 0;
             MenuIpConfFillDhcp(&i, md->me->prev->mEntry.mItem.item);
             break;
 
@@ -376,200 +367,6 @@ static int MenuIpOskExit(void *m) {
     // Update menu items
     
     return TRUE;
-}
-
-/****************************************************************************
- * Network configuration entry menu
- *
- * Title: NETWORK CONFIGURATION
- *
- * Screen with SSID, password and IP configuration entry fields.
- ****************************************************************************/
-int MenuConfSetActive(void *m) {
-	MenuString str;
-	UNUSED_PARAM(m);
-
-	// Set default config to selected entry
-	if (MW_OK != MwDefApCfg(wd->selConfig)) {
-		str.string = (char*)strFailed;
-		str.length = sizeof(strFailed) - 1;
-	} else {
-		str.string = (char*)strDone;
-		str.length = sizeof(strDone) - 1;
-	}
-
-	// Notify user and go back one menu level
-	MenuMessage(str, 30);
-	MenuUnlink();
-	MenuBack();
-
-	// Return false to avoid loading next entry
-	return FALSE;
-}
-
-/// \brief Menu configuration data entry callback. Fills menu entries with
-/// SSID information found.
-int MenuConfDataEntryCb(void *m) {
-	Menu *md = (Menu*)m;
-	MenuItem *item = md->me->mEntry.mItem.item;
-	char *ssid, *pass;
-	MwIpCfg *ip;
-	uint8_t i;
-	uint8_t error = FALSE;
-
-	i = 0;
-	// Get the SSID and password
-	if ((MwApCfgGet(wd->selConfig, &ssid, &pass) != MW_OK) ||
-			(*ssid == '\0')) {
-		// Configuration request failed, fill all items as empty
-		// SSID
-		error = TRUE;
-		
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-				strEmptyText, 0);
-		i++;
-		// PASS
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-				strEmptyText, 0);
-		i++;
-	} else {
-		// SSID
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-				ssid, MW_SSID_MAXLEN);
-		i++;
-		// PASS
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-				pass, MW_SSID_MAXLEN);
-		i++;
-	}
-	error = error || (MW_OK != MwIpCfgGet(wd->selConfig, &ip));
-	// If error loading configuration, or configuration set to DHCP, set
-	// label to automatic configuration. Else set to manual and display
-	// loaded configuration
-	if (error || !ip->addr) {
-		item[i].caption.string = (char*)strIpAuto;
-		item[i].caption.length = sizeof(strIpAuto) - 1;
-	} else {
-		item[i].caption.string = (char*)strIpManual;
-		item[i].caption.length = sizeof(strIpManual) - 1;
-	}
-	i++;
-    // If error, set default IP configuration
-    if (error) {
-        MenuFillDefaultNetPar();
-        MenuIpConfHide(item);
-    	MenuIpConfFillDhcp(&i, item);
-    } else {
-		MenuFillNetPar(ip);
-    	MenuIpConfFillDhcp(&i, item);
-        MenuIpConfShow(item);
-	}
-	return 0;
-}
-
-/// Network parameters menu
-const MenuItem confNetPar[] = {
-	{
-		// Editable SSID
-		MENU_ESTR(strSsid, 3 + 32 + 1),
-		(void*)&ipSsidOsk,			// Next
-		NULL,						// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}, {
-		// Editable PASS
-		MENU_ESTR(strPass, 3 + 32 + 1),
-		NULL,						// Next
-		NULL,						// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}, {
-		// DHCP/MANUAL IP configuration
-		MENU_EESTR(0),
-		NULL,						// Next
-		MenuIpConfToggle,			// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}, {
-		// Editable IP
-		MENU_ESTR(strIp, 9 + WF_IP_MAXLEN),
-		(void*)&ipAddrOsk,			// Next
-		NULL,						// Callback
-		{{0, 0, 1}}					// Selectable, alt_color, hide
-	}, {
-		// Editable netmask
-		MENU_ESTR(strMask, 9 + WF_IP_MAXLEN),
-		(void*)&ipMaskOsk,			// Next
-		NULL,						// Callback
-		{{0, 0, 1}}					// Selectable, alt_color, hide
-	}, {
-		// Editable gateway
-		MENU_ESTR(strGw, 9 + WF_IP_MAXLEN),
-		(void*)&ipGwOsk,			// Next
-		NULL,						// Callback
-		{{0, 0, 1}}					// Selectable, alt_color, hide
-	}, {
-		// Editable DNS1
-		MENU_ESTR(strDns1, 9 + WF_IP_MAXLEN),
-		(void*)&ipDns1Osk,			// Next
-		NULL,						// Next
-		{{0, 0, 1}}					// Selectable, alt_color, hide
-	}, {
-		// Editable DNS2
-		MENU_ESTR(strDns2, 9 + WF_IP_MAXLEN),
-		(void*)&ipDns2Osk,			// Next
-		NULL,						// Callback
-		{{0, 0, 1}}					// Selectable, alt_color, hide
-	}, {
-		MENU_EESTR(0),				// [EMPTY]
-		NULL,						// Next
-		NULL,						// Callback
-		{{0, 0, 1}}					// Selectable, alt_color, hide
-	}, {
-		MENU_STR(strOk),			// OK
-		NULL,						// Next
-		NULL,						// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}
-};
-
-
-/// Network configuration entry data
-const MenuEntry confEntryData = {
-	MENU_TYPE_ITEM,					// Menu type
-	8,								// Margin
-	MENU_STR("NETWORK CONFIGURATION"),	// Title
-	MENU_STR(stdContext),			// Left context
-	MenuConfDataEntryCb,			// entry callback
-	NULL,							// exit callback
-	NULL,							// cBut callback
-	.mItem = {
-		// rootItem, nItems, spacing, enPerPage, pages
-		MENU_ENTRY_ITEM(confNetPar, 2),
-		{MENU_H_ALIGN_LEFT}			// align
-	}
-};
-
-/// Toggle IP configuration between auto(DHCP) and manual
-int MenuIpConfToggle(void *m) {
-	Menu *md = (Menu*)m;
-	MenuItem *item = md->me->mEntry.mItem.item;
-	uint8_t i = MENU_NET_CONF_IP;
-
-	if (item[MENU_NET_CONF_IP_TYPE].caption.string == strIpAuto) {
-		// Toggle IP configuration to manual
-		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
-		// Fill in IP configuration data
-		MenuIpConfFillDhcp(&i, item);
-        MenuIpConfShow(item);
-	} else {
-		// Toggle IP configuration to auto
-		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpAuto;
-		// Hide IP related configuration entries
-        MenuIpConfHide(item);
-	}
-
-	// Redraw page
-	MenuDrawItemPage(0);
-
-	return TRUE;
 }
 
 /****************************************************************************
@@ -690,6 +487,25 @@ void MenuFillNetPar(MwIpCfg *ip) {
 uint16_t MenuIpConfFillDhcp(uint8_t *startItem, MenuItem* item) {
 	int i = *startItem;
 
+    // SSID and PASS
+    if (!wd->ssid.length) {
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				strEmptyText, 0);
+		i++;
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				strEmptyText, 0);
+		i++;
+	} else {
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				wd->ssid.string, MW_SSID_MAXLEN);
+		i++;
+		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+				wd->pass.string, MW_SSID_MAXLEN);
+		i++;
+    }
+
+    // Skip manual/auto toggle
+    i++;
 	// IP
 	item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
 			wd->ipPar[WF_IP_ADDR], MW_SSID_MAXLEN);
@@ -825,46 +641,189 @@ int MenuWiFiScan(void *m) {
 }
 
 /****************************************************************************
- * Edit/Scan choice
+ * Network configuration entry menu
  *
- * Title: CONNECTION CONFIGURATION
+ * Title: NETWORK CONFIGURATION
  *
- * Select EDIT or SCAN.
+ * Screen with SSID, password and IP configuration entry fields.
  ****************************************************************************/
-/// EDIT/SCAN options
-const MenuItem confEditItems[] = {
+int MenuConfSetActive(void *m) {
+	MenuString str;
+	UNUSED_PARAM(m);
+
+	// Set default config to selected entry
+	if (MW_OK != MwDefApCfg(wd->selConfig)) {
+		str.string = (char*)strFailed;
+		str.length = sizeof(strFailed) - 1;
+	} else {
+		str.string = (char*)strDone;
+		str.length = sizeof(strDone) - 1;
+	}
+
+	// Notify user and go back one menu level
+	MenuMessage(str, 30);
+	MenuUnlink();
+	MenuBack();
+
+	// Return false to avoid loading next entry
+	return FALSE;
+}
+
+/// \brief Menu configuration data entry callback. Fills menu entries with
+/// SSID information found.
+int MenuConfDataEntryCb(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+	char *ssid, *pass;
+	MwIpCfg *ip;
+	uint8_t i;
+	uint8_t error = FALSE;
+
+	// Get the SSID and password
+	if ((MwApCfgGet(wd->selConfig, &ssid, &pass) != MW_OK) ||
+			(*ssid == '\0')) {
+        wd->ssid.length    =   0;
+        wd->ssid.string[0] = '\0';
+        wd->pass.length    =   0;
+        wd->pass.string[0] = '\0';
+        error = TRUE;
+    } else {
+        wd->ssid.length = MenuStrCpy(wd->ssid.string, ssid, MW_SSID_MAXLEN);
+        wd->ssid.string[MW_SSID_MAXLEN] = '\0';
+        wd->pass.length = MenuStrCpy(wd->pass.string, pass, MW_PASS_MAXLEN);
+        wd->pass.string[MW_PASS_MAXLEN] = '\0';
+    }
+
+	error = error || (MW_OK != MwIpCfgGet(wd->selConfig, &ip));
+	// If error loading configuration, or configuration set to DHCP, set
+	// label to automatic configuration. Else set to manual and display
+	// loaded configuration
+	if (error || !ip->addr) {
+		item[2].caption.string = (char*)strIpAuto;
+		item[2].caption.length = sizeof(strIpAuto) - 1;
+	} else {
+		item[2].caption.string = (char*)strIpManual;
+		item[2].caption.length = sizeof(strIpManual) - 1;
+	}
+	i = 0;
+    // If error, set default IP configuration
+    if (error) {
+        MenuFillDefaultNetPar();
+        MenuIpConfHide(item);
+    	MenuIpConfFillDhcp(&i, item);
+    } else {
+		MenuFillNetPar(ip);
+    	MenuIpConfFillDhcp(&i, item);
+        MenuIpConfShow(item);
+	}
+	return 0;
+}
+
+/// Network parameters menu
+const MenuItem confNetPar[] = {
 	{
-		// Default caption (will be dynamically modified)
-		MENU_STR("SCAN"),
+		// Editable SSID
+		MENU_ESTR(strSsid, 3 + 32 + 1),
+		(void*)&ipSsidOsk,			// Next
+		NULL,						// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable PASS
+		MENU_ESTR(strPass, 3 + 32 + 1),
+		NULL,						// Next
+		NULL,						// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		// DHCP/MANUAL IP configuration
+		MENU_EESTR(0),
+		NULL,						// Next
+		MenuIpConfToggle,			// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		// Editable IP
+		MENU_ESTR(strIp, 9 + WF_IP_MAXLEN),
+		(void*)&ipAddrOsk,			// Next
+		NULL,						// Callback
+		{{0, 0, 1}}					// Selectable, alt_color, hide
+	}, {
+		// Editable netmask
+		MENU_ESTR(strMask, 9 + WF_IP_MAXLEN),
+		(void*)&ipMaskOsk,			// Next
+		NULL,						// Callback
+		{{0, 0, 1}}					// Selectable, alt_color, hide
+	}, {
+		// Editable gateway
+		MENU_ESTR(strGw, 9 + WF_IP_MAXLEN),
+		(void*)&ipGwOsk,			// Next
+		NULL,						// Callback
+		{{0, 0, 1}}					// Selectable, alt_color, hide
+	}, {
+		// Editable DNS1
+		MENU_ESTR(strDns1, 9 + WF_IP_MAXLEN),
+		(void*)&ipDns1Osk,			// Next
+		NULL,						// Next
+		{{0, 0, 1}}					// Selectable, alt_color, hide
+	}, {
+		// Editable DNS2
+		MENU_ESTR(strDns2, 9 + WF_IP_MAXLEN),
+		(void*)&ipDns2Osk,			// Next
+		NULL,						// Callback
+		{{0, 0, 1}}					// Selectable, alt_color, hide
+	}, {
+		MENU_STR(strStartScan),
 		(void*)&confSsidSelEntry,	// Next
 		MenuWiFiScan,				// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
-		MENU_STR("EDIT"),
-		(void*)&confEntryData,		// Next
-		NULL,						// Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}, {
-		MENU_STR("SET AS DEFAULT"),
+		MENU_STR(strSave),			// OK
 		NULL,						// Next
-		MenuConfSetActive,			// Callback
+		NULL,						// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}
 };
 
-/// EDIT/SCAN menu
-const MenuEntry confEdit = {
+
+/// Network configuration entry data
+const MenuEntry confEntryData = {
 	MENU_TYPE_ITEM,					// Menu type
-	1,								// Margin
-	MENU_STR("CONNECTION CONFIGURATION"),	// Title
+	8,								// Margin
+	MENU_STR("NETWORK CONFIGURATION"),	// Title
 	MENU_STR(stdContext),			// Left context
+	MenuConfDataEntryCb,			// entry callback
+	NULL,							// exit callback
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
-		MENU_ENTRY_ITEM(confEditItems, 3),
-		{MENU_H_ALIGN_CENTER}		// align
+		MENU_ENTRY_ITEM(confNetPar, 2),
+		{MENU_H_ALIGN_LEFT}			// align
 	}
 };
+
+/// Toggle IP configuration between auto(DHCP) and manual
+int MenuIpConfToggle(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+//	uint8_t i = MENU_NET_CONF_IP;
+	uint8_t i = 0;
+
+	if (item[MENU_NET_CONF_IP_TYPE].caption.string == strIpAuto) {
+		// Toggle IP configuration to manual
+		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
+		// Fill in IP configuration data
+		MenuIpConfFillDhcp(&i, item);
+        MenuIpConfShow(item);
+	} else {
+		// Toggle IP configuration to auto
+		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpAuto;
+		// Hide IP related configuration entries
+        MenuIpConfHide(item);
+	}
+
+	// Redraw page
+	MenuDrawItemPage(0);
+
+	return TRUE;
+}
 
 int MenuSetDefaultConf(void *m) {
 	Menu *md = (Menu*)m;
@@ -888,17 +847,17 @@ const MenuItem confItem[] = {
 	{
 		// Default caption (will be dynamically modified)
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-		(void*)&confEdit,			// Next
+		(void*)&confEntryData,		// Next
 		MenuConfEntrySet,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-		(void*)&confEdit,			// Next
+		(void*)&confEntryData,		// Next
 		MenuConfEntrySet,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
-		(void*)&confEdit,			// Next
+		(void*)&confEntryData,		// Next
 		MenuConfEntrySet,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}
@@ -1006,9 +965,13 @@ const MenuEntry rootMenu = {
 	}
 };
 
+/// Module initalization
 void WfMenuInit(MenuString statStr) {
+    // Allocate local module data and initialize menu strings
 	MenuInit(&rootMenu, statStr);
 	wd = MpAlloc(sizeof(WfMenuData));
     memset(wd, 0, sizeof(WfMenuData));
+    wd->ssid.string = wd->ssidBuf;
+    wd->pass.string = wd->passBuf;
 }
 
