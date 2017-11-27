@@ -820,10 +820,12 @@ void MenuItemAction(uint8_t input) {
 				MenuPanic("MEMORY EXHAUSTED!", 17);
 			// Call menu entry callback
 			if (md->me->mEntry.entry) md->me->mEntry.entry(md);
-			// Select page and item
-			for (i = 0; !md->me->mEntry.mItem.item[i].selectable; i++);
-			md->me->selItem = i;
-			md->me->selPage = 0;
+            if (MENU_TYPE_ITEM == md->me->mEntry.type) {
+    			// Select page and item
+    			for (i = 0; !md->me->mEntry.mItem.item[i].selectable; i++);
+    			md->me->selItem = i;
+    			md->me->selPage = 0;
+            }
 			// Draw menu
 			MenuDraw(MENU_SCROLL_DIR_LEFT);
 		}
@@ -970,9 +972,7 @@ void MenuOskDone(void) {
 	// If exit callback defined, run it and perform transition if allowed.
 	if ((m->exit) && (!m->exit(md))) return;
 	// Copy temporal string to menu entry string and scroll back
-    /// \todo Does not make sense copying the string to then unload the
-    /// string memory
-//	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md->str);
+	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md->str);
 	// Free menu resources and go back to the previous menu
 	MenuUnload();
 	MenuDraw(MENU_SCROLL_DIR_RIGHT);

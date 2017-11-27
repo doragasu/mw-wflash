@@ -653,16 +653,42 @@ enum {
 	MENU_NET_CONF_NUM_ENTRIES	///< Number of menu entries
 };
 
-/// Sets the MenuString data of the IP address to be edited
+/// Sets the MenuString data of the IP address configuration to be edited
 static int MenuIpOskEnter(void *m) {
 	Menu *md = (Menu*)m;
     int sel;
 
     // Set text caption depending on selected entry
     sel = md->me->prev->selItem;
-    md->me->mEntry.keyb.fieldData.string = wd->ipPar[sel - WF_NET_IP - 1];
-    md->me->mEntry.keyb.fieldData.length =
-        strlen(md->me->mEntry.keyb.fieldData.string);
+    switch (sel) {
+        case MENU_NET_CONF_SSID:
+            md->me->mEntry.keyb.fieldData.string = wd->ssid.string;
+            md->me->mEntry.keyb.fieldData.length = strlen(wd->ssid.string);
+            break;
+
+        case MENU_NET_CONF_PASS:
+            break;
+
+        case MENU_NET_CONF_IP_TYPE:
+            break;
+
+        case MENU_NET_CONF_IP:
+        case MENU_NET_CONF_MASK:
+        case MENU_NET_CONF_GATEWAY:
+        case MENU_NET_CONF_DNS1:
+        case MENU_NET_CONF_DNS2:
+            md->me->mEntry.keyb.fieldData.string = wd->ipPar[sel -
+                WF_NET_IP - 1];
+            md->me->mEntry.keyb.fieldData.length = strlen(
+                    md->me->mEntry.keyb.fieldData.string);
+            break;
+
+        case MENU_NET_CONF_EMPTY:
+        case MENU_NET_CONF_OK:
+        case MENU_NET_CONF_NUM_ENTRIES:
+        default:
+            break;
+    }
 
     return TRUE;
 }
@@ -671,6 +697,7 @@ static int MenuIpOskExit(void *m) {
 	Menu *md = (Menu*)m;
     MenuString msg;
     int sel;
+    uint8_t i;
 
     // Get selected option
     sel = md->me->prev->selItem;
@@ -684,6 +711,8 @@ static int MenuIpOskExit(void *m) {
             break;
 
         case MENU_NET_CONF_IP_TYPE:
+            break;
+
         case MENU_NET_CONF_IP:
         case MENU_NET_CONF_MASK:
         case MENU_NET_CONF_GATEWAY:
@@ -696,6 +725,9 @@ static int MenuIpOskExit(void *m) {
                 MenuMessage(msg, 60);
                 return FALSE;
             }
+            strcpy(wd->ipPar[sel - MENU_NET_CONF_IP], md->strBuf);
+            i = 3;
+            MenuIpConfFillDhcp(&i, md->me->prev->mEntry.mItem.item);
             break;
 
         case MENU_NET_CONF_EMPTY:
@@ -704,7 +736,7 @@ static int MenuIpOskExit(void *m) {
         default:
             break;
     }
-    // Copy string to its corresponding entry
+    // Update menu items
     
     return TRUE;
 }
@@ -1340,5 +1372,6 @@ const MenuEntry rootMenu = {
 void WfMenuInit(MenuString statStr) {
 	MenuInit(&rootMenu, statStr);
 	wd = MpAlloc(sizeof(WfMenuData));
+    memset(wd, 0, sizeof(WfMenuData));
 }
 
