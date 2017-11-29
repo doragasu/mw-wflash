@@ -326,12 +326,16 @@ void MenuButtonAction(uint8_t input);
  ****************************************************************************/
 void MenuForceLoad(MenuEntry *me, uint8_t level);
 
+/************************************************************************//**
+ * Silently goes back one menu level (does not update screen and does not
+ * run menu exit/entry callbacks.
+ ****************************************************************************/
 void MenuUnlink(void);
 
 /************************************************************************//**
  * Goes back one menu level, unless in the root menu.
  ****************************************************************************/
-void MenuBack(void);
+void MenuBack(int loadEntry);
 
 /************************************************************************//**
  * Draw a message "box" over the current menu. The function allows choosing

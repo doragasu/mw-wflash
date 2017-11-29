@@ -1,25 +1,27 @@
+// PRIVATE EYE (VAUGHAN)
+
 #include "wf-menu.h"
 #include "util.h"
 #include "vdp.h"
 #include "mw/megawifi.h"
+#include "util.h"
 #include <string.h>
 
+/// When defined, fake data will be used for some WiFi operations
 #define _FAKE_WIFI
 
+/// Maximum length of an IP string, including the null termination
 #define WF_IP_MAXLEN	16
 
 /// Maximum number of dynamic menu items
 #define WF_MENU_MAX_DYN_ITEMS 		20
-
-/// Average string length, for dynamic strings
-#define WF_MENU_AVG_STR_LEN 		24
 
 /// Macro to compute the number of items of a MenuItem variable
 #define MENU_NITEMS(menuItems)	(sizeof(menuItems)/sizeof(MenuItem))
 
 /// Macro to fill on MenuEntry structures: nItems, spacing, entPerPage, pages
 #define MENU_ENTRY_NUMS(numItems, spacing)	(numItems),(spacing), \
-	MENU_ITEM_NLINES/(spacing),(numItems)/(MENU_ITEM_NLINES/(spacing))
+	MENU_ITEM_NLINES/(spacing),((numItems) - 1)/(MENU_ITEM_NLINES/(spacing))
 
 /// \brief Macro to fill on MenuEntry structures:
 /// rootItem, nItems, spacing, enPerPage, pages
@@ -88,6 +90,9 @@ const char strOk[] = "OK";
 const char strDone[] = "DONE!";
 const char strFailed[] = "FAILED!";
 const char strWrongIp[] = "WRONG IP!";
+const char strErrSsid[] = "No valid SSID set!";
+const char strErrApCfgSet[] = "Error setting SSID/password!";
+const char strErrIpCfgSet[] = "Error setting IP configuration!";
 const char *strNetPar[WF_NET_CFG_PARAMS] = {
 	"SSID", "PASS", "IP", "MASK", "GATEWAY", "DNS1", "DNS2"
 };
@@ -112,13 +117,13 @@ typedef struct {
 	/// Number of scanned APs
 	uint8_t aps;
 	/// SSID being edited
-    MenuString ssid;
+//    MenuString ssid;
     /// Password being edited
-    MenuString pass;
+//    MenuString pass;
     /// SSID buffer
-	char ssidBuf[33];
+	char ssid[33];
 	/// Password being edited
-	char passBuf[65];
+	char pass[65];
 } WfMenuData;
 
 // Private prototypes
@@ -128,8 +133,9 @@ int MenuConfEntrySet(void *m);
 int MenuConfEntryCb(void* m);
 static int MenuIpOskEnter(void *m);
 static int MenuIpOskExit(void *m);
-uint16_t MenuIpConfFillDhcp(MenuItem* item);
-static int MenuApPassExitCb(void *m);
+uint16_t MenuIpConfPrintNetPar(MenuItem* item);
+//static int MenuApPassExitCb(void *m);
+static int MenuSsidSet(void *m);
 int MenuSsidCopySelected(void *m);
 int MenuIpConfToggle(void *m);
 int MenuConfDataEntryCb(void *m);
@@ -137,6 +143,7 @@ void MenuFillNetPar(MwIpCfg *ip);
 void MenuFillDefaultNetPar(void);
 static void MenuIpConfShow(MenuItem* item);
 static void MenuIpConfHide(MenuItem* item);
+static int MenuNetSaveCb(void *m);
 
 /// Module global data (other than item buffers)
 static WfMenuData *wd;
@@ -185,6 +192,21 @@ const MenuEntry ipSsidOsk = {
 	MenuIpOskExit, 				    // cbExit
 	.keyb = {
 		MENU_STR("Enter access point SSID:"),
+		MENU_EESTR(0),
+		33,
+	    33
+	}
+};
+
+const MenuEntry ipPassOsk = {
+	MENU_TYPE_OSK_QWERTY,		    // QWERTY keyboard
+	8,								// Margin
+	MENU_STR("PASSWORD"),		    // Title
+	MENU_STR(oskQwertyContext),		// Left context
+	MenuIpOskEnter,					// cbEntry
+	MenuIpOskExit, 				    // cbExit
+	.keyb = {
+		MENU_STR("Enter access point password:"),
 		MENU_EESTR(0),
 		33,
 	    33
@@ -290,11 +312,14 @@ static int MenuIpOskEnter(void *m) {
     sel = md->me->prev->selItem;
     switch (sel) {
         case MENU_NET_CONF_SSID:
-            md->me->mEntry.keyb.fieldData.string = wd->ssid.string;
-            md->me->mEntry.keyb.fieldData.length = strlen(wd->ssid.string);
+            md->me->mEntry.keyb.fieldData.string = wd->ssid;
+            md->me->mEntry.keyb.fieldData.length = strlen(wd->ssid);
             break;
 
         case MENU_NET_CONF_PASS:
+            // Password data is always set as empty
+            md->me->mEntry.keyb.fieldData.string[0] = '\0';
+            md->me->mEntry.keyb.fieldData.length = 0;
             break;
 
         case MENU_NET_CONF_SCAN:
@@ -323,9 +348,11 @@ static int MenuIpOskEnter(void *m) {
     return TRUE;
 }
 
+/// Exit network configuration on-screen keyboard and save entered data
 static int MenuIpOskExit(void *m) {
 	Menu *md = (Menu*)m;
     MenuString msg;
+    char *dst = NULL;
     int sel;
 
     // Get selected option
@@ -334,9 +361,11 @@ static int MenuIpOskExit(void *m) {
     // Validate selected text
     switch (sel) {
         case MENU_NET_CONF_SSID:
+            dst = wd->ssid;
             break;
 
         case MENU_NET_CONF_PASS:
+            dst = wd->pass;
             break;
 
         case MENU_NET_CONF_SCAN:
@@ -357,8 +386,7 @@ static int MenuIpOskExit(void *m) {
                 MenuMessage(msg, 60);
                 return FALSE;
             }
-            strcpy(wd->ipPar[sel - MENU_NET_CONF_IP], md->strBuf);
-            MenuIpConfFillDhcp(md->me->prev->mEntry.mItem.item);
+            dst = wd->ipPar[sel - MENU_NET_CONF_IP];
             break;
 
         case MENU_NET_CONF_OK:
@@ -367,50 +395,10 @@ static int MenuIpOskExit(void *m) {
             break;
     }
     // Update menu items
+    if (dst) strcpy(dst, md->strBuf);
+    MenuIpConfPrintNetPar(md->me->prev->mEntry.mItem.item);
     
     return TRUE;
-}
-
-/****************************************************************************
- * Password entry menu
- *
- * Title: PASSWORD
- *
- * AP password input screen.
- ****************************************************************************/
-const MenuEntry apPass = {
-	MENU_TYPE_OSK_QWERTY,			// Item list type
-	1,								// Margin
-	MENU_STR("PASSWORD"),			// Title
-	MENU_STR(oskQwertyContext),		// Left context
-	NULL,							// cbEntry
-	MenuApPassExitCb,				// cbExit
-	.keyb = {
-		MENU_STR("Enter AP password:"),
-		MENU_EESTR(32),
-		32,
-		32
-	}
-};
-
-static int MenuApPassExitCb(void *m) {
-	Menu *md = (Menu*)m;
-    MenuString msg;
-
-	// Set resulting SSID and password configuration
-    if (MW_OK == MwApCfgSet(wd->selConfig, wd->ssidBuf,
-                md->me->mEntry.keyb.fieldName.string)) {
-        msg.string = (char*)strDone;
-        msg.length = sizeof(strDone) - 1;
-    } else {
-        msg.string = (char*)strFailed;
-        msg.length = sizeof(strFailed) - 1;
-    }
-    MenuMessage(msg, 30);
-    // Go back an extra level
-	MenuBack();
-
-	return TRUE;
 }
 
 /****************************************************************************
@@ -444,23 +432,23 @@ int MenuSsidLink(void *m) {
 	// Fill scanned item data
 	mie->item = wd->item;
 	mie->nItems = wd->aps;
-	mie->pages = mie->nItems / mie->entPerPage;
-	if (0 != (mie->nItems % mie->entPerPage)) mie->entPerPage--;
+	mie->pages = (mie->nItems - 1) / mie->entPerPage;
+//	if (0 != (mie->nItems % mie->entPerPage)) mie->entPerPage--;
 	return TRUE;
 }
 
 /// Copy selected SSID entry to internal wd structure
 int MenuSsidCopySelected(void *m) {
     int i;
+    uint16_t len;
 	Menu *md = (Menu*)m;
 	MenuItem *item = &md->me->mEntry.mItem.item[md->me->selItem];
 
     // Copy SSID data
-    wd->ssid.string = wd->ssidBuf;
-    wd->ssid.length = item->caption.length - 8;
-    for (i = 0; i < wd->ssid.length; i++)
-        wd->ssid.string[i] = item->caption.string[8 + i];
-    wd->ssid.string[i] = '\0';
+    len = item->caption.length - 8;
+    for (i = 0; i < len; i++)
+        wd->ssid[i] = item->caption.string[8 + i];
+    wd->ssid[i] = '\0';
 
     return TRUE;
 }
@@ -485,26 +473,32 @@ void MenuFillNetPar(MwIpCfg *ip) {
 	MenuBin2IpStr(ip->dns2, wd->ipPar[i++]);
 }
 
-/// Fills network configuration entries
-uint16_t MenuIpConfFillDhcp(MenuItem* item) {
+/// Fills network configuration entries, using data in wd structure.
+uint16_t MenuIpConfPrintNetPar(MenuItem* item) {
 	int i = 0;
+    int j;
+    int len;
 
     // SSID and PASS
-    if (!wd->ssid.length) {
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
+    if (!wd->ssid[0]) {
+		item[i].caption.length = 9 + MenuStrCpy(item[i].caption.string + 9,
 				strEmptyText, 0);
-		i++;
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-				strEmptyText, 0);
-		i++;
 	} else {
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-				wd->ssid.string, MW_SSID_MAXLEN);
-		i++;
-		item[i].caption.length += MenuStrCpy(item[i].caption.string + 9,
-				wd->pass.string, MW_SSID_MAXLEN);
-		i++;
+		item[i].caption.length = 9 + MenuStrCpy(item[i].caption.string + 9,
+				wd->ssid, MW_SSID_MAXLEN);
     }
+	i++;
+    if (!wd->pass[0]) {
+		item[i].caption.length = 9 + MenuStrCpy(item[i].caption.string + 9,
+				strEmptyText, 0);
+    } else {
+        // Password copied as asterisks
+        len = MIN(strlen(wd->pass), 20);
+        for (j = 9; j < (len + 9); j++) item[i].caption.string[j] = '*';
+        item[i].caption.string[j] = '\0';
+        item[i].caption.length = j;
+    }
+	i++;
 
     // Skip scan and manual/auto toggle options
     i += 2;
@@ -561,9 +555,18 @@ static void MenuIpConfHide(MenuItem* item) {
 static const char fakeScanData[] = {
 	0, 1, 25, 3, 'A', 'P', '1',
 	0, 2, 50, 3, 'A', 'P', '2',
-	0, 3, 75, 3, 'A', 'P', '3'
+	0, 3, 75, 3, 'A', 'P', '3',
+	0, 2, 60, 3, 'A', 'P', '4',
+	0, 2, 70, 3, 'A', 'P', '5',
+	0, 2, 80, 3, 'A', 'P', '6',
+	0, 2, 90, 3, 'A', 'P', '7',
+	0, 2, 91, 3, 'A', 'P', '8',
+	0, 2, 92, 3, 'A', 'P', '9',
+	0, 2, 53, 4, 'A', 'P', '1', '0',
+	0, 2, 58, 4, 'A', 'P', '1', '1',
+/*	0, 2, 64, 4, 'A', 'P', '1', '2',*/
 };
-#define _FAKE_WIFI_APS		3
+#define _FAKE_WIFI_APS	11
 #endif
 
 /// Scan for APs
@@ -628,8 +631,8 @@ int MenuWiFiScan(void *m) {
 		item[i].caption.length += apd.ssidLen;
 		item[i].caption.string[item[i].caption.length] = '\0';
 
-		item[i].next = (void*)&apPass;
-		item[i].cb = NULL;
+		item[i].next = NULL;
+		item[i].cb = (void*)&MenuSsidSet;
 		item[i].selectable = 1;
 		item[i].alt_color = 0;
 	}
@@ -639,6 +642,31 @@ int MenuWiFiScan(void *m) {
 	return TRUE;
 }
 
+/// Set SSID previously selected in the scan menu
+static int MenuSsidSet(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = &md->me->mEntry.mItem.item[md->me->selItem +
+        md->me->selPage * md->me->mEntry.mItem.entPerPage];
+    MenuString str;
+    int len, i;
+
+    // Store chosen SSID data
+    len = item->caption.length - 8;
+    for (i = 0; i < len; i++)
+        wd->ssid[i] = item->caption.string[8 + i];
+    wd->ssid[i] = '\0';
+
+    // Update SSID label and go back a level
+    MenuIpConfPrintNetPar(md->me->prev->mEntry.mItem.item);
+    str.string = (char*)strDone;
+    str.length = sizeof(strDone) - 1;
+    MenuMessage(str, 30);
+
+	MenuBack(FALSE);
+
+	return FALSE;
+}
+
 /****************************************************************************
  * Network configuration entry menu
  *
@@ -646,76 +674,6 @@ int MenuWiFiScan(void *m) {
  *
  * Screen with SSID, password and IP configuration entry fields.
  ****************************************************************************/
-int MenuConfSetActive(void *m) {
-	MenuString str;
-	UNUSED_PARAM(m);
-
-	// Set default config to selected entry
-	if (MW_OK != MwDefApCfg(wd->selConfig)) {
-		str.string = (char*)strFailed;
-		str.length = sizeof(strFailed) - 1;
-	} else {
-		str.string = (char*)strDone;
-		str.length = sizeof(strDone) - 1;
-	}
-
-	// Notify user and go back one menu level
-	MenuMessage(str, 30);
-	MenuUnlink();
-	MenuBack();
-
-	// Return false to avoid loading next entry
-	return FALSE;
-}
-
-/// \brief Menu configuration data entry callback. Fills menu entries with
-/// SSID information found.
-int MenuConfDataEntryCb(void *m) {
-	Menu *md = (Menu*)m;
-	MenuItem *item = md->me->mEntry.mItem.item;
-	char *ssid, *pass;
-	MwIpCfg *ip;
-	uint8_t error = FALSE;
-
-	// Get the SSID and password
-	if ((MwApCfgGet(wd->selConfig, &ssid, &pass) != MW_OK) ||
-			(*ssid == '\0')) {
-        wd->ssid.length    =   0;
-        wd->ssid.string[0] = '\0';
-        wd->pass.length    =   0;
-        wd->pass.string[0] = '\0';
-        error = TRUE;
-    } else {
-        wd->ssid.length = MenuStrCpy(wd->ssid.string, ssid, MW_SSID_MAXLEN);
-        wd->ssid.string[MW_SSID_MAXLEN] = '\0';
-        wd->pass.length = MenuStrCpy(wd->pass.string, pass, MW_PASS_MAXLEN);
-        wd->pass.string[MW_PASS_MAXLEN] = '\0';
-    }
-
-	error = error || (MW_OK != MwIpCfgGet(wd->selConfig, &ip));
-	// If error loading configuration, or configuration set to DHCP, set
-	// label to automatic configuration. Else set to manual and display
-	// loaded configuration
-	if (error || !ip->addr) {
-		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpAuto;
-		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpAuto) - 1;
-	} else {
-		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
-		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpManual) - 1;
-	}
-    // If error, set default IP configuration
-    if (error) {
-        MenuFillDefaultNetPar();
-        MenuIpConfHide(item);
-    	MenuIpConfFillDhcp(item);
-    } else {
-		MenuFillNetPar(ip);
-    	MenuIpConfFillDhcp(item);
-        MenuIpConfShow(item);
-	}
-	return 0;
-}
-
 /// Network parameters menu
 const MenuItem confNetPar[] = {
 	{
@@ -727,7 +685,7 @@ const MenuItem confNetPar[] = {
 	}, {
 		// Editable PASS
 		MENU_ESTR(strPass, 3 + 32 + 1),
-		NULL,						// Next
+		(void*)&ipPassOsk,			// Next
 		NULL,						// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
@@ -774,11 +732,10 @@ const MenuItem confNetPar[] = {
 	}, {
 		MENU_STR(strSave),			// OK
 		NULL,						// Next
-		NULL,						// Callback
+		(void*)&MenuNetSaveCb,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}
 };
-
 
 /// Network configuration entry data
 const MenuEntry confEntryData = {
@@ -796,7 +753,73 @@ const MenuEntry confEntryData = {
 	}
 };
 
-/// Toggle IP configuration between auto(DHCP) and manual
+int MenuConfSetActive(void *m) {
+	MenuString str;
+	UNUSED_PARAM(m);
+
+	// Set default config to selected entry
+	if (MW_OK != MwDefApCfg(wd->selConfig)) {
+		str.string = (char*)strFailed;
+		str.length = sizeof(strFailed) - 1;
+	} else {
+		str.string = (char*)strDone;
+		str.length = sizeof(strDone) - 1;
+	}
+
+	// Notify user and go back one menu level
+	MenuMessage(str, 30);
+	MenuUnlink();
+	MenuBack(TRUE);
+
+	// Return false to avoid loading next entry
+	return FALSE;
+}
+
+/// \brief Menu configuration data entry callback. Fills menu entries with
+/// SSID information found.
+int MenuConfDataEntryCb(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+	char *ssid, *pass;
+	MwIpCfg *ip;
+	uint8_t error = FALSE;
+
+	// Get the SSID and password
+	if ((MwApCfgGet(wd->selConfig, &ssid, &pass) != MW_OK) ||
+			(*ssid == '\0')) {
+        wd->ssid[0] = '\0';
+        wd->pass[0] = '\0';
+        error = TRUE;
+    } else {
+        strcpy(wd->ssid, ssid);
+        strcpy(wd->pass, pass);
+    }
+
+	error = error || (MW_OK != MwIpCfgGet(wd->selConfig, &ip));
+	// If error loading configuration, or configuration set to DHCP, set
+	// label to automatic configuration. Else set to manual and display
+	// loaded configuration
+	if (error || !ip->addr) {
+		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpAuto;
+		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpAuto) - 1;
+	} else {
+		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
+		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpManual) - 1;
+	}
+    // If error, set default IP configuration
+    if (error) {
+        MenuFillDefaultNetPar();
+        MenuIpConfHide(item);
+    	MenuIpConfPrintNetPar(item);
+    } else {
+		MenuFillNetPar(ip);
+    	MenuIpConfPrintNetPar(item);
+        MenuIpConfShow(item);
+	}
+	return 0;
+}
+
+/// Toggle IP configuration between auto (DHCP) and manual
 int MenuIpConfToggle(void *m) {
 	Menu *md = (Menu*)m;
 	MenuItem *item = md->me->mEntry.mItem.item;
@@ -805,7 +828,7 @@ int MenuIpConfToggle(void *m) {
 		// Toggle IP configuration to manual
 		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
 		// Fill in IP configuration data
-		MenuIpConfFillDhcp(item);
+		MenuIpConfPrintNetPar(item);
         MenuIpConfShow(item);
 	} else {
 		// Toggle IP configuration to auto
@@ -820,14 +843,55 @@ int MenuIpConfToggle(void *m) {
 	return TRUE;
 }
 
-int MenuSetDefaultConf(void *m) {
+/// Save network configuration (ssid, password, ip config)
+static int MenuNetSaveCb(void *m) {
 	Menu *md = (Menu*)m;
-	(void)md;
+    MwIpCfg ip;
+    MenuString str;
 
-	/// \todo Set wd->selConfig as default
-	
+    // Sanity check, test if SSID provided
+    if (!wd->ssid[0]) {
+        str.string = (char*)strErrSsid;
+        str.length = sizeof(strErrSsid) - 1;
+        MenuMessage(str, 60);
+        return FALSE;
+    }
+    // It is assumed that IP configuration is valid since a default valid one
+    // is provided and edited configuration is checked before accepted. Also
+    // it is not mandatory to provide a password (to support open APs).
+   
+    // Try setting AP configuration
+    if (MW_OK != MwApCfgSet(wd->selConfig, wd->ssid, wd->pass)) {
+        str.string = (char*)strErrApCfgSet;
+        str.length = sizeof(strErrApCfgSet) - 1;
+        MenuMessage(str, 60);
+        return FALSE;
+    }
+    // If IP configuration set to automatic, set IP parameters to 0.
+    // else convert IP strings to binary data and set IP configuration.
+    if (md->me->mEntry.mItem.item[MENU_NET_CONF_IP_TYPE].caption.string ==
+            strIpAuto) {
+        memset(wd->ipPar, 0, sizeof(wd->ipPar));
+    } else {
+        ip.addr = MenuIpStr2Bin(wd->ipPar[WF_IP_ADDR]);
+        ip.mask = MenuIpStr2Bin(wd->ipPar[WF_IP_MASK]);
+        ip.gateway = MenuIpStr2Bin(wd->ipPar[WF_IP_GATEWAY]);
+        ip.dns1 = MenuIpStr2Bin(wd->ipPar[WF_IP_DNS1]);
+        ip.dns2 = MenuIpStr2Bin(wd->ipPar[WF_IP_DNS2]);
+    }
+    
+    if (MW_OK != MwIpCfgSet(wd->selConfig, &ip)) {
+        str.string = (char*)strErrIpCfgSet;
+        str.length = sizeof(strErrIpCfgSet) - 1;
+        MenuMessage(str, 60);
+        return FALSE;
+    }
+    str.string = (char*)strDone;
+    str.length = sizeof(strDone) - 1;
 
-	return 0;
+    // No transition to the next menu
+    MenuBack(TRUE);
+    return FALSE;
 }
 
 /****************************************************************************
@@ -966,7 +1030,5 @@ void WfMenuInit(MenuString statStr) {
 	MenuInit(&rootMenu, statStr);
 	wd = MpAlloc(sizeof(WfMenuData));
     memset(wd, 0, sizeof(WfMenuData));
-    wd->ssid.string = wd->ssidBuf;
-    wd->pass.string = wd->passBuf;
 }
 

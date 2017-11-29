@@ -777,7 +777,7 @@ void MenuUnlink(void) {
 /************************************************************************//**
  * Goes back one menu level, unless in the root menu.
  ****************************************************************************/
-void MenuBack(void) {
+void MenuBack(int loadEntry) {
 //	const MenuEntry *m = &md->me->mEntry;
 
 	// Only unload if we are not at the root menu
@@ -787,7 +787,7 @@ void MenuBack(void) {
 //		if (m->exit) m->exit(md);
 		MenuUnload();
 		// Call menu entry callback
-		if (md->me->mEntry.entry) md->me->mEntry.entry(md);
+		if (loadEntry && md->me->mEntry.entry) md->me->mEntry.entry(md);
 		MenuDraw(MENU_SCROLL_DIR_RIGHT);
 	}
 }
@@ -831,7 +831,7 @@ void MenuItemAction(uint8_t input) {
 		}
 	} else if (input & GP_B_MASK) {
         // Go back one menu level
-        MenuBack();
+        MenuBack(TRUE);
 	} else if (input & GP_UP_MASK) {
 		// Go up a menu item, and continue while item is not selectable
 		do {
