@@ -611,10 +611,15 @@ static void MenuStringLoad(MenuString *dst, const MenuString *org) {
 //		dst->flags = org->flags;
 //		dst->length = org->length;
 		// Allocate memory for the string buffer
-		dst->string = MpAlloc(org->length);
+		if (org->length) dst->string = MpAlloc(org->length + 1);
 		// Copy the string data unless empty
 		memset(dst->string, 0, org->length);
 		if (!org->empty) memcpy(dst->string, org->string, org->length);
+        else {
+            // If empty string, set its length to 0 (note that memory for
+            // the string has already been reserved)
+            dst->length = 0;
+        }
 	}
 }
 

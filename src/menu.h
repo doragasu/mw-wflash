@@ -171,7 +171,7 @@ typedef enum {
 /// editable, empty (empty editable string).
 #define MENU_EESTR(maxLen)	{			\
 	.string = NULL,						\
-	.length = 0,						\
+	.length = maxLen,					\
 	.editable = TRUE,					\
 	.empty = TRUE,						\
 }

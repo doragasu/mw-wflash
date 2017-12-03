@@ -16,6 +16,9 @@
 /// Maximum number of dynamic menu items
 #define WF_MENU_MAX_DYN_ITEMS 		20
 
+/// Maximum length of a DNS server (not including null termination)
+#define WF_NTP_SERV_MAXLEN          32
+
 /// Macro to compute the number of items of a MenuItem variable
 #define MENU_NITEMS(menuItems)	(sizeof(menuItems)/sizeof(MenuItem))
 
@@ -64,50 +67,68 @@ const char security[][4] = {
 /// Offset used on the network options emu
 #define MENU_NET_VALUE_OFFSET	9
 
-const char stdContext[] = "[A]ccept, [B]ack";
-const char strScanContext[] = "[A]ccept, [B]ack, [C]: Rescan";
-const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
-const char oskNumIpContext[] = "A-OK, B-Del, S-Done";
-const char strEmptyText[] = "<EMPTY>";
-const char strSsid[] = "SSID:    ";
-const char strPass[] = "PASS:    ";
-const char strIp[] =   "ADDRESS: ";
-const char strMask[] = "MASK:    ";
-const char strGw[] =   "GATEWAY: ";
-const char strDns1[] = "DNS1:    ";
-const char strDns2[] = "DNS2:    ";
-const char strEdit[] = "EDIT";
-const char strAct[] =  "SET AS ACTIVE";
-const char strIpAuto[] = "IP CONFIG: AUTOMATIC";
-const char strIpManual[] = "IP CONFIG: MANUAL";
-const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
-const char strScanFail[] = "SCAN FAILED!";
-const char strCfgFail[] = "CONFIGURATION FAILED!";
-const char strDhcp[] = "AUTO";
-const char strStartScan[] = "SCAN...";
-const char strSave[] = "SAVE!";
-const char strOk[] = "OK";
-const char strDone[] = "DONE!";
-const char strFailed[] = "FAILED!";
-const char strWrongIp[] = "WRONG IP!";
-const char strErrSsid[] = "No valid SSID set!";
-const char strErrApCfgSet[] = "Error setting SSID/password!";
-const char strErrIpCfgSet[] = "Error setting IP configuration!";
-const char *strNetPar[WF_NET_CFG_PARAMS] = {
-	"SSID", "PASS", "IP", "MASK", "GATEWAY", "DNS1", "DNS2"
-};
+static const char stdContext[] = "[A]ccept, [B]ack";
+static const char strScanContext[] = "[A]ccept, [B]ack, [C]: Rescan";
+static const char oskQwertyContext[] = "A-OK, B-Del, C-Caps, S-Done";
+static const char oskNumIpContext[] = "A-OK, B-Del, S-Done";
+static const char strEmptyText[] = "<EMPTY>";
+static const char strSsid[] = "SSID:    ";
+static const char strPass[] = "PASS:    ";
+static const char strIp[] =   "ADDRESS: ";
+static const char strMask[] = "MASK:    ";
+static const char strGw[] =   "GATEWAY: ";
+static const char strDns1[] = "DNS1:    ";
+static const char strDns2[] = "DNS2:    ";
+//static const char strAct[] =  "SET AS ACTIVE";
+static const char strIpAuto[] = "IP CONFIG: AUTOMATIC";
+static const char strIpManual[] = "IP CONFIG: MANUAL";
+static const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
+//static const char strScanFail[] = "SCAN FAILED!";
+//static const char strCfgFail[] = "CONFIGURATION FAILED!";
+static const char strTimeConfig[] = "TIME CONFIGURATION";
+static const char strStartScan[] = "SCAN...";
+static const char strSave[] = "SAVE!";
+//static const char strOk[] = "OK";
+static const char strDone[] = "DONE!";
+static const char strFailed[] = "FAILED!";
+static const char strWrongIp[] = "WRONG IP!";
+static const char strErrSsid[] = "No valid SSID set!";
+static const char strNtpSrvInput[] = "Enter NTP server address";
+static const char strErrApCfgSet[] = "Error setting SSID/password!";
+static const char strErrIpCfgSet[] = "Error setting IP configuration!";
+static const char strDsOff[] = "DAYLIGTH SAVINGS: OFF";
+static const char strDsOn[] = "DAYLIGTH SAVINGS: ON";
 const char strNetParLen[WF_NET_CFG_PARAMS] = {
 	4, 4, 7, 4, 7, 4, 4
 };
 
-const char strDefIp[] =     "192.168.1.64";
-const char strDefMask[] =   "255.255.255.0";
-const char strDefGw[] =     "192.168.1.1";
-const char strDefDns1[] =   "192.168.1.1";
-const char strDefDns2[] =   "8.8.8.8";
+// Default network configuration
+static const char strDefIp[] =     "192.168.1.64";
+static const char strDefMask[] =   "255.255.255.0";
+static const char strDefGw[] =     "192.168.1.1";
+static const char strDefDns1[] =   "192.168.1.1";
+static const char strDefDns2[] =   "8.8.8.8";
+static const char strDefNtp1[] = "0.pool.ntp.org";
+static const char strDefNtp2[] = "1.pool.ntp.org";
+static const char strDefNtp3[] = "2.pool.ntp.org";
+
+
+/// Time configuration data structure
+typedef struct {
+    /// Time update interval (seconds). Minimum is 15 seconds
+    uint16_t delay_sec;
+    /// Timezone (-11 to 13)
+    int8_t tz;
+    /// Daylight saving (0 or 1)
+    int8_t dst;
+    /// NTP servers buffer
+    char ntpServ[(WF_NTP_SERV_MAXLEN + 1) * 3];
+} WfTimeConf;
 
 /// Module global menu data structure
 typedef struct {
+    /// Time configuration data structure
+    WfTimeConf *tc;
 	/// Menu items of the scanned WiFi APs.
 	MenuItem *item;
 	/// Data of the IP configuration entries being edited
@@ -116,10 +137,6 @@ typedef struct {
 	uint8_t selConfig;
 	/// Number of scanned APs
 	uint8_t aps;
-	/// SSID being edited
-//    MenuString ssid;
-    /// Password being edited
-//    MenuString pass;
     /// SSID buffer
 	char ssid[33];
 	/// Password being edited
@@ -127,8 +144,10 @@ typedef struct {
 } WfMenuData;
 
 // Private prototypes
+static int MenuReset(void *m);
+static int MenuWiFiTest(void *m);
 int MenuWiFiScan(void *m);
-int MenuSsidLink(void *m);
+int MenuConfSsidLoad(void *m);
 int MenuConfEntrySet(void *m);
 int MenuConfEntryCb(void* m);
 static int MenuIpOskEnter(void *m);
@@ -141,9 +160,13 @@ int MenuIpConfToggle(void *m);
 int MenuConfDataEntryCb(void *m);
 void MenuFillNetPar(MwIpCfg *ip);
 void MenuFillDefaultNetPar(void);
+static int MenuNtpEntryCb(void *m);
 static void MenuIpConfShow(MenuItem* item);
 static void MenuIpConfHide(MenuItem* item);
 static int MenuNetSaveCb(void *m);
+static int MenuDsToggle(void *m);
+static int MenuNtpOskEntry(void *m);
+static int MenuNtpOskExit(void *m);
 
 /// Module global data (other than item buffers)
 static WfMenuData *wd;
@@ -174,6 +197,104 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
 	i += Byte2UnsStr(addr, str + i);
 	str[i] = '\0';
 	return i;
+}
+
+/****************************************************************************
+ * WiFi configuration test log.
+ *
+ * Title: TESTING WIFI CONNECTION
+ *
+ * Shows the WiFi test log
+ ****************************************************************************/
+/// WiFi test log items
+const MenuItem testLogItem[] = { {
+		MENU_EESTR(0),	       		// Caption
+		NULL,						// Next: none
+		NULL,			            // Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}
+};
+
+/// WiFi test log entry data
+const MenuEntry wifiTestLogEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	4,								// Margin
+	MENU_STR("TESTING WIFI CONNECTION"),	// Title
+	MENU_STR(stdContext),			// Left context
+	MenuWiFiTest,					// entry callback
+	NULL,							// exit callback
+	NULL,							// cBut callback
+	.mItem = {
+		// rootItem, nItems, spacing, enPerPage, pages
+		MENU_ENTRY_ITEM(testLogItem, 1),
+		{MENU_H_ALIGN_LEFT}	    	// align
+	}
+};
+
+/// Tests WiFi connectifity by connecting to the AP and trying to
+/// synchronize the date and time.
+static int MenuWiFiTest(void *m) {
+    UNUSED_PARAM(m);
+
+    // Connect to AP
+    
+    // Try to set date and time
+
+    return FALSE;
+}
+
+/****************************************************************************
+ * WiFi configuration test menu.
+ *
+ * Title: CONFIGURATION SAVED
+ *
+ * WiFi configuration saved, allow testing it.
+ ****************************************************************************/
+/// WiFi test menu item data
+const MenuItem testItem[] = { {
+		MENU_STR("DONE!"),			// Caption
+		NULL,						// Next: none
+		(void*)&MenuReset,			// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_STR("TEST"),
+		(void*)&wifiTestLogEntry,
+		NULL,
+		{{1, 0, 0}}
+	}
+};
+
+/// WiFi test menu entry data
+const MenuEntry wifiTestEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	1,								// Margin
+	MENU_STR("WFLASH BOOTLOADER"),	// Title
+	MENU_STR(stdContext),			// Left context
+	NULL,							// entry callback
+	NULL,							// exit callback
+	NULL,							// cBut callback
+	.mItem = {
+		// rootItem, nItems, spacing, enPerPage, pages
+		MENU_ENTRY_ITEM(testItem, 3),
+		{MENU_H_ALIGN_CENTER}		// align
+	}
+};
+
+/// Go back to the root menu. Do not call this from the root menu itself!
+static int MenuReset(void *m) {
+	Menu *md = (Menu*)m;
+    MenuEntity *me;
+
+    me = md->me->prev;
+
+    while (me->prev != NULL) {
+        me = me->prev;
+        MenuUnlink();
+    }
+    MenuBack(TRUE);
+
+
+    return FALSE;
 }
 
 /****************************************************************************
@@ -412,7 +533,7 @@ const MenuEntry confSsidSelEntry = {
 	1,								// Margin
 	MENU_STR("WIFI NETWORK"),		// Title
 	MENU_STR(strScanContext),		// Left context
-	MenuSsidLink,					// entry callback
+	MenuConfSsidLoad,				// entry callback
 	MenuSsidCopySelected,			// exit callback
 	NULL,							// cBut callback
 	.mItem = {
@@ -425,7 +546,7 @@ const MenuEntry confSsidSelEntry = {
 	}
 };
 
-int MenuSsidLink(void *m) {
+int MenuConfSsidLoad(void *m) {
 	Menu *md = (Menu*)m;
 	MenuItemEntry *mie = &md->me->mEntry.mItem;
 
@@ -564,9 +685,9 @@ static const char fakeScanData[] = {
 	0, 2, 92, 3, 'A', 'P', '9',
 	0, 2, 53, 4, 'A', 'P', '1', '0',
 	0, 2, 58, 4, 'A', 'P', '1', '1',
-/*	0, 2, 64, 4, 'A', 'P', '1', '2',*/
+	0, 2, 64, 4, 'A', 'P', '1', '2',
 };
-#define _FAKE_WIFI_APS	11
+#define _FAKE_WIFI_APS	12
 #endif
 
 /// Scan for APs
@@ -731,8 +852,8 @@ const MenuItem confNetPar[] = {
 		{{0, 0, 1}}					// Selectable, alt_color, hide
 	}, {
 		MENU_STR(strSave),			// OK
-		NULL,						// Next
-		(void*)&MenuNetSaveCb,			// Callback
+		(void*)&wifiTestEntry,		// Next
+		&MenuNetSaveCb,		        // Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}
 };
@@ -865,7 +986,8 @@ static int MenuNetSaveCb(void *m) {
         str.string = (char*)strErrApCfgSet;
         str.length = sizeof(strErrApCfgSet) - 1;
         MenuMessage(str, 60);
-        return FALSE;
+//        return FALSE;
+        return TRUE;
     }
     // If IP configuration set to automatic, set IP parameters to 0.
     // else convert IP strings to binary data and set IP configuration.
@@ -884,20 +1006,263 @@ static int MenuNetSaveCb(void *m) {
         str.string = (char*)strErrIpCfgSet;
         str.length = sizeof(strErrIpCfgSet) - 1;
         MenuMessage(str, 60);
-        return FALSE;
+//        return FALSE;
+        return TRUE;
     }
     str.string = (char*)strDone;
     str.length = sizeof(strDone) - 1;
 
     // No transition to the next menu
-    MenuBack(TRUE);
+//    MenuBack(TRUE);
+    return TRUE;
+}
+
+/****************************************************************************
+ * NTP configuration
+ *
+ * Title: TIME CONFIGURATION
+ *
+ * NTP configuration (servers, update interval)
+ ****************************************************************************/
+/// NTP server URL entry
+const MenuEntry ntpSrvOsk = {
+	MENU_TYPE_OSK_QWERTY,		    // QWERTY keyboard
+	8,								// Margin
+	MENU_STR("NTP SERVER"),	        // Title
+	MENU_STR(oskQwertyContext),		// Left context
+	MenuNtpOskEntry,				// cbEntry
+	MenuNtpOskExit,         	    // cbExit
+	.keyb = {
+		MENU_STR(strNtpSrvInput),
+		MENU_EESTR(0),
+		33,
+	    33
+	}
+};
+
+/// Timezone keyboard entry
+const MenuEntry ntpTzOsk = {
+	MENU_TYPE_OSK_NUMERIC,		    // Numeric keyboard
+	8,								// Margin
+	MENU_STR("TIME ZONE"),	        // Title
+	MENU_STR(oskQwertyContext),		// Left context
+	MenuNtpOskExit,		        	// cbEntry
+	MenuNtpOskEntry, 	            // cbExit
+	.keyb = {
+		MENU_STR("Time zone offset (-11 to 13):"),
+		MENU_EESTR(0),
+		4,
+	    4
+	}
+};
+
+/// Update interval keyboard entry
+const MenuEntry ntpIntervalOsk = {
+	MENU_TYPE_OSK_NUMERIC,		    // Numeric keyboard
+	8,								// Margin
+	MENU_STR("UPDATE INTERVAL"),    // Title
+	MENU_STR(oskQwertyContext),		// Left context
+	MenuNtpOskEntry,	        	// cbEntry
+	MenuNtpOskExit, 	            // cbExit
+	.keyb = {
+		MENU_STR("Update interval (in seconds):"),
+		MENU_EESTR(0),
+		7,
+	    7
+	}
+};
+
+enum {
+    MENU_TIMECFG_NTPSRV1 = 1,
+    MENU_TIMECFG_NTPSRV2,
+    MENU_TIMECFG_NTPSRV3,
+    MENU_TIMECFG_TZ = 6,
+    MENU_TIMECFG_INTERVAL = 11
+};
+
+/// Configuration items for the time options
+const MenuItem ntpConfItem[] = {
+	{
+        MENU_STR("SNTP SERVERS:"),
+        NULL,
+        NULL,
+        {{0, 1, 0}}
+    }, {
+		MENU_EESTR(WF_NTP_SERV_MAXLEN),
+		(void*)&ntpSrvOsk,		    // Next
+		NULL,	            		// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(WF_NTP_SERV_MAXLEN),
+		(void*)&ntpSrvOsk,		    // Next
+		NULL,	            		// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(WF_NTP_SERV_MAXLEN),
+		(void*)&ntpSrvOsk,		    // Next
+		NULL,	            		// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(0),              // Empty entry
+		NULL,
+		NULL,
+		{{0, 0, 1}}
+	}, {
+        MENU_STR("TIME ZONE:"),
+        NULL,
+        NULL,
+        {{0, 1, 0}}
+    }, {
+		MENU_EESTR(3),
+		(void*)&ntpTzOsk,		    // Next
+		NULL,	            		// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(0),              // Empty entry
+		NULL,
+		NULL,
+		{{0, 0, 1}}
+	}, {
+        MENU_STR(strDsOff),
+        NULL,                       // Next: empty
+        MenuDsToggle,
+        {{1, 0, 0}}
+    }, {
+		MENU_EESTR(0),              // Empty entry
+		NULL,
+		NULL,
+		{{0, 0, 1}}
+	}, {
+        MENU_STR("UPDATE INTERVAL:"),
+        NULL,
+        NULL,
+        {{0, 1, 0}}
+    }, {
+		MENU_EESTR(5),
+		(void*)&ntpIntervalOsk,	    // Next
+		NULL,	            		// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(0),              // Empty entry
+		NULL,
+		NULL,
+		{{0, 0, 1}}
+	}, {
+		MENU_EESTR(0),              // Empty entry
+		NULL,
+		NULL,
+		{{0, 0, 1}}
+	}, {
+        MENU_STR(strSave),
+        NULL,
+        NULL,
+        {{1, 0, 0}}
+	}
+};
+
+/// Configuration slot selection menu entry
+const MenuEntry ntpConfEntry = {
+	MENU_TYPE_ITEM,					// Menu type
+	1,								// Margin
+	MENU_STR(strTimeConfig),	    // Title
+	MENU_STR(stdContext),			// Left context
+	MenuNtpEntryCb, 				// entry
+	NULL,							// exit
+	NULL,							// cBut callback
+	.mItem = {
+		// rootItem, nItems, spacing, enPerPage, pages
+		MENU_ENTRY_ITEM(ntpConfItem, 1),
+		{MENU_H_ALIGN_LEFT}			// align
+	}
+};
+
+static int MenuNtpOskEntry(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->prev->mEntry.mItem.item;
+    int selItem = md->me->prev->selItem;
+
+    switch (selItem) {
+        case MENU_TIMECFG_NTPSRV1:
+        case MENU_TIMECFG_NTPSRV2:
+        case MENU_TIMECFG_NTPSRV3:
+        case MENU_TIMECFG_TZ:
+        case MENU_TIMECFG_INTERVAL:
+            md->me->mEntry.keyb.fieldData = item[selItem].caption;
+            break;
+    }
+
+    return TRUE;
+}
+
+static int MenuNtpOskExit(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->prev->mEntry.mItem.item;
+    int selItem = md->me->prev->selItem;
+
+    switch (selItem) {
+        case MENU_TIMECFG_NTPSRV1:
+        case MENU_TIMECFG_NTPSRV2:
+        case MENU_TIMECFG_NTPSRV3:
+        case MENU_TIMECFG_TZ:
+        case MENU_TIMECFG_INTERVAL:
+            item[selItem].caption.length = md->str.length;
+            break;
+    }
+
+    return TRUE;
+}
+
+/// Callback for the time configuration menu entry
+int MenuNtpEntryCb(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+
+    // Allocate memory for the time configuration structure
+    wd->tc = MpAlloc(sizeof(WfTimeConf));
+    memset(wd->tc, 0, sizeof(WfTimeConf));
+    // Load configuration. Currently only default configuration is supported.
+    item[1].caption.length = MenuStrCpy(item[1].caption.string, strDefNtp1,
+            MW_NTP_POOL_MAXLEN);
+    item[2].caption.length = MenuStrCpy(item[2].caption.string, strDefNtp2,
+            MW_NTP_POOL_MAXLEN);
+    item[3].caption.length = MenuStrCpy(item[3].caption.string, strDefNtp3,
+            MW_NTP_POOL_MAXLEN);
+    item[6].caption.string[0] =  '0';
+    item[6].caption.string[1] = '\0';
+    item[6].caption.length = 1;
+    item[11].caption.length = MenuStrCpy(item[11].caption.string, "300", 0);
+//    wd->tc->tz = 0;
+//    wd->tc->dst = 0;
+    wd->tc->delay_sec = 300;
+
+    // Copy NTP data to destination strings
+    
+    return TRUE;
+}
+
+/// Toggle daylight saving option
+static int MenuDsToggle(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+    int selItem = md->me->selItem;
+
+    if (item[selItem].caption.string == strDsOff) {
+        item[selItem].caption.string = (char*)strDsOn;
+        item[selItem].caption.length = sizeof(strDsOn) - 1;
+    } else {
+        item[selItem].caption.string = (char*)strDsOff;
+        item[selItem].caption.length = sizeof(strDsOff) - 1;
+    }
+    MenuDrawItemPage(0);
+
+    // No transition to next entry
     return FALSE;
 }
 
 /****************************************************************************
  * Configuration items
  *
- * Title: CONFIGURATION SLOT
+ * Title: WIFI CONFIGURATION
  *
  * Start game (currently disabled) and configuration entries.
  ****************************************************************************/
@@ -919,14 +1284,24 @@ const MenuItem confItem[] = {
 		(void*)&confEntryData,		// Next
 		MenuConfEntrySet,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
-	}
+	}, {
+        MENU_EESTR(0),
+        NULL,
+        NULL,
+        {{0, 0, 1}}
+    }, {
+        MENU_STR(strTimeConfig),
+        (void*)&ntpConfEntry,
+        NULL,
+        {{1, 0, 0}}
+    }
 };
 
 /// Configuration slot selection menu entry
 const MenuEntry confEntry = {
 	MENU_TYPE_ITEM,					// Menu type
 	1,								// Margin
-	MENU_STR("CONFIGURATION SLOT"),	// Title
+	MENU_STR("TIME CONFIGURATION"),	// Title
 	MENU_STR(stdContext),			// Left context
 	MenuConfEntryCb,				// entry
 	NULL,							// exit
