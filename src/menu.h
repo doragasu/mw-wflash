@@ -146,6 +146,7 @@ typedef enum {
 	MENU_TYPE_ITEM = 0,			///< Item list menu
 	MENU_TYPE_OSK_QWERTY,		///< QWERTY-like keyboard
 	MENU_TYPE_OSK_NUMERIC,		///< Numeric only keyboard
+	MENU_TYPE_OSK_NUMERIC_NEG,	///< Numeric keyboard with negative numbers
 	MENU_TYPE_OSK_IPV4			///< IPv4 address entry keyboard
 } MenuType;
 

@@ -181,6 +181,19 @@ static const char num[MENU_OSK_NUM_ROWS][MENU_OSK_NUM_COLS] = {
 	{' ', '0', ' '}
 };
 
+/// Number of columns of the IP OSK menu
+#define MENU_OSK_NUM_NEG_COLS	3
+/// Number of rows of the IP OSK menu
+#define MENU_OSK_NUM_NEG_ROWS	4
+
+/// Numeric entry menu definition
+static const char numNeg[MENU_OSK_NUM_NEG_ROWS][MENU_OSK_NUM_NEG_COLS] = {
+	{'7', '8', '9'},
+	{'4', '5', '6'},
+	{'1', '2', '3'},
+	{'-', '0', '-'}
+};
+
 /// Dynamic data needed to display the menus
 static Menu *md;
 
@@ -385,6 +398,11 @@ void MenuOskDrawEditKey(uint16_t offset, uint8_t textColor) {
 			else c = num[md->coord.row][md->coord.col];
 			break;
 
+		case MENU_TYPE_OSK_NUMERIC_NEG:
+			if (md->coord.col == MENU_OSK_NUM_NEG_COLS) c = 0x7F;
+			else c = numNeg[md->coord.row][md->coord.col];
+			break;
+
 		case MENU_TYPE_OSK_IPV4:
 			if (md->coord.col == MENU_OSK_IP_COLS) c = 0x7F;
 			else c = ip[md->coord.row][md->coord.col];
@@ -412,6 +430,10 @@ void MenuDrawOskFunc(uint16_t offset) {
 
 		case MENU_TYPE_OSK_NUMERIC:
 			cols = MENU_OSK_NUM_COLS;
+			break;
+
+		case MENU_TYPE_OSK_NUMERIC_NEG:
+			cols = MENU_OSK_NUM_NEG_COLS;
 			break;
 
 		case MENU_TYPE_OSK_IPV4:
@@ -498,6 +520,23 @@ void MenuDrawOsk(uint16_t offset) {
 			MenuDrawOskFunc(offset);
 			break;
 
+		case MENU_TYPE_OSK_NUMERIC_NEG:	// Draw negative number OSK
+			for (i = 0; i < MENU_OSK_NUM_NEG_ROWS; i++) {
+				for (j = 0; j < MENU_OSK_NUM_NEG_COLS; j++) {
+					if (md->coord.row == i && md->coord.col == j)
+						color = MENU_COLOR_ITEM_SEL;
+					else color = MENU_COLOR_ITEM;
+					VdpDrawText(VDP_PLANEA_ADDR, offset - 3 +
+						((MENU_LINE_CHARS_TOTAL - 2 *
+                          MENU_OSK_NUM_NEG_COLS)>>1) +
+						2 * j, MENU_LINE_OSK_KEYS + 2 * i, color, 1,
+						(char*)&numNeg[i][j]);
+				}
+			}
+			// Draw special keys
+			MenuDrawOskFunc(offset);
+			break;
+
 		case MENU_TYPE_OSK_IPV4:	// Draw IPv4 OSK
 			for (i = 0; i < MENU_OSK_IP_ROWS; i++) {
 				for (j = 0; j < MENU_OSK_IP_COLS; j++) {
@@ -574,6 +613,16 @@ void MenuDraw(uint8_t direction) {
 			md->coord.caps = 0;
 			md->coord.row = MENU_OSK_NUM_ROWS;
 			md->coord.col = MENU_OSK_NUM_COLS;
+			MenuDrawOsk(offset);
+			break;
+
+		case MENU_TYPE_OSK_NUMERIC_NEG:
+			MenuStringCopy(&md->str, &m->keyb.fieldData);
+			md->me->selItem = md->str.length;
+			// Select the "DONE" item
+			md->coord.caps = 0;
+			md->coord.row = MENU_OSK_NUM_NEG_ROWS;
+			md->coord.col = MENU_OSK_NUM_NEG_COLS;
 			MenuDrawOsk(offset);
 			break;
 
@@ -676,6 +725,7 @@ static MenuEntity *MenuLoad(const MenuEntry *menu) {
 
 		case MENU_TYPE_OSK_QWERTY:
 		case MENU_TYPE_OSK_NUMERIC:
+		case MENU_TYPE_OSK_NUMERIC_NEG:
 		case MENU_TYPE_OSK_IPV4:
 			// Load MenuStrings
 			MenuStringLoad(&md->me->mEntry.keyb.fieldName,
@@ -1024,6 +1074,10 @@ void MenuOskKeyPress(void) {
 			cols = MENU_OSK_NUM_COLS;
 			break;
 
+		case MENU_TYPE_OSK_NUMERIC_NEG:
+			cols = MENU_OSK_NUM_NEG_COLS;
+			break;
+
 		case MENU_TYPE_OSK_IPV4:
 			cols = MENU_OSK_IP_COLS;
 			break;
@@ -1074,6 +1128,10 @@ void MenuOskKeyPress(void) {
 
 			case MENU_TYPE_OSK_NUMERIC:
 				MenuAddChar(num[md->coord.row][md->coord.col]);
+				break;
+
+			case MENU_TYPE_OSK_NUMERIC_NEG:
+				MenuAddChar(numNeg[md->coord.row][md->coord.col]);
 				break;
 
 		case MENU_TYPE_OSK_IPV4:
@@ -1386,6 +1444,10 @@ void MenuButtonAction(uint8_t input) {
 			MenuOskNumActions(input);
 			break;
 
+		case MENU_TYPE_OSK_NUMERIC_NEG:
+			MenuOskNumNegActions(input);
+			break;
+
 		case MENU_TYPE_OSK_IPV4:
 			MenuOskIpActions(input);
 			break;
@@ -1415,6 +1477,7 @@ void MenuMessage(MenuString str, uint16_t frames) {
 
         case MENU_TYPE_OSK_QWERTY:
         case MENU_TYPE_OSK_NUMERIC:
+        case MENU_TYPE_OSK_NUMERIC_NEG:
         case MENU_TYPE_OSK_IPV4:
         	MenuClearLines(11, 13, 0);
             MenuDrawOsk(0);

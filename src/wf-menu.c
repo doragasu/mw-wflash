@@ -1043,23 +1043,23 @@ const MenuEntry ntpSrvOsk = {
 /// Timezone keyboard entry
 const MenuEntry ntpTzOsk = {
 	MENU_TYPE_OSK_NUMERIC,		    // Numeric keyboard
-	8,								// Margin
+	4,								// Margin
 	MENU_STR("TIME ZONE"),	        // Title
 	MENU_STR(oskQwertyContext),		// Left context
-	MenuNtpOskExit,		        	// cbEntry
-	MenuNtpOskEntry, 	            // cbExit
+	MenuNtpOskEntry,	        	// cbEntry
+	MenuNtpOskExit, 	            // cbExit
 	.keyb = {
 		MENU_STR("Time zone offset (-11 to 13):"),
 		MENU_EESTR(0),
-		4,
-	    4
+		3,
+	    3
 	}
 };
 
 /// Update interval keyboard entry
 const MenuEntry ntpIntervalOsk = {
 	MENU_TYPE_OSK_NUMERIC,		    // Numeric keyboard
-	8,								// Margin
+	4,								// Margin
 	MENU_STR("UPDATE INTERVAL"),    // Title
 	MENU_STR(oskQwertyContext),		// Left context
 	MenuNtpOskEntry,	        	// cbEntry
@@ -1067,17 +1067,18 @@ const MenuEntry ntpIntervalOsk = {
 	.keyb = {
 		MENU_STR("Update interval (in seconds):"),
 		MENU_EESTR(0),
-		7,
-	    7
+		6,
+	    6
 	}
 };
 
+/// Constants for the time option menu strings
 enum {
-    MENU_TIMECFG_NTPSRV1 = 1,
-    MENU_TIMECFG_NTPSRV2,
-    MENU_TIMECFG_NTPSRV3,
-    MENU_TIMECFG_TZ = 6,
-    MENU_TIMECFG_INTERVAL = 11
+    MENU_TIMECFG_NTPSRV1 = 1,   ///< NTP server 1 string
+    MENU_TIMECFG_NTPSRV2,       ///< NTP server 2 string
+    MENU_TIMECFG_NTPSRV3,       ///< NTP server 3 string
+    MENU_TIMECFG_TZ = 6,        ///< Time zone
+    MENU_TIMECFG_INTERVAL = 11  ///< Update interval
 };
 
 /// Configuration items for the time options
@@ -1138,7 +1139,7 @@ const MenuItem ntpConfItem[] = {
         NULL,
         {{0, 1, 0}}
     }, {
-		MENU_EESTR(5),
+		MENU_EESTR(6),
 		(void*)&ntpIntervalOsk,	    // Next
 		NULL,	            		// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
@@ -1222,11 +1223,11 @@ int MenuNtpEntryCb(void *m) {
     memset(wd->tc, 0, sizeof(WfTimeConf));
     // Load configuration. Currently only default configuration is supported.
     item[1].caption.length = MenuStrCpy(item[1].caption.string, strDefNtp1,
-            MW_NTP_POOL_MAXLEN);
+            WF_NTP_SERV_MAXLEN);
     item[2].caption.length = MenuStrCpy(item[2].caption.string, strDefNtp2,
-            MW_NTP_POOL_MAXLEN);
+            WF_NTP_SERV_MAXLEN);
     item[3].caption.length = MenuStrCpy(item[3].caption.string, strDefNtp3,
-            MW_NTP_POOL_MAXLEN);
+            WF_NTP_SERV_MAXLEN);
     item[6].caption.string[0] =  '0';
     item[6].caption.string[1] = '\0';
     item[6].caption.length = 1;
