@@ -1042,7 +1042,7 @@ const MenuEntry ntpSrvOsk = {
 
 /// Timezone keyboard entry
 const MenuEntry ntpTzOsk = {
-	MENU_TYPE_OSK_NUMERIC,		    // Numeric keyboard
+	MENU_TYPE_OSK_NUMERIC_NEG,	    // Numeric keyboard
 	4,								// Margin
 	MENU_STR("TIME ZONE"),	        // Title
 	MENU_STR(oskQwertyContext),		// Left context

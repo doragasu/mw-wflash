@@ -1323,6 +1323,31 @@ void MenuOskNumDrawCurrent(uint8_t textColor) {
 }
 
 /************************************************************************//**
+ * \brief Draw current item for MENU_TYPE_OSK_NUMERIC_NEG menus, with
+ * specified color.
+ *
+ * \param[in] txtColor Color used to draw the item.
+ ****************************************************************************/
+void MenuOskNumNegDrawCurrent(uint8_t textColor) {
+	uint8_t i;
+
+	// Determine if we have to draw a special key
+	if (md->coord.col >= MENU_OSK_NUM_NEG_COLS) {
+		i = md->coord.row;
+		VdpDrawText(VDP_PLANEA_ADDR, 2 * MENU_OSK_QWERTY_COLS + 6 + 2,
+				MENU_LINE_OSK_KEYS + 2 * i, textColor, 4,
+				(char*)qwertyFunc[i]);
+	} else {
+		// Draw normal character
+		i = md->coord.row;
+		VdpDrawText(VDP_PLANEA_ADDR, ((MENU_LINE_CHARS_TOTAL - 2 *
+				MENU_OSK_NUM_NEG_COLS)>>1) + 2 * md->coord.col - 3,
+				MENU_LINE_OSK_KEYS + 2 * md->coord.row, textColor, 1,
+				(char*)&numNeg[i][md->coord.col]);
+	}
+}
+
+/************************************************************************//**
  * Parses actions for the numeric virtual keyboard.
  *
  * \param[in] input Key press changes, as obtained by GpPressed() function.
@@ -1414,6 +1439,76 @@ void MenuOskNumActions(uint8_t input) {
 			}
 		}
 		MenuOskNumDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	}
+}
+
+/************************************************************************//**
+ * Parses actions for the numeric virtual keyboard with negative support.
+ *
+ * \param[in] input Key press changes, as obtained by GpPressed() function.
+ ****************************************************************************/
+void MenuOskNumNegActions(uint8_t input) {
+	uint8_t limit;
+
+	if (input & GP_A_MASK) {
+        // Do not allow pressing the minus sign beyond the first char.
+        if (!((md->me->selItem > 0) && (md->coord.row ==
+                    (MENU_OSK_NUM_NEG_ROWS - 1)) && ((md->coord.col == 0) ||
+                    (md->coord.col == 2))))
+             MenuOskKeyPress();
+	} else if (input & GP_B_MASK) {
+		// Delete current character
+		MenuOskKeyDel();
+	} else if (input & GP_C_MASK) {
+		// Nothing to do for numeric keyboards.
+	} else if (input & GP_START_MASK) {
+		/// \todo check number is in range before accepting
+		MenuOskDone();
+	} else if (input & GP_UP_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM);
+		// Decrement row and draw key as selected. Note that if we are on last
+		// row, the limit changes
+		limit = md->coord.col < MENU_OSK_NUM_NEG_COLS?MENU_OSK_NUM_NEG_ROWS:
+			MENU_OSK_NUM_FUNCS;
+        md->coord.row = md->coord.row?md->coord.row - 1:limit - 1;
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_DOWN_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM);
+		// Increment row and draw key as selected.
+		limit = md->coord.col < MENU_OSK_NUM_NEG_COLS?MENU_OSK_NUM_NEG_ROWS:
+			MENU_OSK_NUM_FUNCS;
+        md->coord.row = md->coord.row < limit - 1?md->coord.row + 1:0;
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_LEFT_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM);
+		// Decrement col if not on the last column
+		if ((md->coord.col < MENU_OSK_NUM_NEG_COLS) ||
+                (md->coord.row < MENU_OSK_NUM_NEG_ROWS)) {
+            md->coord.col = md->coord.col?md->coord.col - 1:
+                MENU_OSK_NUM_NEG_COLS;
+		}
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM_SEL);
+		// Draw on the edited item the newly selected character
+		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
+	} else if (input & GP_RIGHT_MASK) {
+		// Draw current key with not selected color
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM);
+		// Increment row if not on last line
+		if ((md->coord.col < MENU_OSK_NUM_NEG_COLS) ||
+                (md->coord.row < MENU_OSK_NUM_NEG_ROWS)) {
+            md->coord.col = md->coord.col < MENU_OSK_NUM_NEG_COLS?
+                md->coord.col + 1:0;
+		}
+		MenuOskNumNegDrawCurrent(MENU_COLOR_ITEM_SEL);
 		// Draw on the edited item the newly selected character
 		MenuOskDrawEditKey(0, MENU_COLOR_ITEM_SEL);
 	}
