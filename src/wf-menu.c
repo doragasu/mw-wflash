@@ -6,6 +6,8 @@
 #include "mw/megawifi.h"
 #include "util.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /// When defined, fake data will be used for some WiFi operations
 #define _FAKE_WIFI
@@ -93,6 +95,7 @@ static const char strDone[] = "DONE!";
 static const char strFailed[] = "FAILED!";
 static const char strWrongIp[] = "WRONG IP!";
 static const char strErrSsid[] = "No valid SSID set!";
+static const char strErrRange[] = "Invalid input range!";
 static const char strNtpSrvInput[] = "Enter NTP server address";
 static const char strErrApCfgSet[] = "Error setting SSID/password!";
 static const char strErrIpCfgSet[] = "Error setting IP configuration!";
@@ -1198,15 +1201,30 @@ static int MenuNtpOskEntry(void *m) {
 static int MenuNtpOskExit(void *m) {
 	Menu *md = (Menu*)m;
 	MenuItem *item = md->me->prev->mEntry.mItem.item;
+    MenuString str;
     int selItem = md->me->prev->selItem;
+    long num;
 
     switch (selItem) {
         case MENU_TIMECFG_NTPSRV1:
         case MENU_TIMECFG_NTPSRV2:
         case MENU_TIMECFG_NTPSRV3:
-        case MENU_TIMECFG_TZ:
         case MENU_TIMECFG_INTERVAL:
             item[selItem].caption.length = md->str.length;
+            break;
+
+        case MENU_TIMECFG_TZ:
+            // Check timezone is between -11 and +13
+            num = atol(md->strBuf);
+            if ((num < -11) || (num > 13)) {
+                str.string = (char*)strErrRange;
+                str.length = sizeof(strErrRange) - 1;
+                MenuMessage(str, 60);
+                return FALSE;
+            } else {
+                // sprintf uses malloc :-/
+//                item[selItem].caption.length = sprintf(md->strBuf, "%ld", num);
+            }
             break;
     }
 

@@ -80,4 +80,3 @@ char *Str2UnsByte(char strIn[], uint8_t *result) {
 	}
 	return strIn;
 }
-
