@@ -1027,7 +1027,8 @@ void MenuOskDone(void) {
 	// If exit callback defined, run it and perform transition if allowed.
 	if ((m->exit) && (!m->exit(md))) return;
 	// Copy temporal string to menu entry string and scroll back
-	MenuStringCopy((MenuString*)&m->keyb.fieldData, &md->str);
+	MenuStringCopy(&md->me->prev->mEntry.mItem.item[md->me->prev->selItem].
+            caption, &md->str);
 	// Free menu resources and go back to the previous menu
 	MenuUnload();
 	MenuDraw(MENU_SCROLL_DIR_RIGHT);

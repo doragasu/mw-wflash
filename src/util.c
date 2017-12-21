@@ -1,8 +1,8 @@
 #include "util.h"
 
-/****************************************************************************
- * Converts an unsigned 8-bit number (uint8_t) in its character string
- * representation.
+/************************************************************************//**
+ * \brief Converts an unsigned 8-bit number (uint8_t) in its character
+ * string representation.
  *
  * \param[in]  num Input number to convert.
  * \param[out] str String representing the input number.
@@ -32,9 +32,9 @@ uint8_t Byte2UnsStr(uint8_t num, char str[4]) {
 	return i;
 }
 
-/****************************************************************************
- * Converts a character string representing an 8-bit unsigned number, to its
- * binary (uint8_t) representation.
+/************************************************************************//**
+ * \brief Converts a character string representing an 8-bit unsigned number,
+ * to its binary (uint8_t) representation.
  *
  * \param[in]  strIn  Input string with the number to convert.
  * \param[out] result Converted number will be left here.
@@ -79,4 +79,53 @@ char *Str2UnsByte(char strIn[], uint8_t *result) {
 			return NULL;
 	}
 	return strIn;
+}
+
+/************************************************************************//**
+ * \brief Converts an integer to a character string.
+ *
+ * \param[in]  num  Number to convert to string.
+ * \param[out] str  String that will hold the converted number.
+ * \param[in]  bufLen Length of str buffer.
+ * \param[in]  padLen Length of the padding to introduce. 0 for no padding.
+ * \param[in]  padChr Character used for padding (typically '0' or ' ').
+ *
+ * \return Number of characters written to str buffer, not including the
+ * null termination. 0 if string does not fin in the buffer and has not
+ * been converted.
+ *
+ * \warning Function uses lots of divisions. Maybe it is not the best of the
+ * ideas using it in a game loop.
+ ****************************************************************************/
+int Long2Str(long num, char str[], int bufLen, int padLen, char padChr) {
+    int i = 0;
+    int j;
+    int rem;
+    int len = 0;
+
+    // Obtain string length
+    for (rem = num, len = 0; rem; len++, rem /= 10);
+    // if number is 0 or negative, increase length by 1
+    if (len == 0) {
+        len++;
+        str[i++] = '0';
+    }
+    if (num < 0) {
+        len++;
+        num = -num;
+        str[i++] = '-';
+    }
+    // Check number fits in buffer
+    if (((len + 1) > bufLen) || ((padLen + 1) > bufLen)) return 0;
+    for (; i < (padLen - len); i++) str[i] = padChr;
+
+    // Perform the conversion in reverse order
+    padLen = MAX(padLen, len);
+    str[padLen] = '\0';
+    for (j = padLen - 1;j >= i; j--) {
+        str[j] = '0' + num % 10;
+        num = num / 10;
+    }
+
+    return padLen;
 }

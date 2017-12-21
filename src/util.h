@@ -47,9 +47,9 @@ static inline void ToUpper(char str[]) {
 	}
 }
 
-/****************************************************************************
- * Converts an unsigned 8-bit number (uint8_t) in its character string
- * representation.
+/************************************************************************//**
+ * \brief Converts an unsigned 8-bit number (uint8_t) in its character
+ * string representation.
  *
  * \param[in]  num Input number to convert.
  * \param[out] str String representing the input number.
@@ -58,9 +58,9 @@ static inline void ToUpper(char str[]) {
  ****************************************************************************/
 uint8_t Byte2UnsStr(uint8_t num, char str[4]);
 
-/****************************************************************************
- * Converts a character string representing an 8-bit unsigned number, to its
- * binary (uint8_t) representation.
+/************************************************************************//**
+ * \brief Converts a character string representing an 8-bit unsigned number,
+ * to its binary (uint8_t) representation.
  *
  * \param[in]  strIn  Input string with the number to convert.
  * \param[out] result Converted number will be left here.
@@ -70,6 +70,24 @@ uint8_t Byte2UnsStr(uint8_t num, char str[4]);
  * uint8_t type.
  ****************************************************************************/
 char *Str2UnsByte(char strIn[], uint8_t *result);
+
+/************************************************************************//**
+ * \brief Converts an integer to a character string.
+ *
+ * \param[in]  num  Number to convert to string.
+ * \param[out] str  String that will hold the converted number.
+ * \param[in]  bufLen Length of str buffer.
+ * \param[in]  padLen Length of the padding to introduce. 0 for no padding.
+ * \param[in]  padChr Character used for padding (typically '0' or ' ').
+ *
+ * \return Number of characters written to str buffer, not including the
+ * null termination. 0 if string does not fin in the buffer and has not
+ * been converted.
+ *
+ * \warning Function uses lots of divisions. Maybe it is not the best of the
+ * ideas using it in a game loop.
+ ****************************************************************************/
+int Long2Str(long num, char str[], int bufLen, int padLen, char padChr);
 
 #ifndef TRUE
 /// TRUE value for logic comparisons

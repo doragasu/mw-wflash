@@ -1068,7 +1068,7 @@ const MenuEntry ntpIntervalOsk = {
 	MenuNtpOskEntry,	        	// cbEntry
 	MenuNtpOskExit, 	            // cbExit
 	.keyb = {
-		MENU_STR("Update interval (in seconds):"),
+		MENU_STR("Update interval (15+ seconds):"),
 		MENU_EESTR(0),
 		6,
 	    6
@@ -1200,7 +1200,6 @@ static int MenuNtpOskEntry(void *m) {
 
 static int MenuNtpOskExit(void *m) {
 	Menu *md = (Menu*)m;
-	MenuItem *item = md->me->prev->mEntry.mItem.item;
     MenuString str;
     int selItem = md->me->prev->selItem;
     long num;
@@ -1210,7 +1209,17 @@ static int MenuNtpOskExit(void *m) {
         case MENU_TIMECFG_NTPSRV2:
         case MENU_TIMECFG_NTPSRV3:
         case MENU_TIMECFG_INTERVAL:
-            item[selItem].caption.length = md->str.length;
+            // Check minimum value of 15 seconds
+            num = atol(md->strBuf);
+            if (num < 15) {
+                str.string = (char*)strErrRange;
+                str.length = sizeof(strErrRange) - 1;
+                MenuMessage(str, 60);
+                return FALSE;
+            } else {
+                md->str.length = Long2Str(num, md->str.string,
+                        MENU_STR_MAX_LEN + 1, 0, 0);
+            }
             break;
 
         case MENU_TIMECFG_TZ:
@@ -1222,8 +1231,8 @@ static int MenuNtpOskExit(void *m) {
                 MenuMessage(str, 60);
                 return FALSE;
             } else {
-                // sprintf uses malloc :-/
-//                item[selItem].caption.length = sprintf(md->strBuf, "%ld", num);
+                md->str.length = Long2Str(num, md->str.string,
+                        MENU_STR_MAX_LEN + 1, 0, 0);
             }
             break;
     }
