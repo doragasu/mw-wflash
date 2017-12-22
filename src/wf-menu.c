@@ -1201,6 +1201,7 @@ static int MenuNtpOskEntry(void *m) {
 static int MenuNtpOskExit(void *m) {
 	Menu *md = (Menu*)m;
     MenuString str;
+    MenuItem *item = md->me->prev->mEntry.mItem.item;
     int selItem = md->me->prev->selItem;
     long num;
 
@@ -1219,6 +1220,7 @@ static int MenuNtpOskExit(void *m) {
             } else {
                 md->str.length = Long2Str(num, md->str.string,
                         MENU_STR_MAX_LEN + 1, 0, 0);
+                item[selItem].caption.length = md->str.length;
             }
             break;
 
@@ -1233,6 +1235,7 @@ static int MenuNtpOskExit(void *m) {
             } else {
                 md->str.length = Long2Str(num, md->str.string,
                         MENU_STR_MAX_LEN + 1, 0, 0);
+                item[selItem].caption.length = md->str.length;
             }
             break;
     }
