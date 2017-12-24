@@ -1,5 +1,3 @@
-// PRIVATE EYE (VAUGHAN)
-
 #include "wf-menu.h"
 #include "util.h"
 #include "vdp.h"
