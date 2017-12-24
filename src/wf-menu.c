@@ -207,14 +207,27 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
  *
  * Title: TESTING WIFI CONNECTION
  *
- * Shows the WiFi test log
+ * Shows the WiFi test log, with steps:
+ * - Connection to AP.
+ * - IP configuration.
+ * - Obtain NTP date/time.
  ****************************************************************************/
 /// WiFi test log items
 const MenuItem testLogItem[] = { {
-		MENU_EESTR(0),	       		// Caption
+		MENU_ESTR("Connecting to AP...", 26), 	// Caption
 		NULL,						// Next: none
 		NULL,			            // Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(0),	       		// Caption
+		NULL,						// Next: none
+		NULL,			            // Callback
+		{{0, 0, 1}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(0),	       		// Caption
+		NULL,						// Next: none
+		NULL,			            // Callback
+		{{0, 0, 1}}					// Selectable, alt_color, hide
 	}
 };
 
@@ -238,8 +251,22 @@ const MenuEntry wifiTestLogEntry = {
 /// synchronize the date and time.
 static int MenuWiFiTest(void *m) {
     UNUSED_PARAM(m);
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+    int i = 0;
 
     // Connect to AP
+    if (MW_OK != MwApJoin(wd->selConfig)) {
+        item[i].caption.length += MenuStrCpy(item[i].caption.string +
+                item[i].caption.length, strFailed, 0);
+        MenuDrawItemPage(0);
+        return FALSE;
+    }
+    item[i].caption.length += MenuStrCpy(item[i].caption.string +
+            item[i].caption.length, strDone, 0);
+    MenuDrawItemPage(0);
+    
+    // Get/configure IP
     
     // Try to set date and time
 
