@@ -212,20 +212,20 @@ uint8_t MenuBin2IpStr(uint32_t addr, char str[]) {
  ****************************************************************************/
 /// WiFi test log items
 const MenuItem testLogItem[] = { {
-		MENU_ESTR("Connecting to AP...", 26), 	// Caption
+		MENU_ESTR("Connecting to AP... ", 27), 	// Caption
 		NULL,						// Next: none
 		NULL,			            // Callback
-		{{1, 0, 0}}					// Selectable, alt_color, hide
+		{{0, 0, 0}}					// Selectable, alt_color, hide
 	}, {
-		MENU_EESTR(0),	       		// Caption
+		MENU_ESTR("Connect to duckduckgo... ", 32),	// Caption
 		NULL,						// Next: none
 		NULL,			            // Callback
 		{{0, 0, 1}}					// Selectable, alt_color, hide
 	}, {
-		MENU_EESTR(0),	       		// Caption
+		MENU_STR("Test finished."),	// Caption
 		NULL,						// Next: none
 		NULL,			            // Callback
-		{{0, 0, 1}}					// Selectable, alt_color, hide
+		{{1, 0, 1}}					// Selectable, alt_color, hide
 	}
 };
 
@@ -235,12 +235,13 @@ const MenuEntry wifiTestLogEntry = {
 	4,								// Margin
 	MENU_STR("TESTING WIFI CONNECTION"),	// Title
 	MENU_STR(stdContext),			// Left context
-	MenuWiFiTest,					// entry callback
+	NULL,       					// entry callback
 	NULL,							// exit callback
+	MenuWiFiTest,					// action callback
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
-		MENU_ENTRY_ITEM(testLogItem, 1),
+		MENU_ENTRY_ITEM(testLogItem, 2),
 		{MENU_H_ALIGN_LEFT}	    	// align
 	}
 };
@@ -252,23 +253,39 @@ static int MenuWiFiTest(void *m) {
 	Menu *md = (Menu*)m;
 	MenuItem *item = md->me->mEntry.mItem.item;
     int i = 0;
+    int error = FALSE;
 
     // Connect to AP
     if (MW_OK != MwApJoin(wd->selConfig)) {
         item[i].caption.length += MenuStrCpy(item[i].caption.string +
-                item[i].caption.length, strFailed, 0);
+                strlen(item[i].caption.string), strFailed, 0);
+        error = TRUE;
+    } else {
+        item[i].caption.length += MenuStrCpy(item[i].caption.string +
+                strlen(item[i].caption.string), strDone, 0);
+        item[i].alt_color = TRUE;
+        i++;
+        item[i].hide = FALSE;
         MenuDrawItemPage(0);
-        return FALSE;
     }
-    item[i].caption.length += MenuStrCpy(item[i].caption.string +
-            item[i].caption.length, strDone, 0);
+    // Connect to duckduckgo.com
+    if (!error) {
+        if ((MwTcpConnect(1, "duckduckgo.com", "80", NULL)) != MW_OK) {
+            item[i].caption.length += MenuStrCpy(item[i].caption.string +
+                    strlen(item[i].caption.string), strFailed, 0);
+            error = TRUE;
+        } else {
+            item[i].caption.length += MenuStrCpy(item[i].caption.string +
+                    strlen(item[i].caption.string), strDone, 0);
+            item[i].alt_color = TRUE;
+        }
+    }
+    item[2].hide = FALSE;
+    md->me->selItem = 2;
+    md->me->selPage = 0;
     MenuDrawItemPage(0);
-    
-    // Get/configure IP
-    
-    // Try to set date and time
 
-    return FALSE;
+    return !error;
 }
 
 /****************************************************************************
@@ -300,6 +317,7 @@ const MenuEntry wifiTestEntry = {
 	MENU_STR(stdContext),			// Left context
 	NULL,							// entry callback
 	NULL,							// exit callback
+	NULL,							// action callback
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
@@ -339,6 +357,8 @@ const MenuEntry ipSsidOsk = {
 	MENU_STR(oskQwertyContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
 	MenuIpOskExit, 				    // cbExit
+	NULL, 				            // action
+	NULL, 				            // C button
 	.keyb = {
 		MENU_STR("Enter access point SSID:"),
 		MENU_EESTR(0),
@@ -354,6 +374,8 @@ const MenuEntry ipPassOsk = {
 	MENU_STR(oskQwertyContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
 	MenuIpOskExit, 				    // cbExit
+	NULL, 				            // action
+	NULL, 				            // C button
 	.keyb = {
 		MENU_STR("Enter access point password:"),
 		MENU_EESTR(0),
@@ -369,6 +391,8 @@ const MenuEntry ipAddrOsk = {
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
 	MenuIpOskExit, 				    // cbExit
+	NULL, 				            // action
+	NULL, 				            // C button
 	.keyb = {
 		MENU_STR("Enter IPv4 address:"),
 		MENU_EESTR(0),
@@ -384,6 +408,8 @@ const MenuEntry ipMaskOsk = {
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
 	MenuIpOskExit, 				    // cbExit
+	NULL, 				            // action
+	NULL, 				            // C button
 	.keyb = {
 		MENU_STR("Enter subnet mask:"),
 		MENU_EESTR(0),
@@ -399,6 +425,8 @@ const MenuEntry ipGwOsk = {
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
 	MenuIpOskExit, 				    // cbExit
+	NULL, 				            // action
+	NULL, 				            // C button
 	.keyb = {
 		MENU_STR("Enter Gateway:"),
 		MENU_EESTR(0),
@@ -414,6 +442,8 @@ const MenuEntry ipDns1Osk = {
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
 	MenuIpOskExit, 				    // cbExit
+	NULL, 				            // action
+	NULL, 				            // C button
 	.keyb = {
 		MENU_STR("Enter primary DNS address:"),
 		MENU_EESTR(0),
@@ -429,6 +459,8 @@ const MenuEntry ipDns2Osk = {
 	MENU_STR(oskNumIpContext),		// Left context
 	MenuIpOskEnter,					// cbEntry
 	MenuIpOskExit, 				    // cbExit
+	NULL, 				            // action
+	NULL, 				            // C button
 	.keyb = {
 		MENU_STR("Enter secondary DNS address:"),
 		MENU_EESTR(0),
@@ -563,6 +595,7 @@ const MenuEntry confSsidSelEntry = {
 	MENU_STR(strScanContext),		// Left context
 	MenuConfSsidLoad,				// entry callback
 	MenuSsidCopySelected,			// exit callback
+	NULL,							// action callback
 	NULL,							// cBut callback
 	.mItem = {
 		NULL,						// item
@@ -894,6 +927,7 @@ const MenuEntry confEntryData = {
 	MENU_STR(stdContext),			// Left context
 	MenuConfDataEntryCb,			// entry callback
 	NULL,							// exit callback
+	NULL,							// action callback
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
@@ -1060,6 +1094,8 @@ const MenuEntry ntpSrvOsk = {
 	MENU_STR(oskQwertyContext),		// Left context
 	MenuNtpOskEntry,				// cbEntry
 	MenuNtpOskExit,         	    // cbExit
+	NULL,							// action callback
+	NULL,							// C button callback
 	.keyb = {
 		MENU_STR(strNtpSrvInput),
 		MENU_EESTR(0),
@@ -1076,6 +1112,8 @@ const MenuEntry ntpTzOsk = {
 	MENU_STR(oskQwertyContext),		// Left context
 	MenuNtpOskEntry,	        	// cbEntry
 	MenuNtpOskExit, 	            // cbExit
+	NULL,							// action callback
+	NULL,							// C button callback
 	.keyb = {
 		MENU_STR("Time zone offset (-11 to 13):"),
 		MENU_EESTR(0),
@@ -1092,6 +1130,8 @@ const MenuEntry ntpIntervalOsk = {
 	MENU_STR(oskQwertyContext),		// Left context
 	MenuNtpOskEntry,	        	// cbEntry
 	MenuNtpOskExit, 	            // cbExit
+	NULL,							// action callback
+	NULL,							// C button callback
 	.keyb = {
 		MENU_STR("Update interval (15+ seconds):"),
 		MENU_EESTR(0),
@@ -1197,6 +1237,7 @@ const MenuEntry ntpConfEntry = {
 	MENU_STR(stdContext),			// Left context
 	MenuNtpEntryCb, 				// entry
 	NULL,							// exit
+	NULL,							// action callback
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
@@ -1361,6 +1402,7 @@ const MenuEntry confEntry = {
 	MENU_STR(stdContext),			// Left context
 	MenuConfEntryCb,				// entry
 	NULL,							// exit
+	NULL,							// action callback
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
@@ -1447,6 +1489,7 @@ const MenuEntry rootMenu = {
 	MENU_STR(stdContext),			// Left context
 	NULL,							// entry callback
 	NULL,							// exit callback
+	NULL,							// action callback
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages

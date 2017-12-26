@@ -844,6 +844,7 @@ void MenuBack(int loadEntry) {
 		// Call menu entry callback
 		if (loadEntry && md->me->mEntry.entry) md->me->mEntry.entry(md);
 		MenuDraw(MENU_SCROLL_DIR_RIGHT);
+        // Do not call menu action
 	}
 }
 
@@ -883,6 +884,7 @@ void MenuItemAction(uint8_t input) {
             }
 			// Draw menu
 			MenuDraw(MENU_SCROLL_DIR_LEFT);
+            if(md->me->mEntry.action) md->me->mEntry.action(md);
 		}
 	} else if (input & GP_B_MASK) {
         // Go back one menu level

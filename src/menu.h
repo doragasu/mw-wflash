@@ -246,6 +246,7 @@ typedef struct {
 	MenuString lContext;		///< Left context string (bottom line)
 	MenuCb entry;				///< Callback for menu entry
 	MenuCb exit;				///< Callback for menu exit
+    MenuCb action;              ///< Callback for menu action
 	MenuCb cBut;				///< C button callback
 	union {
 		MenuItemEntry mItem;	///< Item list entries
