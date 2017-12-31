@@ -354,8 +354,8 @@ int MwApFillNext(char apData[], uint16_t pos,
  *
  * \param[in] index Index of the configuration used to join the AP.
  *
- * \return MW_OK if AP joined successfully and ready to send/receive data,
- *         or MW_ERROR if AP join/IP configuration failed.
+ * \return MW_OK if AP join operation has been successfully started,
+ *         or MW_ERROR if AP join operation failed.
  ****************************************************************************/
 int MwApJoin(uint8_t index) {
 	if (!mwReady) return MW_ERROR;

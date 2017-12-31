@@ -2,6 +2,8 @@
 #define _UTIL_H_
 
 #include <stdint.h>
+// Not very happy about adding this header here...
+#include "mw/megawifi.h"
 
 #ifndef TRUE
 #define TRUE 1
@@ -88,6 +90,22 @@ char *Str2UnsByte(char strIn[], uint8_t *result);
  * ideas using it in a game loop.
  ****************************************************************************/
 int Long2Str(long num, char str[], int bufLen, int padLen, char padChr);
+
+/************************************************************************//**
+ * \brief Waits until module has joined an AP, an error occurs or specified
+ *        retries and frames expire.
+ *
+ * \param[in] retries Number of times to retry waiting for AP to join.
+ * \param[in] frmPoll Number of frames to wait between state polls to the
+ *            WiFi module.
+ *
+ * \return Module status if module it has joined AP, NULL if error or
+ * specified retries and frames expire.
+ *
+ * \note If you do not want the function to block, call it without retries
+ * and with zero frmPoll: ApJoinWait(0, 0);
+ ****************************************************************************/
+MwMsgSysStat *ApJoinWait(uint16_t retries, uint16_t frmPoll);
 
 #ifndef TRUE
 /// TRUE value for logic comparisons

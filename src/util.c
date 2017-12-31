@@ -1,4 +1,5 @@
 #include "util.h"
+#include "vdp.h"
 
 /************************************************************************//**
  * \brief Converts an unsigned 8-bit number (uint8_t) in its character
@@ -131,3 +132,35 @@ int Long2Str(long num, char str[], int bufLen, int padLen, char padChr) {
 
     return padLen;
 }
+
+
+/************************************************************************//**
+ * \brief Waits until module has joined an AP, an error occurs or specified
+ *        retries and frames expire.
+ *
+ * \param[in] retries Number of times to retry waiting for AP to join.
+ * \param[in] frmPoll Number of frames to wait between state polls to the
+ *            WiFi module.
+ *
+ * \return Module status if module it has joined AP, NULL if error or
+ * specified retries and frames expire.
+ *
+ * \note If you do not want the function to block, call it without retries
+ * and with zero frmPoll: ApJoinWait(0, 0);
+ ****************************************************************************/
+MwMsgSysStat *ApJoinWait(uint16_t retries, uint16_t frmPoll) {
+    uint16_t frm = 0;
+    uint16_t tried;
+	MwMsgSysStat *stat;
+
+    for (tried = 0; tried <= retries; tried++) {
+    	stat = MwSysStatGet();
+    	// Find if connection has just been established
+    	if ((stat != NULL) && (stat->sys_stat >= MW_ST_READY)) {
+            return stat;
+    	}
+        for (frm = 0; frm < frmPoll; frm++) VdpVBlankWait();
+	}
+    return NULL;
+}
+

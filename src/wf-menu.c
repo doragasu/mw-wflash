@@ -254,7 +254,8 @@ static int MenuWiFiTest(void *m) {
     UNUSED_PARAM(m);
 	Menu *md = (Menu*)m;
 	MenuItem *item = md->me->mEntry.mItem.item;
-    int i = 0;
+    MwMsgSysStat *stat;
+    int i = 0, j;
     int error = FALSE;
 
     // Connect to AP
@@ -263,16 +264,33 @@ static int MenuWiFiTest(void *m) {
                 strlen(item[i].caption.string), strFailed, 0);
         error = TRUE;
     } else {
+    }
+    // Wait until AP join completes, an error occurs, or connection times out
+    if (!error) {
+        // Try to join for 2 minutes (60 Hz numbers)
+        if (!(stat = ApJoinWait(2*60*4, 15))) {
+            error = TRUE;
+        }
+    }
+    if (!error) {
         item[i].caption.length += MenuStrCpy(item[i].caption.string +
                 strlen(item[i].caption.string), strDone, 0);
         item[i].alt_color = TRUE;
         i++;
         item[i].hide = FALSE;
         MenuDrawItemPage(0);
+    } else {
+        item[i].caption.length += MenuStrCpy(item[i].caption.string +
+                strlen(item[i].caption.string), strFailed, 0);
     }
+
+    // Wait some seconds for DNS to come up
+    /// \todo try guessing when DNS is up instead of waiting a random
+    /// number of seconds
+    for (j = 0; j < 5 * 60; j++) VdpVBlankWait();
     // Connect to duckduckgo.com
     if (!error) {
-        if ((MwTcpConnect(1, "duckduckgo.com", "80", NULL)) != MW_OK) {
+        if ((MwTcpConnect(1, "www.duckduckgo.com", "443", NULL)) != MW_OK) {
             item[i].caption.length += MenuStrCpy(item[i].caption.string +
                     strlen(item[i].caption.string), strFailed, 0);
             error = TRUE;
@@ -280,8 +298,12 @@ static int MenuWiFiTest(void *m) {
             item[i].caption.length += MenuStrCpy(item[i].caption.string +
                     strlen(item[i].caption.string), strDone, 0);
             item[i].alt_color = TRUE;
+            // Close connection
+            MwTcpDisconnect(1);
         }
     }
+    // Test ended, disconnect
+    MwApLeave();
     item[2].hide = FALSE;
     md->me->selItem = 2;
     md->me->selPage = 0;
@@ -1051,7 +1073,6 @@ static int MenuNetSaveCb(void *m) {
         str.string = (char*)strErrApCfgSet;
         str.length = sizeof(strErrApCfgSet) - 1;
         MenuMessage(str, 60);
-//        return FALSE;
         return TRUE;
     }
     // If IP configuration set to automatic, set IP parameters to 0.
@@ -1468,7 +1489,8 @@ int MenuConfEntryCb(void* m) {
  *
  * Title: WFLASH BOOTLOADER
  *
- * Start game (currently disabled) and configuration entries.
+ * Start game (currently disabled), download mode for WiFi download fo ROMS
+ * and configuration entries.
  ****************************************************************************/
 /// Root menu items
 const MenuItem rootItem[] = { {
@@ -1476,6 +1498,11 @@ const MenuItem rootItem[] = { {
 		NULL,						// Next: none (yet ;-)
 		NULL,						// Callback
 		{{1, 1, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_STR("DOWNLOAD MODE"),
+		NULL,			// Next: Download mode
+		NULL,
+		{{1, 0, 0}}
 	}, {
 		MENU_STR("CONFIGURATION"),
 		(void*)&confEntry,			// Next: Configuration entry
@@ -1496,7 +1523,7 @@ const MenuEntry rootMenu = {
 	NULL,							// cBut callback
 	.mItem = {
 		// rootItem, nItems, spacing, enPerPage, pages
-		MENU_ENTRY_ITEM(rootItem, 2),
+		MENU_ENTRY_ITEM(rootItem, 3),
 		{MENU_H_ALIGN_CENTER}		// align
 	}
 };

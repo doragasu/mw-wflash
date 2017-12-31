@@ -94,7 +94,7 @@ void Init(void) {
 int main(void) {
 	MwMsgSysStat *stat;
 	MwIpCfg *ip;
-	MwState prevStat = MW_ST_INIT;
+    int connected = FALSE;
 	char statBuf[16];
 	MenuString statStr;
 	uint8_t pad;
@@ -105,32 +105,30 @@ int main(void) {
 
 	statStr.string = statBuf;
 	while (1) {
-		/// \todo 1. Parse communications events.
-		// 2. Wait for VBlank.
-		VdpVBlankWait();
+		// 1. Wait for VBlank.
         frame++;
-		// 3. Read controller and perform non-menu related actions.
+		VdpVBlankWait();
+		// 2. Read controller and perform non-menu related actions.
 		pad = GpPressed();
-		// 4. If pad pressed, perform menu related actions. Else check
+		// 3. If pad pressed, perform menu related actions. Else check
 		//    connection status.
 		if (0xFF != pad) MenuButtonAction(pad);
 		else if ((frame & 0x0F) == 0) {
-			stat = MwSysStatGet();
-			// Find if connection has just been established
-			if ((stat != NULL) && (stat->sys_stat >= MW_ST_READY) &&
-					(prevStat < MW_ST_READY)) {
-				// Connection established! Print IP in the status string
+            stat = ApJoinWait(0,0);
+            if (!connected && stat) {
+                // Connection has just been established,
+                // print IP in the status string
 				if (MwIpCfgGet(stat->cfg, &ip) != MW_OK)
 					MenuPanic("COULD NOT GET IP!", 17);
 				statStr.length = MenuBin2IpStr(ip->addr, statBuf);
 				MenuStatStrSet(statStr);
-			} else if ((stat != NULL) && (stat->sys_stat < MW_ST_READY)
-					&& (prevStat >= MW_ST_READY)) {
-				// Connection lost! Inform in the status string
+            } else if (connected && !stat) {
+                // Connection dropped, inform in the status string
 				statStr.length = MenuStrCpy(statBuf, "DISCONNECTED!", 16 - 1);
 				statBuf[16 - 1] = '\0';
 				MenuStatStrSet(statStr);
-			}
+            }
+            connected = stat?TRUE:FALSE;;
 		}
 	}
 	return 0;
