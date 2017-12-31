@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 /// When defined, fake data will be used for some WiFi operations
-#define _FAKE_WIFI
+//#define _FAKE_WIFI
 
 /// Maximum length of an IP string, including the null termination
 #define WF_IP_MAXLEN	16
@@ -83,7 +83,9 @@ static const char strDns2[] = "DNS2:    ";
 static const char strIpAuto[] = "IP CONFIG: AUTOMATIC";
 static const char strIpManual[] = "IP CONFIG: MANUAL";
 static const char strScan[] = "SCAN IN PROGRESS, PLEASE WAIT...";
-//static const char strScanFail[] = "SCAN FAILED!";
+#ifndef _FAKE_WIFI
+static const char strScanFail[] = "SCAN FAILED!";
+#endif
 //static const char strCfgFail[] = "CONFIGURATION FAILED!";
 static const char strTimeConfig[] = "TIME CONFIGURATION";
 static const char strStartScan[] = "SCAN...";
@@ -646,7 +648,7 @@ void MenuFillDefaultNetPar(void) {
 
 /// Fills wd->netPar with IP configuration data
 void MenuFillNetPar(MwIpCfg *ip) {
-	int i = WF_NET_IP;
+	int i = WF_IP_ADDR;
 
 	MenuBin2IpStr(ip->addr, wd->ipPar[i++]);
 	MenuBin2IpStr(ip->mask, wd->ipPar[i++]);
@@ -974,8 +976,10 @@ int MenuConfDataEntryCb(void *m) {
         wd->pass[0] = '\0';
         error = TRUE;
     } else {
-        strcpy(wd->ssid, ssid);
-        strcpy(wd->pass, pass);
+        memcpy(wd->ssid, ssid, MW_SSID_MAXLEN);
+        wd->ssid[MW_SSID_MAXLEN] = '\0';
+        memcpy(wd->pass, pass, MW_PASS_MAXLEN);
+        wd->pass[MW_PASS_MAXLEN] = '\0';
     }
 
 	error = error || (MW_OK != MwIpCfgGet(wd->selConfig, &ip));
@@ -985,20 +989,17 @@ int MenuConfDataEntryCb(void *m) {
 	if (error || !ip->addr) {
 		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpAuto;
 		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpAuto) - 1;
-	} else {
-		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
-		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpManual) - 1;
-	}
-    // If error, set default IP configuration
-    if (error) {
         MenuFillDefaultNetPar();
         MenuIpConfHide(item);
     	MenuIpConfPrintNetPar(item);
-    } else {
+	} else {
+		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
+		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpManual) - 1;
 		MenuFillNetPar(ip);
     	MenuIpConfPrintNetPar(item);
         MenuIpConfShow(item);
 	}
+
 	return 0;
 }
 
@@ -1010,12 +1011,14 @@ int MenuIpConfToggle(void *m) {
 	if (item[MENU_NET_CONF_IP_TYPE].caption.string == strIpAuto) {
 		// Toggle IP configuration to manual
 		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpManual;
+		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpManual) - 1;
 		// Fill in IP configuration data
 		MenuIpConfPrintNetPar(item);
         MenuIpConfShow(item);
 	} else {
 		// Toggle IP configuration to auto
 		item[MENU_NET_CONF_IP_TYPE].caption.string = (char*)strIpAuto;
+		item[MENU_NET_CONF_IP_TYPE].caption.length = sizeof(strIpAuto) - 1;
 		// Hide IP related configuration entries
         MenuIpConfHide(item);
 	}
@@ -1055,7 +1058,7 @@ static int MenuNetSaveCb(void *m) {
     // else convert IP strings to binary data and set IP configuration.
     if (md->me->mEntry.mItem.item[MENU_NET_CONF_IP_TYPE].caption.string ==
             strIpAuto) {
-        memset(wd->ipPar, 0, sizeof(wd->ipPar));
+        memset(&ip, 0, sizeof(MwIpCfg));
     } else {
         ip.addr = MenuIpStr2Bin(wd->ipPar[WF_IP_ADDR]);
         ip.mask = MenuIpStr2Bin(wd->ipPar[WF_IP_MASK]);
@@ -1369,17 +1372,17 @@ const MenuItem confItem[] = {
 		// Default caption (will be dynamically modified)
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
 		(void*)&confEntryData,		// Next
-		MenuConfEntrySet,			// Callback
+		NULL,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
 		(void*)&confEntryData,		// Next
-		MenuConfEntrySet,			// Callback
+		NULL,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_ESTR(strEmptyText, 3 + 32 + 1),
 		(void*)&confEntryData,		// Next
-		MenuConfEntrySet,			// Callback
+		NULL,			// Callback
 		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
         MENU_EESTR(0),
@@ -1401,7 +1404,7 @@ const MenuEntry confEntry = {
 	MENU_STR("TIME CONFIGURATION"),	// Title
 	MENU_STR(stdContext),			// Left context
 	MenuConfEntryCb,				// entry
-	NULL,							// exit
+	MenuConfEntrySet,				// exit
 	NULL,							// action callback
 	NULL,							// cBut callback
 	.mItem = {
@@ -1415,7 +1418,7 @@ const MenuEntry confEntry = {
 int MenuConfEntrySet(void *m) {
 	Menu *md = (Menu*)m;
 
-	wd->selConfig = md->me->prev->selItem;
+    if (md->me->selItem <= 2) wd->selConfig = md->me->selItem;
 	
 	return 1;
 }

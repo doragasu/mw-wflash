@@ -50,12 +50,14 @@ char *Str2UnsByte(char strIn[], uint8_t *result) {
 
 	// Skip leading zeros
 	while (*strIn == '0') strIn++;
+    // Special case: number is zero
+    if (*strIn < '0' || *strIn > '9') return strIn;
 	// Determine number length (up to 4 characters)
 	for (i = 0; (i < 4) && (strIn[i] >= '0') && (strIn[i] <= '9'); i++);
 	
 	switch (i) {
 		// If number is 3 characters, the number fits in 8 bits only if
-		// lower than 255
+		// lower than 256
 		case 3:
 			if ((strIn[0] > '2') || ((strIn[0] == '2') && ((strIn[1] > '5') ||
 						((strIn[1] == '5') && (strIn[2] > '5')))))

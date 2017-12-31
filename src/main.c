@@ -98,20 +98,23 @@ int main(void) {
 	char statBuf[16];
 	MenuString statStr;
 	uint8_t pad;
+    unsigned int frame = 0;
 
 	// Initialization
 	Init();
+
 	statStr.string = statBuf;
 	while (1) {
 		/// \todo 1. Parse communications events.
 		// 2. Wait for VBlank.
 		VdpVBlankWait();
+        frame++;
 		// 3. Read controller and perform non-menu related actions.
 		pad = GpPressed();
 		// 4. If pad pressed, perform menu related actions. Else check
 		//    connection status.
 		if (0xFF != pad) MenuButtonAction(pad);
-		else {
+		else if ((frame & 0x0F) == 0) {
 			stat = MwSysStatGet();
 			// Find if connection has just been established
 			if ((stat != NULL) && (stat->sys_stat >= MW_ST_READY) &&

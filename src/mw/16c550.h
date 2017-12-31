@@ -21,7 +21,10 @@
 
 /// Desired baud rate. Maximum achievable baudrate with 24  MHz crystal
 /// is 24000000/16 = 1.5 Mbps
-#define UART_BR			1500000LU
+//#define UART_BR			1500000LU
+#define UART_BR			500000LU
+//#define UART_BR			750000LU
+//#define UART_BR			115200
 
 /// Length of the TX FIFO in bytes
 #define UART_TX_FIFO_LEN		16

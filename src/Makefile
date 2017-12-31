@@ -29,10 +29,10 @@ all: $(TARGET)
 
 .PHONY: cart
 cart: head.bin tail.bin
-	@$(MDMA) -s 0
-	@$(MDMA) -r 0x1FC000:0x1FFFFF
-	@$(MDMA) -Vf head.bin
-	@$(MDMA) -Vf tail.bin:0x1FC000
+#	@$(MDMA) -s 0
+#	@$(MDMA) -r 0x1FC000:0x1FFFFF
+	@$(MDMA) -Vaf head.bin
+	@$(MDMA) -Vaf tail.bin:0x1FC000
 
 .PHONY: emu debug
 emu: $(TARGET).bin

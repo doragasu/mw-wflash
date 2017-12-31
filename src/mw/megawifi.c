@@ -203,11 +203,12 @@ int MwApCfgSet(uint8_t index, const char ssid[], const char pass[]) {
 
 	cmd->cmd = MW_CMD_AP_CFG;
 	cmd->datalen = sizeof(MwMsgApCfg);
+
+	memset(&cmd->apCfg, 0, sizeof(MwMsgApCfg));
 	cmd->apCfg.cfgNum = index;
 	// Note: *NOT* NULL terminated strings are allowed on cmd.apCfg.ssid and
 	// cmd.apCfg.pass
 	// No stupid strncpy() supported by SGDK, so workaround it
-	memset(&cmd->apCfg, 0, sizeof(MwMsgApCfg));
 	memcpy(cmd->apCfg.ssid, ssid, strlen(ssid));
 	memcpy(cmd->apCfg.pass, pass, strlen(pass));
 	MW_TRY_CMD_SEND(cmd, MW_ERROR);
@@ -242,7 +243,7 @@ int MwApCfgGet(uint8_t index, char *ssid[], char *pass[]) {
 	if (ssid) *ssid = cmd->apCfg.ssid;
 	if (pass) *pass = cmd->apCfg.pass;
 
-	return index;
+	return MW_OK;
 }
 
 /************************************************************************//**
@@ -268,7 +269,7 @@ int MwIpCfgSet(uint8_t index, const MwIpCfg *ip) {
 	MW_TRY_CMD_SEND(cmd, MW_ERROR);
 	MW_TRY_REP_RECV(cmd, MW_ERROR);
 
-	return index;
+	return MW_OK;
 }
 
 /************************************************************************//**
@@ -289,7 +290,7 @@ int MwIpCfgGet(uint8_t index, MwIpCfg **ip) {
 	MW_TRY_REP_RECV(cmd, MW_ERROR);
 	*ip = &cmd->ipCfg.ip;
 
-	return index;
+	return MW_OK;
 }
 
 /************************************************************************//**
@@ -313,7 +314,7 @@ int MwApScan(char *apData[], uint8_t *aps) {
 	*aps = *cmd->data;
 	*apData = ((char*)cmd->data) + 1;
 
-	return cmd->datalen;
+	return cmd->datalen - 1;
 }
 
 /************************************************************************//**
