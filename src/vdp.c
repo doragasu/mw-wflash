@@ -104,11 +104,15 @@ void VdpInit(void) {
 	for (i = 0; i < sizeof(vdpRegDefaults); i++)
 		VdpRegWrite(i, vdpRegDefaults[i]);
 
-	// Clear VRAM
-	/// \bug I do not know why, but VRam Fill does not work. Maybe you
-	/// have to wait until configuration is somehow applied.
+    // Clear CRAM
+	VdpRamRwPrep(VDP_CRAM_WR, 0);
+	for (i = 64; i > 0; i--) VDP_DATA_PORT_W = 0;
+    // Clear VRAM
+	/// \bug I do not know why, but VRam Fill does not work. I suspect it
+	/// has something to do with transfer length.
 	VdpDmaVRamFill(0, 0, 0);
 	VdpDmaWait();
+//   VdpVRamClear(0, 32768);
 
 	// Load font three times, to be able to use three different colors
 	VdpFontLoad(font, fontChars, 0, 1, 0);

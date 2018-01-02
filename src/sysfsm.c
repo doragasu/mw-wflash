@@ -11,7 +11,7 @@
 #include "util.h"
 #include "mw/megawifi.h"
 
-#include "vdp.h"
+//#include "vdp.h"
 
 /// System states
 typedef enum {
@@ -80,7 +80,8 @@ int SfWrite(WfBuf *in, uint16_t len) {
  *
  * \return 0 if OK, non-zero if error.
  ****************************************************************************/
-int SfCycle(void) {
+int SfCycle(Menu *md) {
+	MenuItem *item = &(md->me->mEntry.mItem.item[2]);
 	int retVal = 0;
 	WfBuf *in;
 	uint16_t len, lenTmp;
@@ -162,17 +163,15 @@ int SfCycle(void) {
 						in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
 						if (((sizeof(WfMemRange) + WF_HEADLEN) == len) &&
 							(sizeof(WfMemRange) == ByteSwapWord(in->cmd.len))) {
-							VdpLineClear(VDP_PLANEA_ADDR, 3);
-							VdpDrawText(VDP_PLANEA_ADDR, 1, 3,
-									VDP_TXT_COL_MAGENTA, SF_LINE_MAXCHARS,
-									"ERASING...");
+							item->caption.length = MenuStrCpy(
+                                    item->caption.string, "ERASING...", 0);
+                            MenuDrawItemPage(0);
 							if (!FlashRangeErase(ByteSwapDWord(
 									in->cmd.mem.addr), ByteSwapDWord(
 										in->cmd.mem.len))) {
 								in->cmd.cmd = WF_CMD_OK;
 							}
 						}
-						VdpLineClear(VDP_PLANEA_ADDR, 3);
 						in->cmd.len = 0;
 						MwSend(WF_CHANNEL, in->data, WF_HEADLEN);
 						break;
@@ -186,15 +185,13 @@ int SfCycle(void) {
 							 FLASH_CHIP_LENGTH)) {
 							// Acknowledge command and transition to
 							// WF_DATA_WAIT
-							VdpDrawText(VDP_PLANEA_ADDR, 1, 3,
-									VDP_TXT_COL_MAGENTA, SF_LINE_MAXCHARS,
-									"PROGRAM:");
-							VdpDrawHex(VDP_PLANEA_ADDR, 10, 3,
-									VDP_TXT_COL_MAGENTA, in->cmd.data[2]);
-							VdpDrawHex(VDP_PLANEA_ADDR, 12, 3,
-									VDP_TXT_COL_MAGENTA, in->cmd.data[1]);
-							VdpDrawHex(VDP_PLANEA_ADDR, 14, 3,
-									VDP_TXT_COL_MAGENTA, in->cmd.data[0]);
+							item->caption.length = MenuStrCpy(
+                                    item->caption.string, "PROGRAM: ", 0);
+                            item->caption.length += Uint32ToHexStr(
+                                    ByteSwapDWord(in->cmd.mem.addr),
+                                    item->caption.string +
+                                    item->caption.length, 6);
+                            MenuDrawItemPage(0);
 							in->cmd.cmd = WF_CMD_OK;
 							d.s = WF_DATA_WAIT;
 							d.waddr = ByteSwapDWord(in->cmd.mem.addr)>>1;
@@ -259,12 +256,14 @@ int SfCycle(void) {
 				// Write data to Flash
 				switch (SfWrite(in, lenTmp)) {
 					case -1: // Error
-						VdpDrawText(VDP_PLANEA_ADDR, 1, 4, VDP_TXT_COL_MAGENTA,
-								SF_LINE_MAXCHARS, "ERROR!");
+						item->caption.length = MenuStrCpy(
+                                item->caption.string, "ERROR!", 0);
+                        MenuDrawItemPage(0);
 						// fallthrough
 					case 1:	 // Finished
 						d.s = WF_IDLE;
-						VdpLineClear(VDP_PLANEA_ADDR, 3);
+//                        item->hide = TRUE;
+//						VdpLineClear(VDP_PLANEA_ADDR, 7);
 						break;
 	
 					case 0:	// OK, more data pending
@@ -295,11 +294,23 @@ void BootAddr(uint32_t addr);
  * \param[in] addr Address from which to boot.
  ****************************************************************************/
 void SfBoot(uint32_t addr) {
+    int i;
+
 	// Wait between 1 and 2 frames for the message to be sent
 	VdpVBlankWait();
 	VdpVBlankWait();
+	// Clear CRAM
+	VdpRamRwPrep(VDP_CRAM_WR, 0);
+	for (i = 64; i > 0; i--) VDP_DATA_PORT_W = 0;
+
 	// Clear VRAM
-	VdpVRamClear(0, 32768);
+	VdpRamRwPrep(VDP_VRAM_WR, 0);
+	for (i = 32768; i > 0; i--) VDP_DATA_PORT_W = 0;
+
+	// Clear VSRAM
+	VdpRamRwPrep(VDP_VSRAM_WR, 0);
+	for (i = 40; i > 0; i--) VDP_DATA_PORT_W = 0;
+	
 	// Put WiFi module in reset state
 	MwModuleReset();
 

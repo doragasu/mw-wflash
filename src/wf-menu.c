@@ -3,6 +3,8 @@
 #include "vdp.h"
 #include "mw/megawifi.h"
 #include "util.h"
+#include "sysfsm.h"
+#include "gamepad.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -170,6 +172,8 @@ static int MenuNetSaveCb(void *m);
 static int MenuDsToggle(void *m);
 static int MenuNtpOskEntry(void *m);
 static int MenuNtpOskExit(void *m);
+static int MenuDownloadMode(void *m);
+static int MenuStartCb(void *m);
 
 /// Module global data (other than item buffers)
 static WfMenuData *wd;
@@ -267,8 +271,8 @@ static int MenuWiFiTest(void *m) {
     }
     // Wait until AP join completes, an error occurs, or connection times out
     if (!error) {
-        // Try to join for 2 minutes (60 Hz numbers)
-        if (!(stat = ApJoinWait(2*60*4, 15))) {
+        // Try to join for 1 minute (60 Hz numbers)
+        if (!(stat = ApJoinWait(1*60*4, 15))) {
             error = TRUE;
         }
     }
@@ -1485,6 +1489,134 @@ int MenuConfEntryCb(void* m) {
 
 
 /****************************************************************************
+ * Download mode. Allows a wflash client to connect and upload a ROM.
+ *
+ * Title: DOWNLOAD MODE
+ *
+ * Download mode is a bit special: uses menu resources (and thus works in menu
+ * mode) but does not return to the main processing loop, it runs in the entry
+ * action callback until download mode finishes.
+ ****************************************************************************/
+/// Root menu items
+const MenuItem downModeItem[] = { {
+		MENU_ESTR("Connecting to AP...", 40),	// Caption
+		NULL,						// Next: none (yet ;-)
+		NULL,						// Callback
+		{{0, 0, 0}}					// Selectable, alt_color, hide
+	}, {
+		MENU_EESTR(0),              // Empty row
+		NULL,
+		NULL,
+		{{1, 0, 1}}
+	}, {
+		MENU_EESTR(33),             // Used to draw progress bar
+		NULL,
+		NULL,
+		{{1, 1, 0}}
+	}
+};
+
+/// Root menu
+const MenuEntry downModeMenu = {
+	MENU_TYPE_ITEM,					// Menu type
+	1,								// Margin
+	MENU_STR("DOWNLOAD MODE"),	    // Title
+	MENU_STR(stdContext),			// Left context
+	NULL,           		        // entry callback
+	NULL,							// exit callback
+	MenuDownloadMode,				// action callback
+	NULL,							// cBut callback
+	.mItem = {
+		// rootItem, nItems, spacing, enPerPage, pages
+		MENU_ENTRY_ITEM(downModeItem, 3),
+		{MENU_H_ALIGN_CENTER}		// align
+	}
+};
+
+static int MenuDownloadMode(void *m) {
+	Menu *md = (Menu*)m;
+	MenuItem *item = md->me->mEntry.mItem.item;
+    MwMsgSysStat *stat;
+    MwIpCfg *ipCfg;
+    MwSockStat s;
+    int error = FALSE;
+    unsigned int frame = 0;
+    uint8_t pad;
+
+    // Join default AP
+    if ((stat = MwSysStatGet()) == NULL) error = TRUE;
+    if (!error) {
+        if (MwApJoin(stat->cfg) != MW_OK) error = TRUE;
+    }
+    // Wait until AP join completes, an error occurs, or connection times out
+    if (!error) {
+        // Try to join for 1 minute (60 Hz numbers)
+        if (!(stat = ApJoinWait(1*60*4, 15))) error = TRUE;
+    }
+    // Get IP configuration
+    if (!error) {
+        if (MwIpCurrent(&ipCfg) != MW_OK) error = TRUE;
+    }
+
+    // Ready to enter download loop
+    if (!error) {
+        item[0].caption.length = MenuStrCpy(item[0].caption.string,
+                "READY, IP: ", 0);
+        item[0].caption.length += MenuBin2IpStr(ipCfg->addr,
+                item[0].caption.string + item[0].caption.length);
+        MenuDrawItemPage(0);
+    } else {
+        MwApLeave();
+        item[0].caption.length = MenuStrCpy(item[0].caption.string,
+                "Could not join WiFi network!", 0);
+        MenuDrawItemPage(0);
+        return FALSE;
+    }
+
+    // Enter download loop
+   	while (1) {
+		// Bind socket for command server
+		MwTcpBind(SF_CHANNEL, SF_PORT);
+		// Wait until we have a client connection
+    	// Poll for connections each 100 ms
+   		s = MwSockStatGet(SF_CHANNEL);
+    	do {
+    		// If START button is pressed, boot the flashed ROM, if B
+            // button is pressed, go back a menu level
+            VdpVBlankWait();
+            pad = GpRead();
+            if (GP_START_MASK == pad) SfBoot(SF_ENTRY_POINT_ADDR);
+            if (GP_B_MASK == pad) {
+                MwTcpDisconnect(SF_CHANNEL);
+                MwApLeave();
+                MenuBack(FALSE);
+            }
+    
+            if (!(frame++ & 0x0F)) {
+        		s = MwSockStatGet(SF_CHANNEL);
+            }
+    	} while (s == MW_SOCK_TCP_LISTEN);
+        if (s == MW_SOCK_TCP_EST) {
+            item[0].caption.length = MenuStrCpy(item[0].caption.string,
+                    "CONNECTED TO CLIENT!", 0);
+            item[2].caption.length = 0;
+            MenuDrawItemPage(0);
+    		SfInit();
+    		// Run command parser
+    		while (!SfCycle(md));
+    		/// Error or socket disconnected
+    		MwTcpDisconnect(SF_CHANNEL);
+    		VdpLineClear(VDP_PLANEA_ADDR, 3);
+            item[0].caption.length = MenuStrCpy(item[0].caption.string,
+                    "DISCONNECTED!", 0);
+            MenuDrawItemPage(0);
+        }
+    }
+    return TRUE;
+}
+
+
+/****************************************************************************
  * Root menu.
  *
  * Title: WFLASH BOOTLOADER
@@ -1496,11 +1628,11 @@ int MenuConfEntryCb(void* m) {
 const MenuItem rootItem[] = { {
 		MENU_STR("START"),			// Caption
 		NULL,						// Next: none (yet ;-)
-		NULL,						// Callback
-		{{1, 1, 0}}					// Selectable, alt_color, hide
+		MenuStartCb,				// Callback
+		{{1, 0, 0}}					// Selectable, alt_color, hide
 	}, {
 		MENU_STR("DOWNLOAD MODE"),
-		NULL,			// Next: Download mode
+		(void*)&downModeMenu,		// Next: Download mode
 		NULL,
 		{{1, 0, 0}}
 	}, {
@@ -1534,5 +1666,13 @@ void WfMenuInit(MenuString statStr) {
 	MenuInit(&rootMenu, statStr);
 	wd = MpAlloc(sizeof(WfMenuData));
     memset(wd, 0, sizeof(WfMenuData));
+}
+
+static int MenuStartCb(void *m) {
+    (void) m;
+
+	SfBoot(SF_ENTRY_POINT_ADDR);
+
+    return TRUE;
 }
 

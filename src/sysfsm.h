@@ -13,6 +13,13 @@
 #define _SYSFSM_H_
 
 #include <stdint.h>
+#include "menu.h"
+
+/// Default channel to use for MegaWiFi communications
+#define SF_CHANNEL      1
+
+/// Default port to use for MegaWiFi communications
+#define SF_PORT         1989
 
 /// Maximum number of characters to draw per line
 #define SF_LINE_MAXCHARS	(VDP_SCREEN_WIDTH_PX/8 - 1)
@@ -31,7 +38,7 @@ void SfInit(void);
  *
  * \return 0 if OK, non-zero if error.
  ****************************************************************************/
-int SfCycle(void);
+int SfCycle(Menu *md);
 
 /************************************************************************//**
  * Clear environment and boot from specified address.

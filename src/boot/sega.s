@@ -355,25 +355,68 @@ _VINT:
 	.globl BootAddr
 	.type	BootAddr, @function
 BootAddr:
+    move    #0x2700,sr              /* disable interrupts */
+* Get boot address
 	move.l 4(%sp),%d2
 
-* De-initialize pads. This is done because some games skip initialization
-* if pad is already initialized
+* De-initialize pads. This is necessary for some games like uwol,
+* that skip initialization if they detect pads initialized.
 	moveq	#0x00,%d0
-	lea 	0xa10008,%a0
+	lea 	0xA10008,%a0
 	move.w	%d0,(%a0)
+
+* Release Z80 from reset
+	moveq #1, %d1
+	lea 0xA11100, %a1
+	move.b %d1, 0x100(%a1)
+* Request Z80 bus
+	move.b %d1, (%a1)
+* Wait until bus is granted
+1:
+	move.b (%a1), %d1
+	beq 1b
+
+* Clear Z80 RAM
+	lea 0xA00000, %a2
+	move #0x1FFF, %d3
+2:	
+	move.b %d0, (a2)+
+	dbra %d3, 2b
+
+* Set Z80 reset
+	move.b %d0, 0x100(%a1)
+
+* Release Z80 bus
+	move.b %d0, (%a1)
 
 * Clear WRAM
 	move.w  #0x3FFF,%d1
 	lea     0xff0000,%a0
 WRamClear:
-	move.l  %d0,(%a0)+
+	move.l  %d0,(a0)+
 	dbra    %d1,WRamClear
 
 * Set default stack pointer
 	move.l	%d0,%a0
 	move.l	(%a0),%sp
+
 * Boot from entry point
-	move.l %d2,%a1
-	jmp (%a1)
+	move.l %d2,%a0
+
+*	move.l	%d0,%d1
+*	move.l	%d0,%d2
+*	move.l	%d0,%d3
+*	move.l	%d0,%d4
+*	move.l	%d0,%d5
+*	move.l	%d0,%d6
+*	move.l	%d0,%d7
+*
+*	move.l	%d0,%a1
+*	move.l	%d0,%a2
+*	move.l	%d0,%a3
+*	move.l	%d0,%a4
+*	move.l	%d0,%a5
+*	move.l	%d0,%a6
+
+	jmp (%a0)
 	.size	BootAddr, .-BootAddr

@@ -107,6 +107,20 @@ int Long2Str(long num, char str[], int bufLen, int padLen, char padChr);
  ****************************************************************************/
 MwMsgSysStat *ApJoinWait(uint16_t retries, uint16_t frmPoll);
 
+/************************************************************************//**
+ * \brief Converts a 32-bit number to its hexadecimal string representation.
+ *
+ * \param[in]  num Number to convert.
+ * \param[out] str Converted equivalent string. Must have room for at least
+ *             9 characters to guarantee an overrun will not accur.
+ * \param[in]  pad Padding. If greater than 0, left part of resulting number
+ *             will be zero-padded to the specified length.
+ *
+ * \return Number of characters of the resulting converted string, not
+ *         including the null termination.
+ ****************************************************************************/
+int Uint32ToHexStr(uint32_t num, char str[], int pad);
+
 #ifndef TRUE
 /// TRUE value for logic comparisons
 #define TRUE 1

@@ -294,6 +294,25 @@ int MwIpCfgGet(uint8_t index, MwIpCfg **ip) {
 }
 
 /************************************************************************//**
+ * \brief Get current IP configuration, of the joined AP.
+ *
+ * \param[out] ip    Double pointer to MwIpCfg structure, with IP conf.
+ *
+ * \return MW_OK if configuration successfully got, MW_ERROR otherwise.
+ ****************************************************************************/
+int MwIpCurrent(MwIpCfg **ip) {
+	if (!mwReady) return MW_ERROR;
+
+	cmd->cmd = MW_CMD_IP_CURRENT;
+	cmd->datalen = 0;
+	MW_TRY_CMD_SEND(cmd, MW_ERROR);
+	MW_TRY_REP_RECV(cmd, MW_ERROR);
+	*ip = &cmd->ipCfg.ip;
+
+	return MW_OK;
+}
+
+/************************************************************************//**
  * \brief Scan for access points.
  *
  * \param[out] apData Data of the found access points. Each entry has the
@@ -610,7 +629,7 @@ MwMsgSysStat *MwSysStatGet(void) {
  *
  * \param[in] ch Channel associated to the socket asked for status.
  *
- * \return Socket status data on success, or MW_ERROR on error.
+ * \return Socket status data on success, or MW_SOCK_NONE on error.
  ****************************************************************************/
 MwSockStat MwSockStatGet(uint8_t ch) {
 	if (!mwReady) return MW_ERROR;
@@ -618,8 +637,8 @@ MwSockStat MwSockStatGet(uint8_t ch) {
 	cmd->cmd = MW_CMD_SOCK_STAT;
 	cmd->datalen = 1;
 	cmd->data[0] = ch;
-	MW_TRY_CMD_SEND(cmd, MW_ERROR);
-	MW_TRY_REP_RECV(cmd, MW_ERROR);
+	MW_TRY_CMD_SEND(cmd, MW_SOCK_NONE);
+	MW_TRY_REP_RECV(cmd, MW_SOCK_NONE);
 
 	return cmd->data[0];
 }

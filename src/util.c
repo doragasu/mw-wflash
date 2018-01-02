@@ -133,6 +133,35 @@ int Long2Str(long num, char str[], int bufLen, int padLen, char padChr) {
     return padLen;
 }
 
+/************************************************************************//**
+ * \brief Converts a 32-bit number to its hexadecimal string representation.
+ *
+ * \param[in]  num Number to convert.
+ * \param[out] str Converted equivalent string. Must have room for at least
+ *             9 characters to guarantee an overrun will not accur.
+ * \param[in]  pad Padding. If greater than 0, left part of resulting number
+ *             will be zero-padded to the specified length.
+ *
+ * \return Number of characters of the resulting converted string, not
+ *         including the null termination.
+ ****************************************************************************/
+int Uint32ToHexStr(uint32_t num, char str[], int pad) {
+    const char map[] = "0123456789ABCDEF";
+    int i;
+    int nibble;
+    int off;
+
+    for (i = 0, nibble = 7; nibble >= 0; nibble--) {
+        off = nibble<<2;
+        if ((num>>off) & 0xF) {
+            str[i++] = map[(num>>off) & 0xF];
+        } else if ((i > 0) || (nibble < pad) || ((!i) && (!nibble))){
+            str[i++] = '0';
+        }
+    }
+    str[i] = '\0';
+    return i;
+}
 
 /************************************************************************//**
  * \brief Waits until module has joined an AP, an error occurs or specified

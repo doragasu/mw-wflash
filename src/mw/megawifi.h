@@ -157,6 +157,15 @@ int MwIpCfgSet(uint8_t index, const MwIpCfg *ip);
 int MwIpCfgGet(uint8_t index, MwIpCfg **ip);
 
 /************************************************************************//**
+ * \brief Get current IP configuration, of the joined AP.
+ *
+ * \param[out] ip    Double pointer to MwIpCfg structure, with IP conf.
+ *
+ * \return MW_OK if configuration successfully got, MW_ERROR otherwise.
+ ****************************************************************************/
+int MwIpCurrent(MwIpCfg **ip);
+
+/************************************************************************//**
  * \brief Scan for access points.
  *
  * \param[out] apData Data of the found access points. Each entry has the

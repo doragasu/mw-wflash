@@ -92,18 +92,18 @@ void Init(void) {
 
 /// Entry point
 int main(void) {
-	MwMsgSysStat *stat;
-	MwIpCfg *ip;
-    int connected = FALSE;
-	char statBuf[16];
-	MenuString statStr;
+//	MwMsgSysStat *stat;
+//	MwIpCfg *ip;
+//    int connected = FALSE;
+//	char statBuf[16];
+//	MenuString statStr;
 	uint8_t pad;
     unsigned int frame = 0;
 
 	// Initialization
 	Init();
 
-	statStr.string = statBuf;
+//	statStr.string = statBuf;
 	while (1) {
 		// 1. Wait for VBlank.
         frame++;
@@ -113,23 +113,23 @@ int main(void) {
 		// 3. If pad pressed, perform menu related actions. Else check
 		//    connection status.
 		if (0xFF != pad) MenuButtonAction(pad);
-		else if ((frame & 0x0F) == 0) {
-            stat = ApJoinWait(0,0);
-            if (!connected && stat) {
-                // Connection has just been established,
-                // print IP in the status string
-				if (MwIpCfgGet(stat->cfg, &ip) != MW_OK)
-					MenuPanic("COULD NOT GET IP!", 17);
-				statStr.length = MenuBin2IpStr(ip->addr, statBuf);
-				MenuStatStrSet(statStr);
-            } else if (connected && !stat) {
-                // Connection dropped, inform in the status string
-				statStr.length = MenuStrCpy(statBuf, "DISCONNECTED!", 16 - 1);
-				statBuf[16 - 1] = '\0';
-				MenuStatStrSet(statStr);
-            }
-            connected = stat?TRUE:FALSE;;
-		}
+//		else if ((frame & 0x0F) == 0) {
+//            stat = ApJoinWait(0,0);
+//            if (!connected && stat) {
+//                // Connection has just been established,
+//                // print IP in the status string
+//				if (MwIpCfgGet(stat->cfg, &ip) != MW_OK)
+//					MenuPanic("COULD NOT GET IP!", 17);
+//				statStr.length = MenuBin2IpStr(ip->addr, statBuf);
+//				MenuStatStrSet(statStr);
+//            } else if (connected && !stat) {
+//                // Connection dropped, inform in the status string
+//				statStr.length = MenuStrCpy(statBuf, "DISCONNECTED!", 16 - 1);
+//				statBuf[16 - 1] = '\0';
+//				MenuStatStrSet(statStr);
+//            }
+//            connected = stat?TRUE:FALSE;;
+//		}
 	}
 	return 0;
 }

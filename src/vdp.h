@@ -196,6 +196,20 @@ static inline void VdpRamRwPrep(uint8_t type, uint16_t addr) {
 }
 
 /************************************************************************//**
+ * Clears (sets to 0) the specified VRAM range.
+ *
+ * \param[in] addr VRAM address to clear.
+ * \param[in] wlen Length in words of the range to clear.
+ ****************************************************************************/
+static inline void VdpVRamClear(uint16_t addr, uint16_t wlen) {
+	uint16_t i;
+
+	VdpRamRwPrep(VDP_VRAM_WR, addr);
+
+	for (i = 0; i < wlen; i++) VDP_DATA_PORT_W = 0;
+}
+
+/************************************************************************//**
  * Loads a 1bpp font on the VRAM, setting specified foreground and
  * background colours.
  *
