@@ -99,7 +99,7 @@ static inline void VdpRegWrite(uint8_t reg, uint8_t value) {
  * VDP Initialization. Call this function once before using this module.
  ****************************************************************************/
 void VdpInit(void) {
-	uint8_t i;
+	uint16_t i;
 
 	for (i = 0; i < sizeof(vdpRegDefaults); i++)
 		VdpRegWrite(i, vdpRegDefaults[i]);
@@ -110,9 +110,10 @@ void VdpInit(void) {
     // Clear VRAM
 	/// \bug I do not know why, but VRam Fill does not work. I suspect it
 	/// has something to do with transfer length.
-	VdpDmaVRamFill(0, 0, 0);
-	VdpDmaWait();
-//   VdpVRamClear(0, 32768);
+//	VdpDmaVRamFill(0, 0, 0);
+//	VdpDmaWait();
+    VdpRamRwPrep(VDP_VRAM_WR, 0);
+	for (i = 32768; i > 0; i--) VDP_DATA_PORT_W = 0;
 
 	// Load font three times, to be able to use three different colors
 	VdpFontLoad(font, fontChars, 0, 1, 0);
