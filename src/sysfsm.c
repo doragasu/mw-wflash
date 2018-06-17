@@ -231,6 +231,23 @@ int SfCycle(Menu *md) {
 							MwSend(WF_CHANNEL, in->data, WF_HEADLEN);
 						}
 						break;
+                    
+                    // Get bootloader start address
+                    case WF_CMD_BLOADER_START:
+						in->cmd.len = ByteSwapWord(0);
+						// sanity check
+						if ((WF_HEADLEN == len) &&
+							(0 == ByteSwapWord(in->cmd.len))) {
+							in->cmd.cmd = WF_CMD_OK;
+                            in->cmd.len = ByteSwapWord(4);
+                            in->cmd.dwdata[0] = ByteSwapDWord(
+                                    SF_BOOTLOADER_ADDR);
+							MwSend(WF_CHANNEL, in->data, WF_HEADLEN + 4);
+						} else {
+							in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
+							MwSend(WF_CHANNEL, in->data, WF_HEADLEN);
+						}
+                        break;
 	
 					default:
 						break;

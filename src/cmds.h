@@ -33,6 +33,7 @@ enum {
 	WF_CMD_READ,				///< Read data
 	WF_CMD_RUN,					///< Run from address
 	WF_CMD_AUTORUN,				///< Run from entry point in cart header
+    WF_CMD_BLOADER_START,       ///< Get bootloader start address
 	WF_CMD_MAX					///< Maximum command value delimiter
 };
 

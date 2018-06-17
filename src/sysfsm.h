@@ -26,7 +26,10 @@
 
 /// Entry point address is stored at the beginning of the NOTES section of
 /// the cartridge header
-#define SF_ENTRY_POINT_ADDR	(*((uint32_t*)0x1C8))
+#define SF_ENTRY_POINT_ADDR	(*((uint32_t*)0x0001C8))
+
+/// Bootloader address is currently the 68000 start entry
+#define SF_BOOTLOADER_ADDR  (*((uint32_t*)0x000004))
 
 /************************************************************************//**
  * Module initialization. Call this function before using this module.
