@@ -270,15 +270,18 @@ uint8_t FlashRangeErase(uint32_t addr, uint32_t len) {
 	uint16_t clen = (len - 1)>>FLASH_SADDR_SHIFT;
 
 	if (!len) return 0;
-	if ((addr + len) >= (FLASH_SADDR_MAX<<FLASH_SADDR_SHIFT)) return 1;
+	if ((addr + len) > (FLASH_SADDR_MAX<<FLASH_SADDR_SHIFT)) return 1;
 
 	// Find sector containing the initial address
 	for (i = FLASH_NSECT - 1; caddr < saddr[i]; i--);
-	// Find sector containing the end address
+
+    // Find sector containing the end address
 	for (j = FLASH_NSECT - 1; (caddr + clen) < saddr[j]; j--);
 
 	for (; i <= j; i++) {
-		if (!FlashSectErase((saddr[i])<<FLASH_SADDR_SHIFT)) return 2;
+		if (!FlashSectErase((saddr[i])<<FLASH_SADDR_SHIFT)) {
+            return 2;
+        }
 	}
 
 	return 0;
