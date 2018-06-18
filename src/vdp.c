@@ -1,13 +1,3 @@
-/************************************************************************//**
- * \brief Basic VDP handling routines. This module implements basic VDP
- * related routines for:
- * - VDP initialization.
- * - Font loading and colour text drawing on planes. 
- * No sprites or any other fancy stuff.
- *
- * \author Jesús Alonso (@doragasu)
- * \date 2017
- ****************************************************************************/
 #include "vdp.h"
 #include "font.h"
 #include "util.h"
@@ -95,9 +85,6 @@ static inline void VdpRegWrite(uint8_t reg, uint8_t value) {
 	VDP_CTRL_PORT_W = 0x8000 | (reg<<8) | value;
 }
 
-/************************************************************************//**
- * VDP Initialization. Call this function once before using this module.
- ****************************************************************************/
 void VdpInit(void) {
 	uint16_t i;
 
@@ -139,16 +126,6 @@ void VdpInit(void) {
 	VdpRegWrite(VDP_REG_MODE2, 0x54);
 }
 
-/************************************************************************//**
- * Draws text on a plane.
- *
- * \param[in] planeAddr Address in VRAM of the plane used to draw text.
- * \param[in] x         Horizontal text coordinate.
- * \param[in] y         Vertical text coordinate.
- * \param[in] txtColor  Text colour (see VdpTextColors).
- * \param[in] maxChars	Maximum number of characters to write
- * \param[in] text      Null terminated text to write to the plane.
- ****************************************************************************/
 void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 		uint8_t maxChars, char text[]) {
 	uint16_t offset;
@@ -165,15 +142,6 @@ void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	}
 }
 
-/************************************************************************//**
- * Draws an 8-bit hexadecimal number on a plane.
- *
- * \param[in] planeAddr Address in VRAM of the plane used to draw text.
- * \param[in] x         Horizontal text coordinate.
- * \param[in] y         Vertical text coordinate.
- * \param[in] txtColor  Text colour (see VdpTextColors).
- * \param[in] num       Number to draw on the plane in hexadecimal format.
- ****************************************************************************/
 void VdpDrawHex(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 		uint8_t num) {
 	uint16_t offset;
@@ -192,17 +160,6 @@ void VdpDrawHex(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	VDP_DATA_PORT_W = txtColor + (tmp > 9?tmp - 10 + 0x21:tmp + 0x10);
 }
 
-/************************************************************************//**
- * Draws an 8-bit decimal number on a plane.
- *
- * \param[in] planeAddr Address in VRAM of the plane used to draw text.
- * \param[in] x         Horizontal text coordinate.
- * \param[in] y         Vertical text coordinate.
- * \param[in] txtColor  Text colour (see VdpTextColors).
- * \param[in] num       Number to draw on the plane in hexadecimal format.
- *
- * \return Number of characters used by the drawn number.
- ****************************************************************************/
 uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 		uint8_t num) {
 	uint16_t offset;
@@ -230,16 +187,6 @@ void VdpDrawU32(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 
 }
 
-/************************************************************************//**
- * Loads a 1bpp font on the VRAM, setting specified foreground and
- * background colours.
- *
- * \param[in] font  Array containing the 1bpp font (8 bytes per character).
- * \param[in] chars Number of characters contained in font.
- * \param[in] addr  VRAM Address to load the font in.
- * \param[in] fgcol Foreground colour, in CRAM colour format.
- * \param[in] bgcol Background colour, in CRAM colour format.
- ****************************************************************************/
 void VdpFontLoad(const uint32_t font[], uint8_t chars, uint16_t addr,
 		uint8_t fgcol, uint8_t bgcol) {
 	uint32_t line;
@@ -271,7 +218,7 @@ void VdpFontLoad(const uint32_t font[], uint8_t chars, uint16_t addr,
 	}
 }
 
-void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem) {
+static void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem) {
 	uint32_t cmd;	// Command word
 
 	// Write transfer length
@@ -286,18 +233,6 @@ void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem) {
 	VDP_CTRL_PORT_DW = cmd;
 }
 
-/************************************************************************//**
- * Fills specified VRAM region.
- *
- * \param[in] dst  Start VRAM memory address to fill.
- * \param[in] len  Length in bytes of the VRAM zone to fill.
- * \param[in] fill Byte to write to the filled zone.
- *
- * \warning This function starts the DMA fill but does not wait for the fill
- * operation to complete. During fill operation, only VDP status register,
- * H/V counter and PSG registers can be accessed. If you need to access any
- * other VDP register, call VdpDmaWait() first.
- ****************************************************************************/
 void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t fill) {
 	uint32_t cmd;	// Command word
 
@@ -315,18 +250,6 @@ void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t fill) {
 	VDP_DATA_PORT_W = fill;
 }
 
-/************************************************************************//**
- * Copies from VRAM to VRAM a specified region.
- *
- * \param[in] src Start VRAM memory address to copy.
- * \param[in] dst Destination VRAM address of the copy operation.
- * \param[in] len Length in bytes of the zone to copy.
- *
- * \warning This function starts the DMA copy but does not wait for the copy
- * operation to complete. During copy operation, only VDP status register,
- * H/V counter and PSG registers can be accessed. If you need to access any
- * other VDP register, call VdpDmaWait() first.
- ****************************************************************************/
 void VdpDmaVRamCopy(uint16_t src, uint16_t dst, uint16_t len) {
 	uint32_t cmd;	// Command word
 
@@ -344,17 +267,6 @@ void VdpDmaVRamCopy(uint16_t src, uint16_t dst, uint16_t len) {
 	VDP_CTRL_PORT_DW = cmd;
 }
 
-/************************************************************************//**
- * Clears (sets to 0) the plane line.
- *
- * \param[in] planeAddr Address in VRAM of the plane to clear.
- * \param[in] line      Line number to clear.
- *
- * \warning This function starts the DMA fill but does not wait for the fill
- * operation to complete. During fill operation, only VDP status register,
- * H/V counter and PSG registers can be accessed. If you need to access any
- * other VDP register, call VdpDmaWait() first.
- ****************************************************************************/
 void VdpLineClear(uint16_t planeAddr, uint8_t line) {
 	uint16_t start;
 
@@ -364,19 +276,11 @@ void VdpLineClear(uint16_t planeAddr, uint8_t line) {
 	VdpDmaVRamFill(start, 32 * 2, 0);
 }
 
-/************************************************************************//**
- * Waits until the beginning of the next VBLANK cycle.
- ****************************************************************************/
 void VdpVBlankWait(void) {
 	while ((VDP_CTRL_PORT_W & VDP_STAT_VBLANK));
 	while ((VDP_CTRL_PORT_W & VDP_STAT_VBLANK) == 0);
 }
 
-/************************************************************************//**
- * Wait the specified number of frames.
- *
- * \param[in] frames Number of frames to wait.
- ****************************************************************************/
 void VdpFramesWait(uint16_t frames) {
 	while (frames--) VdpVBlankWait();
 }

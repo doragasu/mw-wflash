@@ -30,9 +30,6 @@ typedef struct {
 /// Module local data
 static SfData d;
 
-/************************************************************************//**
- * Module initialization. Call this function before using this module.
- ****************************************************************************/
 void SfInit(void) {
 	d.s = WF_IDLE;
 }
@@ -45,7 +42,7 @@ void SfInit(void) {
  *
  * \return 0 if OK but more data is pending. 1 if finished. -1 if error.
  ****************************************************************************/
-int SfWrite(WfBuf *in, uint16_t len) {
+static int SfWrite(WfBuf *in, uint16_t len) {
 	uint16_t i, wlen;
 	uint8_t wwrite;
 
@@ -75,11 +72,6 @@ int SfWrite(WfBuf *in, uint16_t len) {
 	return 0;
 }
 
-/************************************************************************//**
- * Perform one cycle of the system state machine.
- *
- * \return 0 if OK, non-zero if error.
- ****************************************************************************/
 int SfCycle(Menu *md) {
 	MenuItem *item = &(md->me->mEntry.mItem.item[2]);
 	int retVal = 0;
@@ -305,11 +297,6 @@ int SfCycle(Menu *md) {
  ****************************************************************************/
 void BootAddr(uint32_t addr);
 
-/************************************************************************//**
- * Clear environment and boot from specified address.
- *
- * \param[in] addr Address from which to boot.
- ****************************************************************************/
 void SfBoot(uint32_t addr) {
     int i;
 

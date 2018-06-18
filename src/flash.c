@@ -1,11 +1,3 @@
-/************************************************************************//**
- * \brief This module allows to manage (mainly read and write) from flash
- * memory chips such as S29GL032.
- *
- * \author Jesús Alonso (doragasu)
- * \date   2015
- ****************************************************************************/
-
 #include "flash.h"
 #include "util.h"
 
@@ -40,14 +32,6 @@ static const uint16_t saddr[] = {
 /// Returns the sector number corresponding to address input
 #define FLASH_NSECT		(sizeof(saddr) / sizeof(uint16_t))
 
-/************************************************************************//**
- * \brief Polls flash chip after a program operation, and returns when the
- * program operation ends, or when there is an error.
- *
- * \param[in] addr Address to which data has been written.
- * \param[in] data Data written to addr address.
- * \return 0 if OK, 1 if error during program operation.
- ****************************************************************************/
 uint8_t FlashDataPoll(uint32_t addr, uint8_t data) {
 	uint8_t read;
 
@@ -73,13 +57,6 @@ uint8_t FlashDataPoll(uint32_t addr, uint8_t data) {
 	return 1;
 }
 
-/************************************************************************//**
- * \brief Polls flash chip after an erase operation, and returns when the
- * program operation ends, or when there is an error.
- *
- * \param[in] addr Address contained in the erased zone.
- * \return 1 if OK, 0 if error during program operation.
- ****************************************************************************/
 uint8_t FlashErasePoll(uint32_t addr) {
 	uint16_t read;
 
@@ -97,21 +74,9 @@ uint8_t FlashErasePoll(uint32_t addr) {
 	//return (read & 0x80) != 0;
 }
 
-/**
- * Public functions
- */
-
-/************************************************************************//**
- * \brief Module initialization. Configures the 68k bus.
- ****************************************************************************/
 void FlashInit(void){
 }
 
-/************************************************************************//**
- * \brief Writes the manufacturer ID query command to the flash chip.
- *
- * \return The manufacturer ID code.
- ****************************************************************************/
 uint8_t FlashGetManId(void) {
 	uint8_t retVal;
 
@@ -123,11 +88,6 @@ uint8_t FlashGetManId(void) {
 	return retVal;
 }
 
-/************************************************************************//**
- * \brief Writes the device ID query command to the flash chip.
- *
- * \param[out] devId The device ID code, consisting of 3 words.
- ****************************************************************************/
 void FlashGetDevId(uint8_t devId[3]) {
 	// Obtain device ID and reset interface to return to array read.
 	FlashAutoselect();
@@ -137,14 +97,6 @@ void FlashGetDevId(uint8_t devId[3]) {
 	FlashReset();
 }
 
-/************************************************************************//**
- * \brief Programs a word to the specified address.
- *
- * \param[in] addr The address to which data will be programmed.
- * \param[in] data Data to program to the specified address.
- *
- * \warning Doesn't poll until programming is complete
- ****************************************************************************/
 void FlashProg(uint32_t addr, uint16_t data) {
 	uint8_t i;
 
@@ -155,20 +107,6 @@ void FlashProg(uint32_t addr, uint16_t data) {
 	FlashWrite(addr, data);
 }
 
-/************************************************************************//**
- * \brief Programs a buffer to the specified address range.
- *
- * \param[in] addr The address of the first word to be written
- * \param[in] data The data array to program to the specified address range.
- * \param[in] wLen The number of words to program, contained on data.
- * \return The number of words successfully programed.
- *
- * \note wLen must be less or equal than 16.
- * \note If addr-wLen defined range crosses a write-buffer boundary, all the
- *       requested words will not be written. To avoid this situation, it
- *       is advisable to write to addresses having the lower 4 bits (A1~A5)
- *       equal to 0.
- ****************************************************************************/
 uint8_t FlashWriteBuf(uint32_t addr, uint16_t data[], uint8_t wLen) {
 	// Sector address
 	uint32_t sa;
@@ -207,11 +145,6 @@ uint8_t FlashWriteBuf(uint32_t addr, uint16_t data[], uint8_t wLen) {
 	return i;
 }
 
-/************************************************************************//**
- * Erases the complete flash chip.
- *
- * \return '0' the if erase operation completed successfully, '1' otherwise.
- ****************************************************************************/
 uint8_t FlashChipErase(void) {
 	uint8_t i;
 
@@ -222,12 +155,6 @@ uint8_t FlashChipErase(void) {
 	return FlashErasePoll(1);
 }
 
-/************************************************************************//**
- * Erases a complete flash sector, specified by addr parameter.
- *
- * \param[in] addr Address contained in the sector that will be erased.
- * \return '0' if the erase operation completed successfully, '1' otherwise.
- ****************************************************************************/
 uint8_t FlashSectErase(uint32_t addr) {
 	// Sector address
 	uint32_t sa;
@@ -248,20 +175,6 @@ uint8_t FlashSectErase(uint32_t addr) {
 	return FlashErasePoll(addr);
 }
 
-/************************************************************************//**
- * Erases a flash memory range.
- *
- * \param[in] addr Address base for the range to erase.
- * \param[in] len  Length of the range to erase
- * \return '0' if the erase operation completed successfully, '1' otherwise.
- *
- * \warning Function erases the minimum memory range CONTAINING the
- * specified range. Due to the granularity of the flash sectors, it can (and
- * most likely will) erase more memory than requested. This is expected
- * behaviour, and programmer must be aware of this.
- * \warning Currently the function does not check if the input range covers
- * the sector/s containing the bootloader.
- ****************************************************************************/
 uint8_t FlashRangeErase(uint32_t addr, uint32_t len) {
 	// Index
 	uint8_t i, j;
