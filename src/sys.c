@@ -5,18 +5,18 @@
 #endif
 
 // main function
-extern int main(uint16_t hard);
+extern int entry_point(uint16_t hard);
 
 typedef void(*_voidCallback)(void);
 
 void _start_entry()
 {
-    // Call main program
-    main(1);
+	// Call main program
+	entry_point(1);
 }
 
 void _reset_entry()
 {
-    main(0);
+	entry_point(0);
 }
 

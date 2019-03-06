@@ -20,18 +20,24 @@ extern uint8_t _eflash;
 typedef struct {
 	uint8_t *floor;
 	uint8_t *pos;
-} MpData;
+    uint8_t init_done;
+} mp_data;
 
 /// Local module data
-MpData md;
+mp_data md = {0, 0, 0};
 
-void MpInit(void) {
-	// Ensure the origin is aligned and initialize current position
-	md.floor = MP_ALIGN_COMP(&_eflash);
-	md.pos = md.floor;
+void mp_init(int force_init)
+{
+    if (!md.init_done || force_init) {
+    	// Ensure the origin is aligned and initialize current position
+    	md.floor = MP_ALIGN_COMP(&_eflash);
+    	md.pos = md.floor;
+        md.init_done = 1;
+    }
 }
 
-void *MpAlloc(uint16_t length) {
+void *mp_alloc(uint16_t length)
+{
 	void *tmp, *ret;
 
 	// Adjust length depending on alignmentnforcement
@@ -46,7 +52,17 @@ void *MpAlloc(uint16_t length) {
 	return ret;
 }
 
-void MpFreeTo(void *pos) {
+void *mp_calloc(uint16_t length)
+{
+	void *mem = mp_alloc(length);;
+	
+	if (mem) memset(mem, 0, length);
+
+	return mem;
+}
+
+void mp_free_to(void *pos)
+{
 	// Check pos looks valid, and set it if affirmative
 	if ((pos >= (void*)md.floor) && (pos < (void*)md.pos) &&
 			(pos == MP_ALIGN_COMP(pos))) md.pos = pos;

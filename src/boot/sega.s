@@ -352,9 +352,9 @@ _VINT:
 *        rts
 
 	.align 2
-	.globl BootAddr
-	.type	BootAddr, @function
-BootAddr:
+	.globl boot_addr
+	.type	boot_addr, @function
+boot_addr:
     move    #0x2700,sr              /* disable interrupts */
 * Get boot address
 	move.l 4(%sp),%d2
@@ -419,4 +419,4 @@ WRamClear:
 *	move.l	%d0,%a6
 
 	jmp (%a0)
-	.size	BootAddr, .-BootAddr
+	.size	boot_addr, .-boot_addr

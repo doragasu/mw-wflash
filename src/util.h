@@ -2,8 +2,6 @@
 #define _UTIL_H_
 
 #include <stdint.h>
-// Not very happy about adding this header here...
-#include "mw/megawifi.h"
 
 #ifndef TRUE
 #define TRUE 1
@@ -16,10 +14,27 @@
 #define NULL ((void*)0)
 #endif
 
+/// Returns TRUE if number is in the specified range
+#define IN_RANGE(num, lower, upper)					\
+	(((number) >= (lower)) && ((number) <= (upper)))
+
+/// The infamous container_of() macro directly the Linux kernel
+#define container_of(ptr, type, member) ({				\
+		const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
+		(type *)( (char *)__mptr - offsetof(type,member) );})
+
+/// Use for packing structures and enumerates
+#define PACKED		__attribute__((__packed__))
+
 /// Section attribute definition for variables and functions. Examples:
 /// - int a SECTION(data);
 /// - void foo(void) SECTION(text);
 #define SECTION(name)	__attribute__((section(#name)))
+
+/// Get number of rows of a 2D array
+#define ARRAY_ROWS(array_2d)		(sizeof(array_2d) / sizeof(array_2d[0]) / sizeof(array_2d[0][0]))
+/// Get number of columns of a 2D array
+#define ARRAY_COLS(array_2d)		(sizeof(array_2d[0]) / sizeof(array_2d[0][0]))
 
 /// Remove compiler warnings when not using a function parameter
 #define UNUSED_PARAM(x)		(void)x
@@ -41,7 +56,7 @@
 		((((uint32_t)(dw))>>8) & 0xFF00) | ((((uint32_t)(dw)) & 0xFF00)<<8) | \
 	  	(((uint32_t)(dw))<<24))
 
-static inline void ToUpper(char str[]) {
+static inline void to_upper(char *str) {
 	uint16_t i;
 	for (i = 0; str[i] != '\0'; i++) {
 		if ((str[i] >= 'a') && (str[i] <= 'z'))
@@ -50,15 +65,70 @@ static inline void ToUpper(char str[]) {
 }
 
 /************************************************************************//**
- * \brief Converts an unsigned 8-bit number (uint8_t) in its character
+ * \brief Evaluates if a string points to a number that can be stored in a
+ * uint8_t type variable.
+ *
+ * \return The pointer to the character following the last digit of the
+ *         number, if the string represents a number fittint in a uint_8.
+ *         NULL if the string does not represent an uint8_t number.
+ ****************************************************************************/
+const char *str_is_uint8(const char *str);
+
+/************************************************************************//**
+ * \brief This function evaluates the data entered on the input Menu
+ * structure, to guess if it corresponds to a valid IPv4.
+ *
+ * \param[in] str string to evaluate against an IPv4 pattern.
+ *
+ * \return TRUE if the evaluated string corresponds to a valid IPv4. False
+ *         otherwise.
+ ****************************************************************************/
+int ip_validate(const char *str);
+
+/************************************************************************//**
+ * \brief Writes the corresponding string representing an IPv4 stored in the
+ * input DWORD (32-bit) integer.
+ *
+ * \param[in]  ip_u32 Input DWORD to translate into string.
+ * \param[out] ip_str Resulting string matching the input DWORD.
+ *
+ * \return Length of the resulting IP string.
+ ****************************************************************************/
+int uint32_to_ip_str(uint32_t ip_u32, char *ip_str);
+
+/************************************************************************//**
+ * \brief Returns the binary IP addres (uint32) corresponding to the input
+ * string.
+ *
+ * \param[in]  ip String representing an IPv4 address.
+ *
+ * \return Binary representation of the input IPv4 string.
+ ****************************************************************************/
+uint32_t ip_str_to_uint32(const char *ip);
+
+/************************************************************************//**
+ * \brief Converts an unsigned 8-bit number to its character
  * string representation.
  *
  * \param[in]  num Input number to convert.
  * \param[out] str String representing the input number.
  *
  * \return Resulting str length (not including null termination).
+ * \note str buffer length shall be at least 4 bytes.
  ****************************************************************************/
-uint8_t Byte2UnsStr(uint8_t num, char str[4]);
+uint8_t uint8_to_str(uint8_t num, char *str);
+
+/************************************************************************//**
+ * \brief Converts an signed 8-bit number to its character
+ * string representation.
+ *
+ * \param[in]  num Input number to convert.
+ * \param[out] str String representing the input number.
+ *
+ * \return Resulting str length (not including null termination).
+ * \note str buffer length shall be at least 5 bytes.
+ ****************************************************************************/
+int8_t int8_to_str(int8_t num, char *str);
 
 /************************************************************************//**
  * \brief Converts a character string representing an 8-bit unsigned number,
@@ -71,7 +141,7 @@ uint8_t Byte2UnsStr(uint8_t num, char str[4]);
  * NULL if the strIn does not contain a valid string representation of an
  * uint8_t type.
  ****************************************************************************/
-char *Str2UnsByte(char strIn[], uint8_t *result);
+const char *str_to_uint8(const char *strIn, uint8_t *result);
 
 /************************************************************************//**
  * \brief Converts an integer to a character string.
@@ -89,23 +159,7 @@ char *Str2UnsByte(char strIn[], uint8_t *result);
  * \warning Function uses lots of divisions. Maybe it is not the best of the
  * ideas using it in a game loop.
  ****************************************************************************/
-int Long2Str(long num, char str[], int bufLen, int padLen, char padChr);
-
-/************************************************************************//**
- * \brief Waits until module has joined an AP, an error occurs or specified
- *        retries and frames expire.
- *
- * \param[in] retries Number of times to retry waiting for AP to join.
- * \param[in] frmPoll Number of frames to wait between state polls to the
- *            WiFi module.
- *
- * \return Module status if module it has joined AP, NULL if error or
- * specified retries and frames expire.
- *
- * \note If you do not want the function to block, call it without retries
- * and with zero frmPoll: ApJoinWait(0, 0);
- ****************************************************************************/
-MwMsgSysStat *ApJoinWait(uint16_t retries, uint16_t frmPoll);
+int long_to_str(long num, char *str, int buf_len, int pad_len, char pad_chr);
 
 /************************************************************************//**
  * \brief Converts a 32-bit number to its hexadecimal string representation.
@@ -119,7 +173,7 @@ MwMsgSysStat *ApJoinWait(uint16_t retries, uint16_t frmPoll);
  * \return Number of characters of the resulting converted string, not
  *         including the null termination.
  ****************************************************************************/
-int Uint32ToHexStr(uint32_t num, char str[], int pad);
+int uint32_to_hex_str(uint32_t num, char str[], int pad);
 
 #ifndef TRUE
 /// TRUE value for logic comparisons

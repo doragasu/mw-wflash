@@ -1,12 +1,8 @@
 #include "16c550.h"
 
+/// Shadow copy of the UART registers
 UartShadow sh;
 
-/************************************************************************//**
- * \brief Initializes the driver. The baud rate is set to UART_BR, and the
- *        UART FIFOs are enabled. This function must be called before using
- *        any other API call.
- ****************************************************************************/
 void UartInit(void) {
 	// Set line to BR,8N1. LCR[7] must be set to access DLX registers
 	UART_LCR = 0x83;
@@ -16,7 +12,7 @@ void UartInit(void) {
 
 	// Enable auto RTS/CTS.
 	UartSet(MCR, 0x22);
-	
+
 	// Enable FIFOs, set trigger level to 14 bytes.
 	// NOTE: Even though trigger level is 14 bytes, RTS is de-asserted when
 	// receiving the first bit of the 16th byte entering the FIFO. See Fig. 9

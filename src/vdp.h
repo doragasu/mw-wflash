@@ -18,7 +18,7 @@
 // Screen width in pixels
 #define VDP_SCREEN_WIDTH_PX		320
 // Screen height in pixels
-#define VDP_SCREEN_HEIGHT_PX	224
+#define VDP_SCREEN_HEIGHT_PX		224
 
 // Number of tiles per horizontal plane line
 #define VDP_PLANE_HTILES		128
@@ -99,7 +99,7 @@
 #define VDP_TXT_COL_MAGENTA	0xC0
 /** \} */
 
-#define VDP_DMA_68K			(0x00<<6)
+#define VDP_DMA_68K		(0x00<<6)
 #define VDP_DMA_FILL		(0x02<<6)
 #define VDP_DMA_COPY		(0x03<<6)
 
@@ -190,9 +190,9 @@ static inline void VdpRamWrite(uint8_t type, uint16_t addr, uint16_t val) {
 static inline void VdpRamRwPrep(uint8_t type, uint16_t addr) {
 	if (type >= VDP_RAM_TYPE_MAX) return;
 	VDP_CTRL_PORT_DW = (uint32_t)(((cdMask[type] & 0xFF00)<<16) |
-		               (cdMask[type] & 0xFF) |
-					   ((addr & 0x3FFF)<<16) |
-					   (addr>>14));
+			(cdMask[type] & 0xFF) |
+			((addr & 0x3FFF)<<16) |
+			(addr>>14));
 }
 
 /************************************************************************//**
@@ -219,7 +219,7 @@ static inline void VdpVRamClear(uint16_t addr, uint16_t wlen) {
  * \param[in] fgcol Foreground colour, in CRAM colour format.
  * \param[in] bgcol Background colour, in CRAM colour format.
  ****************************************************************************/
-void VdpFontLoad(const uint32_t font[], uint8_t chars, uint16_t addr,
+void VdpFontLoad(const uint32_t *font, uint8_t chars, uint16_t addr,
 		uint8_t fgcol, uint8_t bgcol);
 
 /************************************************************************//**
@@ -250,11 +250,15 @@ void VdpLineClear(uint16_t planeAddr, uint8_t line);
  * \param[in] x         Horizontal text coordinate.
  * \param[in] y         Vertical text coordinate.
  * \param[in] txtColor  Text colour (see VdpTextColors).
- * \param[in] maxChars	Maximum number of characters to write
+ * \param[in] maxChars  Maximum number of characters to write
  * \param[in] text      Null terminated text to write to the plane.
+ * \param[in] fillChar  When nonzero, fill unused line space with it.
  ****************************************************************************/
 void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
-		uint8_t maxChars, char text[]);
+		uint8_t maxChars, const char *text, char fillChar);
+
+void VdpDrawChars(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
+		uint8_t numChars, const char *text);
 
 /************************************************************************//**
  * Draws an 8-bit hexadecimal number on a plane.
@@ -314,6 +318,7 @@ void VdpDmaVRamCopy(uint16_t src, uint16_t dst, uint16_t len);
  *
  * \param[in] dst  Start VRAM memory address to fill.
  * \param[in] len  Length in bytes of the VRAM zone to fill.
+ * \param[in] incr Address increment after each byte copy.
  * \param[in] fill Byte to write to the filled zone.
  *
  * \warning This function starts the DMA fill but does not wait for the fill
@@ -321,7 +326,9 @@ void VdpDmaVRamCopy(uint16_t src, uint16_t dst, uint16_t len);
  * H/V counter and PSG registers can be accessed. If you need to access any
  * other VDP register, call VdpDmaWait() first.
  ****************************************************************************/
-void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t fill);
+void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t incr, uint16_t fill);
+
+void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem);
 
 /************************************************************************//**
  * Waits until there is no DMA operation in progress. Useful only for VRAM

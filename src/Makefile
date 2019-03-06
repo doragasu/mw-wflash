@@ -3,8 +3,9 @@
 
 TARGET  = wflash
 PREFIX ?= m68k-elf-
-#CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
-CFLAGS  = -Og -g -Wall -Wextra -m68000 -ffast-math -ffunction-sections
+#CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections -flto -ffat-lto-objects
+CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
+#CFLAGS  = -Og -g -Wall -Wextra -m68000 -ffast-math -ffunction-sections
 AFLAGS  = --register-prefix-optional -m68000
 #LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
 LFLAGS  = -T $(LFILE) -Wl,-gc-sections
@@ -20,9 +21,12 @@ MDMA   ?= $(HOME)/src/github/mw-mdma-cli/mdma
 EMU ?= gens
 OBJDIR  = tmp
 
-CSRCS = $(wildcard *.c) $(wildcard mw/*.c)
+# List of directories with sources, excluding the boot stuff
+DIRS=. mw menu_imp menu_mw
+OBJDIRS = $(foreach DIR, $(DIRS), $(OBJDIR)/$(DIR))
+CSRCS = $(foreach DIR, $(DIRS), $(wildcard $(DIR)/*.c))
 COBJECTS := $(patsubst %.c,$(OBJDIR)/%.o,$(CSRCS))
-ASRCS = $(wildcard *.s)
+ASRCS = $(foreach DIR, $(DIRS), $(wildcard *.s))
 AOBJECTS := $(patsubst %.s,$(OBJDIR)/%.o,$(ASRCS)) 
 
 all: $(TARGET)
@@ -67,16 +71,13 @@ boot/rom_head.bin: boot/rom_head.o
 boot/rom_head.o: boot/rom_head.c
 	$(PREFIX)$(CC) -c $(CFLAGS) $< -o $@
 
-$(OBJDIR)/%.o: %.c | $(OBJDIR)/mw
+$(OBJDIR)/%.o: %.c | $(OBJDIRS)
 	$(PREFIX)$(CC) -c -MMD -MP $(CFLAGS) $< -o $@
 
-$(OBJDIR)/%.o: %.s | $(OBJDIR)
+$(OBJDIR)/%.o: %.s | $(OBJDIRS)
 	$(PREFIX)$(AS) $(AFLAGS) $< -o $@
 
-$(OBJDIR)/mw:
-	mkdir -p $@
-
-$(OBJDIR):
+$(OBJDIRS):
 	mkdir -p $@
 
 .PHONY: clean

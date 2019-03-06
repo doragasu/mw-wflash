@@ -13,7 +13,8 @@
 #define _SYSFSM_H_
 
 #include <stdint.h>
-#include "menu.h"
+#include "mw/megawifi.h"
+#include "menu_imp/menu.h"
 
 /// Default channel to use for MegaWiFi communications
 #define SF_CHANNEL      1
@@ -34,21 +35,21 @@
 /************************************************************************//**
  * Module initialization. Call this function before using this module.
  ****************************************************************************/
-void SfInit(void);
+void sf_init(char *cmd_buf, int16_t buf_length);
 
 /************************************************************************//**
  * Perform one cycle of the system state machine.
  *
  * \return 0 if OK, non-zero if error.
  ****************************************************************************/
-int SfCycle(Menu *md);
+enum mw_err sf_cycle(struct menu_entry_instance *instance);
 
 /************************************************************************//**
  * Clear environment and boot from specified address.
  *
  * \param[in] addr Address from which to boot.
  ****************************************************************************/
-void SfBoot(uint32_t addr);
+void sf_boot(uint32_t addr);
 
 #endif /*_SYSFSM_H_*/
 

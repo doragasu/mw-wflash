@@ -10,7 +10,7 @@
 #ifndef _16C550_H_
 #define _16C550_H_
 
-// stdint conflicts with some SGDK type definitions!
+// Warning, stdint conflicts with some SGDK type definitions!
 #include <stdint.h>
 
 /// 16C550 UART base address
@@ -159,7 +159,7 @@ void UartInit(void);
  * \param[in] val Bits set in val, will be set in reg register.
  ****************************************************************************/
 #define UartSetBits(reg, val)	do{sh.reg |= (val);							\
-								UART_##reg = sh.reg;}while(0)
+	UART_##reg = sh.reg;}while(0)
 
 /************************************************************************//**
  * \brief Clears bits in IER, FCR, LCR or MCR register.
@@ -168,7 +168,7 @@ void UartInit(void);
  * \param[in] val Bits set in val, will be cleared in reg register.
  ****************************************************************************/
 #define UartClrBits(reg, val)	do{sh.reg &= ~(val);						\
-								UART_##reg = sh.reg;}while(0)
+	UART_##reg = sh.reg;}while(0)
 
 /************************************************************************//**
  * \brief Reset TX and RX FIFOs.

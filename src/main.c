@@ -1,113 +1,175 @@
 /************************************************************************//**
- * \brief Wireless Flash memory manager for MegaWiFi cartridges. Allows
- * remotely programming MegaWiFi catridges. It also allows performing some
- * flash memory management routienes, like erasing the cartridge, reading
- * data, reading flash identifiers, etc.
- *
+ * \brief 1985 Channel
  * \author Jesús Alonso (doragasu)
- * \date   2017
- * \defgroup wflash main
+ * \date   2019
+ * \defgroup 1985ch main
  * \{
  ****************************************************************************/
 #include "vdp.h"
-#include "sysfsm.h"
 #include "util.h"
-#include "cmds.h"
 #include "gamepad.h"
+#include "mpool.h"
 #include "mw/megawifi.h"
-#include "wf-menu.h"
-#include "menu.h"
+#include "menu_imp/menu.h"
+#include "menu_mw/menu_main.h"
+#include "loop.h"
+#include "sysfsm.h"
 
 /// Length of the wflash buffer
-#define WFLASH_BUFLEN	WF_MAX_DATALEN
+#define MW_BUFLEN	1440
 
 /// TCP port to use (set to Megadrive release year ;-)
-#define WFLASH_PORT 	1989
+#define MW_CH_PORT 	1985
+
+/// Maximum number of loop functions
+#define MW_MAX_LOOP_FUNCS	2
+
+/// Maximun number of loop timers
+#define MW_MAX_LOOP_TIMERS	4
 
 /// Command buffer
-static char cmdBuf[WFLASH_BUFLEN];
+static char cmd_buf[MW_BUFLEN];
 
-/// Waits until start is pressed (to boot flashed ROM) or a client connects
-int WaitUserInteraction(void) {
-	MwSockStat s;
-	int8_t loop;
+/// This callback will be run when user enters DOWNLOAD MODE
+int download_mode_cb(struct menu_entry_instance *instance)
+{
+	struct menu_item_entry *entry = instance->entry->item_entry;
+	struct menu_item *item = entry->item;
+	union mw_msg_sys_stat *stat;
+	struct mw_ip_cfg *ip;
+	enum mw_err err = FALSE;
+	char ip_addr[16];
 
-	// Poll for connections each 100 ms
-	do {
-		// If START button is pressed, boot the flashed ROM
-		if (!(GpRead() & GP_START_MASK)) SfBoot(SF_ENTRY_POINT_ADDR);
-		for (loop = 5; loop > 0; loop--) VdpVBlankWait();
-		s = MwSockStatGet(WF_CHANNEL);
-	} while (s != (MwSockStat)MW_ERROR && s == MW_SOCK_TCP_LISTEN);
-	return (MW_SOCK_TCP_EST == s)?0:-1;
+	stat = mw_sys_stat_get();
+	if (!stat) {
+		err = MW_ERR;
+	}
+	if (!err) {
+		err = mw_ap_assoc(stat->cfg);
+	}
+	if (!err) {
+		err = mw_ap_assoc_wait(30 * 60);
+	}
+	if (!err) {
+		err = mw_ip_current(&ip);
+		uint32_to_ip_str(ip->addr.addr, ip_addr);
+	}
+	if (!err) {
+		err = mw_tcp_bind(SF_CHANNEL, SF_PORT);
+	}
+	if (!err) {
+		menu_str_replace(&item[0].caption, "Associated. IP: ");
+		menu_str_append(&item[0].caption, ip_addr);
+		menu_item_draw(MENU_PLACE_CENTER);
+
+		err = mw_sock_conn_wait(SF_CHANNEL, 0);
+	}
+	if (!err) {
+		menu_str_replace(&item[0].caption, "Connected to client!");
+		menu_item_draw(MENU_PLACE_CENTER);
+		sf_init(cmd_buf, MW_BUFLEN);
+		while (!sf_cycle(instance));
+		menu_str_replace(&item[0].caption, "ERR?");
+	}
+
+	return err;
+}
+
+static void idle_cb(struct loop_func *f)
+{
+	UNUSED_PARAM(f);
+	mw_process();
 }
 
 /// MegaWiFi initialization
-int MegaWifiInit(void){
-	uint8_t verMajor, verMinor, loop;
+static void megawifi_init_cb(struct loop_func  *f)
+{
+	uint8_t ver_major = 0, ver_minor = 0;
 	char *variant;
-	char strBuf[20];
-	MenuString stat;
+	char str_buf[20];
+	struct menu_str stat;
+	enum mw_err err;
+
+	// megawifi_init_cb is run only once. Use idle_cb from now on
+	f->func_cb = idle_cb;
+	stat.str = str_buf;
 
 	// Initialize MegaWiFi
-	MwInit(cmdBuf, WFLASH_BUFLEN);
-	// Wait a bit and take module out of resest
-	VdpVBlankWait();
-	VdpVBlankWait();
-	MwModuleStart();
-	for (loop = 119; loop > 0; loop--) VdpVBlankWait();
-	UartResetFifos();
-	
-	stat.string = strBuf;
-	// Try detecting MegaWiFi module by requesting version
-	if (MwVersionGet(&verMajor, &verMinor, &variant) != MW_OK) {
+	mw_init(cmd_buf, MW_BUFLEN);
+
+	// Try detecting the module
+	err = mw_detect(&ver_major, &ver_minor, &variant);
+
+	if (MW_ERR_NONE != err) {
 		// Set menu status string to show Megawifi was not found
-		stat.length = MenuStrCpy(strBuf, "MegaWiFi?", 20 - 1);
-		strBuf[20 - 1] = '\0';	// Ensure null termination
-		MenuStatStrSet(stat);
-		return -1;
+		stat.length = menu_str_buf_cpy(str_buf, "MegaWiFi?", 20 - 1);
+	} else {
+		// Set menu status string to show readed version
+		stat.length = menu_str_buf_cpy(str_buf, "MW RTOS ", 20 - 1);
+		stat.length += uint8_to_str(ver_major,
+				str_buf + stat.length);
+		str_buf[stat.length++] = '.';
+		stat.length += uint8_to_str(ver_minor,
+				str_buf + stat.length);
 	}
-	// Set menu status string to show readed version
-	stat.length = MenuStrCpy(strBuf, "MW RTOS ", 0);
-	stat.length += Byte2UnsStr(verMajor, strBuf + stat.length);
-	strBuf[stat.length++] = '.';
-	stat.length += Byte2UnsStr(verMinor, strBuf + stat.length);
-	MenuStatStrSet(stat);
-	return 0;
+	str_buf[20 - 1] = '\0';	// Ensure null termination
+	menu_stat_str_set(&stat);
+}
+
+/// Run once per frame
+static void frame_cb(struct loop_timer *t)
+{
+	UNUSED_PARAM(t);
+	uint8_t pad_ev;
+
+	// Read controller and update menu
+	pad_ev = ~gp_pressed();
+	menu_update(pad_ev);
+}
+
+/// Loop run while idle
+static void main_loop_init(void)
+{
+	static struct loop_timer frame_timer = {
+		.timer_cb = frame_cb,
+		.frames = 1,
+		.auto_reload = TRUE
+	};
+	static struct loop_func megawifi_loop = {
+		.func_cb = megawifi_init_cb
+	};
+
+	loop_init(MW_MAX_LOOP_FUNCS, MW_MAX_LOOP_TIMERS);
+	loop_timer_add(&frame_timer);
+	loop_func_add(&megawifi_loop);
 }
 
 /// Global initialization
-void Init(void) {
-	const MenuString str = MENU_STR("Detecting WiFi...");
+static void init(void)
+{
+	// Initialize memory pool
+	mp_init(0);
 	// Initialize VDP
 	VdpInit();
 	// Initialize gamepad
-	GpInit();
+	gp_init();
 	// Initialize menu system
-	WfMenuInit(str);
-	// Initialize MegaWifi
-	MegaWifiInit();
+	menu_init(&main_menu, &(struct menu_str)MENU_STR_RO("Init..."));
+	// Initialize game loop
+	main_loop_init();
 }
 
 /// Entry point
-int main(void) {
-	uint8_t pad;
-    unsigned int frame = 0;
+int entry_point(uint16_t hard)
+{
+	UNUSED_PARAM(hard);
 
-	// Initialization
-	Init();
+	init();
 
-	while (1) {
-		// 1. Wait for VBlank.
-        frame++;
-		VdpVBlankWait();
-		// 2. Read controller and perform non-menu related actions.
-		pad = GpPressed();
-		// 3. If pad pressed, perform menu related actions. Else check
-		//    connection status.
-		if (0xFF != pad) MenuButtonAction(pad);
-	}
-	return 0;
+	// Enter game loop (should never return)
+	loop();
+
+	return 1;
 }
 
 /** \} */

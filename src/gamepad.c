@@ -2,7 +2,8 @@
 
 static uint8_t prev = 0xFF;
 
-uint8_t GpRead(void) {
+uint8_t gp_read(void)
+{
 	uint8_t ret;
 
 	// Read START and A buttons
@@ -19,9 +20,10 @@ uint8_t GpRead(void) {
 	return ret;
 }
 
-uint8_t GpPressed(void) {
+uint8_t gp_pressed(void)
+{
 	uint8_t retVal;
-	uint8_t input = GpRead();
+	uint8_t input = gp_read();
 
 	retVal = input | ~prev;
 	prev = input;

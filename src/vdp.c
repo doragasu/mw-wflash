@@ -127,7 +127,7 @@ void VdpInit(void) {
 }
 
 void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
-		uint8_t maxChars, char text[]) {
+		uint8_t maxChars, const char *text, char fillChar) {
 	uint16_t offset;
 	uint16_t i;
 
@@ -137,7 +137,27 @@ void VdpDrawText(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	offset = planeAddr + 2 *(x + y * VDP_PLANE_HTILES);
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
 
-	for (i = 0; text[i] && (i < maxChars); i++) {
+	for (i = 0; text[i] && i < maxChars; i++) {
+		VDP_DATA_PORT_W = text[i] - ' ' + txtColor;
+	}
+	while (fillChar && i < maxChars) {
+		VDP_DATA_PORT_W = fillChar - ' ' + txtColor;
+		i++;
+	}
+}
+
+void VdpDrawChars(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
+		uint8_t numChars, const char *text) {
+	uint16_t offset;
+	uint16_t i;
+
+	// Set auto increment
+	VdpRegWrite(VDP_REG_INCR, 0x02);
+	// Calculate nametable offset and prepare VRAM writes
+	offset = planeAddr + 2 *(x + y * VDP_PLANE_HTILES);
+	VdpRamRwPrep(VDP_VRAM_WR, offset);
+
+	for (i = 0; i < numChars; i++) {
 		VDP_DATA_PORT_W = text[i] - ' ' + txtColor;
 	}
 }
@@ -170,7 +190,7 @@ uint8_t VdpDrawDec(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 	offset = planeAddr + 2 * (x + y * VDP_PLANE_HTILES);
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
 
-	len = Byte2UnsStr(num, str);
+	len = uint8_to_str(num, str);
 	for (i = 0; i < len; i++) VDP_DATA_PORT_W = txtColor + 0x10 - '0' + str[i];
 
 	return i;
@@ -187,7 +207,7 @@ void VdpDrawU32(uint16_t planeAddr, uint8_t x, uint8_t y, uint8_t txtColor,
 
 }
 
-void VdpFontLoad(const uint32_t font[], uint8_t chars, uint16_t addr,
+void VdpFontLoad(const uint32_t *font, uint8_t chars, uint16_t addr,
 		uint8_t fgcol, uint8_t bgcol) {
 	uint32_t line;
 	uint32_t scratch;
@@ -218,7 +238,7 @@ void VdpFontLoad(const uint32_t font[], uint8_t chars, uint16_t addr,
 	}
 }
 
-static void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem) {
+void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem) {
 	uint32_t cmd;	// Command word
 
 	// Write transfer length
@@ -233,11 +253,11 @@ static void VdpDma(uint32_t src, uint16_t dst, uint16_t wLen, uint16_t mem) {
 	VDP_CTRL_PORT_DW = cmd;
 }
 
-void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t fill) {
+void VdpDmaVRamFill(uint16_t dst, uint16_t len, uint16_t incr, uint16_t fill) {
 	uint32_t cmd;	// Command word
 
 	// Set auto-increment to 1 byte
-	VdpRegWrite(VDP_REG_INCR, 0x01);
+	VdpRegWrite(VDP_REG_INCR, incr);
 	// Write transfer length
 	VdpRegWrite(VDP_REG_DMALEN1, len);
 	VdpRegWrite(VDP_REG_DMALEN2, len>>8);
@@ -273,7 +293,7 @@ void VdpLineClear(uint16_t planeAddr, uint8_t line) {
 	// Calculate nametable offset and prepare VRAM writes
 	start = planeAddr + 2 * (line * VDP_PLANE_HTILES);
 
-	VdpDmaVRamFill(start, 32 * 2, 0);
+	VdpDmaVRamFill(start, 40 * 2, 1, 0);
 }
 
 void VdpVBlankWait(void) {

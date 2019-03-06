@@ -1,16 +1,95 @@
 #include "util.h"
-#include "vdp.h"
 
-/************************************************************************//**
- * \brief Converts an unsigned 8-bit number (uint8_t) in its character
- * string representation.
- *
- * \param[in]  num Input number to convert.
- * \param[out] str String representing the input number.
- *
- * \return Resulting str length (not including null termination).
- ****************************************************************************/
-uint8_t Byte2UnsStr(uint8_t num, char str[4]) {
+const char *str_is_uint8(const char *str)
+{
+	uint8_t i;
+
+	// Skip leading zeros
+	while (str[0] == '0' && (str[1] >= '0' && str[1] <= '9')) {
+		str++;
+	}
+	// Determine number length (up to 4 characters)
+	for (i = 0; (i < 4) && (str[i] >= '0') && (str[i] <= '9'); i++);
+
+	switch (i) {
+	// If number is 3 characters, the number fits in 8 bits only if
+	// lower than 255
+	case 3:
+		if ((str[0] > '2') || ((str[0] == '2') && ((str[1] > '5') ||
+				((str[1] == '5') && (str[2] > '5'))))) {
+			return NULL;
+		}
+
+		// If length is 2 or 1 characters, the number fits in 8 bits.
+		// fallthrough
+	case 2:
+	case 1:
+		return str + i;
+
+		// If length is 4 or more, number does not fit in 8 bits.
+	default:
+		return NULL;
+	}
+}
+
+int ip_validate(const char *str)
+{
+	int8_t i;
+
+	// Evaluate if we have 4 numbers fitting in a byte, separated by '.'
+	if (!(str = str_is_uint8(str))) return FALSE;
+
+	for (i = 2; i >= 0; i--) {
+		if (*str != '.') {
+			return FALSE;
+		}
+		str++;
+		if (!(str = str_is_uint8(str))) {
+			return FALSE;
+		}
+	}
+
+	if (*str != '\0') {
+		return FALSE;	
+	}
+	return TRUE;
+}
+
+/// Convert an IPv4 address in string format to binary format
+uint32_t ip_str_to_uint32(const char *ip)
+{
+	uint32_t bin_ip;
+	uint8_t *byte = (uint8_t*)&bin_ip;
+	int i;
+
+	for (i = 0; i < 4; i++) {
+		if ((ip = str_to_uint8(ip, &byte[i])) == NULL) {
+			return 0;
+		}
+		ip++;
+	}
+	return bin_ip;
+}
+
+/// Converts an IP address in uint32_t binary representation to
+int uint32_to_ip_str(uint32_t ip_u32, char *ip_str)
+{
+	uint8_t *byte = (uint8_t*)&ip_u32;
+	int pos = 0;
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		pos += uint8_to_str(byte[i], ip_str + pos);
+		ip_str[pos++] = '.';
+	}
+	pos += uint8_to_str(byte[i], ip_str + pos);
+	ip_str[pos] = '\0';
+
+	return pos;
+}
+
+uint8_t uint8_to_str(uint8_t num, char *str)
+{
 	uint8_t i = 0;
 	uint8_t tmp;
 
@@ -26,170 +105,123 @@ uint8_t Byte2UnsStr(uint8_t num, char str[4]) {
 	}
 	
 	tmp = num / 10;
-	if (tmp) str[i++] = '0' + tmp;
+	if (tmp) {
+		str[i++] = '0' + tmp;
+	}
 	str[i++] = '0' + num % 10;
 	str[i] = '\0';
 
 	return i;
 }
 
-/************************************************************************//**
- * \brief Converts a character string representing an 8-bit unsigned number,
- * to its binary (uint8_t) representation.
- *
- * \param[in]  strIn  Input string with the number to convert.
- * \param[out] result Converted number will be left here.
- *
- * \return Pointer to the end of the number received in strIn parameter, or
- * NULL if the strIn does not contain a valid string representation of an
- * uint8_t type.
- ****************************************************************************/
-char *Str2UnsByte(char strIn[], uint8_t *result) {
+int8_t int8_to_str(int8_t num, char *str)
+{
+	int i = 0;
+
+	if (num < 0) {
+		num = -num;
+		str[i++] = '-';
+	}
+	i += uint8_to_str(num, str + i);
+
+	return i;
+}
+
+const char *str_to_uint8(const char *str, uint8_t *result)
+{
 	uint8_t i;
 
 	*result = 0;
 
 	// Skip leading zeros
-	while (*strIn == '0') strIn++;
+	while (*str == '0') str++;
     // Special case: number is zero
-    if (*strIn < '0' || *strIn > '9') return strIn;
+    if (*str < '0' || *str > '9') return str;
 	// Determine number length (up to 4 characters)
-	for (i = 0; (i < 4) && (strIn[i] >= '0') && (strIn[i] <= '9'); i++);
+	for (i = 0; (i < 4) && (str[i] >= '0') && (str[i] <= '9'); i++);
 	
 	switch (i) {
-		// If number is 3 characters, the number fits in 8 bits only if
-		// lower than 256
-		case 3:
-			if ((strIn[0] > '2') || ((strIn[0] == '2') && ((strIn[1] > '5') ||
-						((strIn[1] == '5') && (strIn[2] > '5')))))
-				return NULL;
-			else {
-				*result = ((*strIn) - '0') * 100;
-				strIn++;
-			}
-			// fallthrough
-		case 2:
-			*result += ((*strIn) - '0') * 10;
-			strIn++;
-			// fallthrough
-		case 1:
-			*result += (*strIn) - '0';
-			strIn++;
-			break;
-
-		// If length is 4 or more, number does not fit in 8 bits.
-		default:
+	// If number is 3 characters, the number fits in 8 bits only if
+	// lower than 256
+	case 3:
+		if ((str[0] > '2') || ((str[0] == '2') && ((str[1] > '5') ||
+					((str[1] == '5') && (str[2] > '5')))))
 			return NULL;
+		else {
+			*result = ((*str) - '0') * 100;
+			str++;
+		}
+		// fallthrough
+	case 2:
+		*result += ((*str) - '0') * 10;
+		str++;
+		// fallthrough
+	case 1:
+		*result += (*str) - '0';
+		str++;
+		break;
+
+	// If length is 4 or more, number does not fit in 8 bits.
+	default:
+		return NULL;
 	}
-	return strIn;
+	return str;
 }
 
-/************************************************************************//**
- * \brief Converts an integer to a character string.
- *
- * \param[in]  num  Number to convert to string.
- * \param[out] str  String that will hold the converted number.
- * \param[in]  bufLen Length of str buffer.
- * \param[in]  padLen Length of the padding to introduce. 0 for no padding.
- * \param[in]  padChr Character used for padding (typically '0' or ' ').
- *
- * \return Number of characters written to str buffer, not including the
- * null termination. 0 if string does not fin in the buffer and has not
- * been converted.
- *
- * \warning Function uses lots of divisions. Maybe it is not the best of the
- * ideas using it in a game loop.
- ****************************************************************************/
-int Long2Str(long num, char str[], int bufLen, int padLen, char padChr) {
-    int i = 0;
-    int j;
-    int rem;
-    int len = 0;
+int long_to_str(long num, char *str, int buf_len, int pad_len, char pad_chr)
+{
+	int i = 0;
+	int j;
+	int rem;
+	int len = 0;
 
-    // Obtain string length
-    for (rem = num, len = 0; rem; len++, rem /= 10);
-    // if number is 0 or negative, increase length by 1
-    if (len == 0) {
-        len++;
-        str[i++] = '0';
-    }
-    if (num < 0) {
-        len++;
-        num = -num;
-        str[i++] = '-';
-    }
-    // Check number fits in buffer
-    if (((len + 1) > bufLen) || ((padLen + 1) > bufLen)) return 0;
-    for (; i < (padLen - len); i++) str[i] = padChr;
-
-    // Perform the conversion in reverse order
-    padLen = MAX(padLen, len);
-    str[padLen] = '\0';
-    for (j = padLen - 1;j >= i; j--) {
-        str[j] = '0' + num % 10;
-        num = num / 10;
-    }
-
-    return padLen;
-}
-
-/************************************************************************//**
- * \brief Converts a 32-bit number to its hexadecimal string representation.
- *
- * \param[in]  num Number to convert.
- * \param[out] str Converted equivalent string. Must have room for at least
- *             9 characters to guarantee an overrun will not accur.
- * \param[in]  pad Padding. If greater than 0, left part of resulting number
- *             will be zero-padded to the specified length.
- *
- * \return Number of characters of the resulting converted string, not
- *         including the null termination.
- ****************************************************************************/
-int Uint32ToHexStr(uint32_t num, char str[], int pad) {
-    const char map[] = "0123456789ABCDEF";
-    int i;
-    int nibble;
-    int off;
-
-    for (i = 0, nibble = 7; nibble >= 0; nibble--) {
-        off = nibble<<2;
-        if ((num>>off) & 0xF) {
-            str[i++] = map[(num>>off) & 0xF];
-        } else if ((i > 0) || (nibble < pad) || ((!i) && (!nibble))){
-            str[i++] = '0';
-        }
-    }
-    str[i] = '\0';
-    return i;
-}
-
-/************************************************************************//**
- * \brief Waits until module has joined an AP, an error occurs or specified
- *        retries and frames expire.
- *
- * \param[in] retries Number of times to retry waiting for AP to join.
- * \param[in] frmPoll Number of frames to wait between state polls to the
- *            WiFi module.
- *
- * \return Module status if module it has joined AP, NULL if error or
- * specified retries and frames expire.
- *
- * \note If you do not want the function to block, call it without retries
- * and with zero frmPoll: ApJoinWait(0, 0);
- ****************************************************************************/
-MwMsgSysStat *ApJoinWait(uint16_t retries, uint16_t frmPoll) {
-    uint16_t frm = 0;
-    uint16_t tried;
-	MwMsgSysStat *stat;
-
-    for (tried = 0; tried <= retries; tried++) {
-    	stat = MwSysStatGet();
-    	// Find if connection has just been established
-    	if ((stat != NULL) && (stat->sys_stat >= MW_ST_READY)) {
-            return stat;
-    	}
-        for (frm = 0; frm < frmPoll; frm++) VdpVBlankWait();
+	// Obtain string length
+	for (rem = num, len = 0; rem; len++, rem /= 10);
+	// if number is 0 or negative, increase length by 1
+	if (len == 0) {
+		len++;
+		str[i++] = '0';
 	}
-    return NULL;
+	if (num < 0) {
+		len++;
+		num = -num;
+		str[i++] = '-';
+	}
+	// Check number fits in buffer
+	if (((len + 1) > buf_len) || ((pad_len + 1) > buf_len)) {
+		return 0;
+	}
+	for (; i < (pad_len - len); i++) {
+		str[i] = pad_chr;
+	}
+
+	// Perform the conversion in reverse order
+	pad_len = MAX(pad_len, len);
+	str[pad_len] = '\0';
+	for (j = pad_len - 1;j >= i; j--) {
+		str[j] = '0' + num % 10;
+		num = num / 10;
+	}
+
+	return pad_len;
+}
+
+int uint32_to_hex_str(uint32_t num, char str[], int pad)
+{
+	const char map[] = "0123456789ABCDEF";
+	int i;
+	int nibble;
+	int off;
+
+	for (i = 0, nibble = 7; nibble >= 0; nibble--) {
+		off = nibble<<2;
+		if ((num>>off) & 0xF) {
+			str[i++] = map[(num>>off) & 0xF];
+		} else if ((i > 0) || (nibble < pad) || ((!i) && (!nibble))){
+			str[i++] = '0';
+		}
+	}
+	str[i] = '\0';
+	return i;
 }
 

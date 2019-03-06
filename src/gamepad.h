@@ -18,7 +18,7 @@
  *  \brief Gamepad related register addresses.
  *  \{ */
 /// Version number address
-#define GP_REG_VERSION_ADDR		0xA10001
+#define GP_REG_VERSION_ADDR	0xA10001
 
 /// Port A, data register address
 #define GP_REG_PORTA_DATA_ADDR	0xA10003
@@ -40,34 +40,34 @@
  *  \brief Gamepad related registers.
  *  \{ */
 /// Gamepad hardware version number
-#define GP_REG_VERSION			(*((volatile uint8_t*)GP_REG_VERSION_ADDR))
+#define GP_REG_VERSION		(*((volatile uint8_t*)GP_REG_VERSION_ADDR))
 
 /// Port A, data register
-#define GP_REG_PORTA_DATA		(*((volatile uint8_t*)GP_REG_PORTA_DATA_ADDR))
+#define GP_REG_PORTA_DATA	(*((volatile uint8_t*)GP_REG_PORTA_DATA_ADDR))
 /// Port B, data register
-#define GP_REG_PORTB_DATA		(*((volatile uint8_t*)GP_REG_PORTB_DATA_ADDR))
+#define GP_REG_PORTB_DATA	(*((volatile uint8_t*)GP_REG_PORTB_DATA_ADDR))
 /// Port C, data register
-#define GP_REG_PORTC_DATA		(*((volatile uint8_t*)GP_REG_PORTC_DATA_ADDR))
+#define GP_REG_PORTC_DATA	(*((volatile uint8_t*)GP_REG_PORTC_DATA_ADDR))
 
 /// Port A, control register
-#define GP_REG_PORTA_CTRL		(*((volatile uint8_t*)GP_REG_PORTA_CTRL_ADDR))
+#define GP_REG_PORTA_CTRL	(*((volatile uint8_t*)GP_REG_PORTA_CTRL_ADDR))
 /// Port B, control register
-#define GP_REG_PORTB_CTRL		(*((volatile uint8_t*)GP_REG_PORTB_CTRL_ADDR))
+#define GP_REG_PORTB_CTRL	(*((volatile uint8_t*)GP_REG_PORTB_CTRL_ADDR))
 /// Port C, control register
-#define GP_REG_PORTC_CTRL		(*((volatile uint8_t*)GP_REG_PORTC_CTRL_ADDR))
+#define GP_REG_PORTC_CTRL	(*((volatile uint8_t*)GP_REG_PORTC_CTRL_ADDR))
 /** \} */
 
 /** \addtogroup GpMasks GpMasks
  *  \brief Masks used to filter the cross and buttons.
  *  \{ */
-#define GP_START_MASK			0x80	///< Start button
-#define GP_A_MASK				0x40	///< A button
-#define GP_B_MASK				0x10	///< B button
-#define GP_C_MASK				0x20	///< C button
-#define GP_RIGHT_MASK			0x08	///< Right direction
-#define GP_LEFT_MASK			0x04	///< Left direction
-#define GP_DOWN_MASK			0x02	///< Down direction
-#define GP_UP_MASK				0x01	///< Up direction
+#define GP_START_MASK		0x80	///< Start button
+#define GP_A_MASK		0x40	///< A button
+#define GP_B_MASK		0x10	///< B button
+#define GP_C_MASK		0x20	///< C button
+#define GP_RIGHT_MASK		0x08	///< Right direction
+#define GP_LEFT_MASK		0x04	///< Left direction
+#define GP_DOWN_MASK		0x02	///< Down direction
+#define GP_UP_MASK		0x01	///< Up direction
 /** \} */
 
 
@@ -75,24 +75,27 @@
  * Module initialization. Call this routine before using any other in this
  * module.
  ****************************************************************************/
-#define GpInit()	do{GP_REG_PORTA_CTRL = 0x40;}while(0)
+#define gp_init()	do{GP_REG_PORTA_CTRL = 0x40;}while(0)
 
 /************************************************************************//**
- * Read gamepad. Currently only 3-button pads on port A are read.
+ * \brief Read gamepad.
+ *
+ * Currently only 3-button pads on port A are read.
  *
  * \return Pad status in format SACBRLDU (START, A, C, B, RIGHT, LEFT,
  *         DOWN, UP). For each bit, a '1' means that the button/direction
  *         is not pressed. A '0' means that the button/direction is currently
  *         pressed. Masks can be used to filter returned data (see GpMasks).
  ****************************************************************************/
-uint8_t GpRead(void);
+uint8_t gp_read(void);
 
 
 /************************************************************************//**
- * Read gamepad and return pad status. Note that only pad press events are
- * returned (i.e. when a button is pressed, button press is reported. But
- * button press will not be reported again until the button is released and
- * pressed again).
+ * \brief Read gamepad and return pad status.
+ *
+ * Only pad press events are returned (i.e. when a button is pressed, button
+ * press is reported. But button press will not be reported again until the
+ * button is released and pressed again).
  *
  * \return Pad status in format SACBRLDU (START, A, C, B, RIGHT, LEFT,
  *         DOWN, UP). For each bit, a '1' means that the button/direction
@@ -100,7 +103,7 @@ uint8_t GpRead(void);
  *         been pressed. Masks can be used to filter returned data (see
  *         GpMasks).
  ****************************************************************************/
-uint8_t GpPressed(void);
+uint8_t gp_pressed(void);
 
 #endif /*_GAMEPAD_H_*/
 
