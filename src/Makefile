@@ -4,12 +4,13 @@
 TARGET  = wflash
 PREFIX ?= m68k-elf-
 #CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections -flto -ffat-lto-objects
-CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
-#CFLAGS  = -Og -g -Wall -Wextra -m68000 -ffast-math -ffunction-sections
+#CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
+CFLAGS  = -Og -g -Wall -Wextra -m68000 -ffast-math -ffunction-sections
 AFLAGS  = --register-prefix-optional -m68000
 #LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
 LFLAGS  = -T $(LFILE) -Wl,-gc-sections
-LFILE   = mdbasic.ld
+#LFILE   = mdbasic.ld
+LFILE   = all_ram.ld
 CC      = gcc
 AS      = as
 LD      = ld
@@ -36,6 +37,7 @@ cart: head.bin tail.bin
 #	@$(MDMA) -s 0
 #	@$(MDMA) -r 0x1FC000:0x1FFFFF
 	@$(MDMA) -Vaf head.bin
+#	@$(MDMA) -Vaf tail.bin:0x1F8000
 	@$(MDMA) -Vaf tail.bin:0x1FC000
 
 .PHONY: emu debug
@@ -53,6 +55,7 @@ head.bin: $(TARGET)
 
 tail.bin: $(TARGET)
 	dd if=$< of=$@ bs=32k skip=127 conv=sync
+#	dd if=$< of=$@ bs=64k skip=63 conv=sync
 #	dd if=$< of=$@ bs=8k skip=510 conv=sync
 
 $(TARGET).bin: $(TARGET).elf

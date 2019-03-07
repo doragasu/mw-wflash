@@ -32,6 +32,7 @@ typedef struct {
 	uint8_t data;	///< Flash data
 } FlashCmd;
 
+typedef void (*completion_cb)(int err, void *ctx);
 
 /* 
  * Command definitions. NOTE: Commands use only 12-bit addresses. higher bits
@@ -380,6 +381,26 @@ uint8_t FlashDataPoll(uint32_t addr, uint8_t data);
  ****************************************************************************/
 FS_T(ErasePoll)
 uint8_t FlashErasePoll(uint32_t addr);
+
+FS_T(chip_erase)
+void flash_chip_erase(void *ctx);
+
+FS_T(sector_erase)
+void flash_sector_erase(uint32_t addr, void *ctx);
+
+FS_T(range_erase)
+int flash_range_erase(uint32_t addr, uint32_t len);
+
+FS_T(flash_write_buf)
+int flash_write_buf(uint32_t addr, uint16_t *data, uint16_t wlen, void *ctx);
+
+FS_T(poll_proc)
+void flash_poll_proc(void);
+
+FS_T(write_long)
+int flash_write_long(uint32_t addr, uint16_t *data, uint16_t wlen);
+
+void flash_completion_cb_set(completion_cb cb);
 
 #ifdef __cplusplus
 }
