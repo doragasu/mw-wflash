@@ -55,8 +55,16 @@ int loop_func_add(struct loop_func *func)
 {
 	int i;
 
-	for (i = 0; i < d->func_max && d->f[i]; i++);
-	if (i == d->func_max) return 1;
+	for (i = 0; i < d->func_max && d->f[i]; i++) {
+		// If function was marked to be deleted, just remove the flag
+		if (d->f[i] == func && func->to_delete) {
+			func->to_delete = 0;
+			return 0;
+		}
+	}
+	if (i == d->func_max) {
+		return 1;
+	}
 
 	d->f[i] = func;
 	return 0;

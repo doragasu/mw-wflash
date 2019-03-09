@@ -7,7 +7,7 @@ const struct menu_entry download_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("DOWNLOAD MODE"),
 	.left_context = MENU_STR_RO("[B]ack"),
-	.action_cb = download_mode_cb,
+	.action_cb = download_mode_menu_cb,
 	.item_entry = MENU_ITEM_ENTRY(3, 2, MENU_H_ALIGN_CENTER) {
 		{
 			.caption = MENU_STR_RW("Associating to access point...", 38),
@@ -17,7 +17,7 @@ const struct menu_entry download_menu = {
 			.caption = MENU_STR_NULL
 		},
 		{
-			.caption = MENU_STR_EMPTY(14),
+			.caption = MENU_STR_EMPTY(15),
 			.not_selectable = TRUE,
 			.alt_color = TRUE
 		}

@@ -30,19 +30,20 @@
 #define SF_ENTRY_POINT_ADDR	(*((uint32_t*)0x0001C8))
 
 /// Bootloader address is currently the 68000 start entry
-#define SF_BOOTLOADER_ADDR  (*((uint32_t*)0x000004))
+#define SF_BOOTLOADER_ADDR	(*((uint32_t*)0x000004))
 
 /************************************************************************//**
  * Module initialization. Call this function before using this module.
  ****************************************************************************/
-void sf_init(char *cmd_buf, int16_t buf_length);
+void sf_init(char *cmd_buf, int16_t buf_length,
+		struct menu_entry_instance *instance);
 
 /************************************************************************//**
- * Perform one cycle of the system state machine.
+ * Start the command parser.
  *
  * \return 0 if OK, non-zero if error.
  ****************************************************************************/
-enum mw_err sf_cycle(struct menu_entry_instance *instance);
+void sf_start(void);
 
 /************************************************************************//**
  * Clear environment and boot from specified address.

@@ -2,6 +2,7 @@
 #define _UTIL_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifndef TRUE
 #define TRUE 1
@@ -173,7 +174,7 @@ int long_to_str(long num, char *str, int buf_len, int pad_len, char pad_chr);
  * \return Number of characters of the resulting converted string, not
  *         including the null termination.
  ****************************************************************************/
-int uint32_to_hex_str(uint32_t num, char str[], int pad);
+int uint32_to_hex_str(uint32_t num, char *str, int pad);
 
 #ifndef TRUE
 /// TRUE value for logic comparisons

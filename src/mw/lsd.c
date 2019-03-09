@@ -82,7 +82,8 @@ static struct lsd_data d = {};
 
 static void recv_error(enum lsd_status stat)
 {
-	d.rx.stat = LSD_RECV_ERROR;
+//	d.rx.stat = LSD_RECV_ERROR;
+	d.rx.stat = LSD_RECV_IDLE;
 	if (d.rx.cb) {
 		d.rx.cb(stat, 0, NULL, 0, d.rx.ctx);
 	}
@@ -160,9 +161,10 @@ static void process_recv(void)
 		}
 		break;
 
+
 	default:
-		// Code should never reach here!
 		recv_error(LSD_STAT_ERROR);
+		break;
 	}
 }
 
@@ -216,13 +218,16 @@ void lsd_process(void)
 		active = FALSE;
 		if (d.rx.stat > LSD_RECV_IDLE && UartRxReady()) {
 			active = TRUE;
-			while (UartRxReady()) {
+			while (UartRxReady() && d.rx.stat > LSD_RECV_IDLE) {
 				process_recv();
 			}
 		}
-		if (d.tx.stat > LSD_SEND_IDLE) {
+		if (UartTxReady() && d.tx.stat > LSD_SEND_IDLE) {
 			active = TRUE;
-			process_send();
+			for (int i = 0; i < UART_TX_FIFO_LEN &&
+					d.tx.stat > LSD_SEND_IDLE; i++) {
+				process_send();
+			}
 		}
 	} while(active);
 }

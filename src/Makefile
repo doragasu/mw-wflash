@@ -3,9 +3,9 @@
 
 TARGET  = wflash
 PREFIX ?= m68k-elf-
-#CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections -flto -ffat-lto-objects
+CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections -flto -ffat-lto-objects
 #CFLAGS  = -Os -Wall -Wextra -m68000 -fomit-frame-pointer -ffast-math -ffunction-sections
-CFLAGS  = -Og -g -Wall -Wextra -m68000 -ffast-math -ffunction-sections
+#CFLAGS  = -Og -g -Wall -Wextra -m68000 -ffast-math -ffunction-sections
 AFLAGS  = --register-prefix-optional -m68000
 #LFLAGS  = -T $(LFILE) -nostdlib -Wl,-gc-sections
 LFLAGS  = -T $(LFILE) -Wl,-gc-sections

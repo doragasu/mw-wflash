@@ -80,7 +80,7 @@ static inline int menu_str_is_ro(const struct menu_str *str)
  ****************************************************************************/
 static inline int menu_str_is_rw(const struct menu_str *str)
 {
-	return (str->length && str->max_length);
+	return (str->max_length);
 }
 
 /************************************************************************//**

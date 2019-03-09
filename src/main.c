@@ -27,11 +27,11 @@
 /// Maximun number of loop timers
 #define MW_MAX_LOOP_TIMERS	4
 
-/// Command buffer
-static char cmd_buf[MW_BUFLEN];
+/// Command buffer (double buffered)
+static char cmd_buf[2 * MW_BUFLEN];
 
 /// This callback will be run when user enters DOWNLOAD MODE
-int download_mode_cb(struct menu_entry_instance *instance)
+int download_mode_menu_cb(struct menu_entry_instance *instance)
 {
 	struct menu_item_entry *entry = instance->entry->item_entry;
 	struct menu_item *item = entry->item;
@@ -40,6 +40,7 @@ int download_mode_cb(struct menu_entry_instance *instance)
 	enum mw_err err = FALSE;
 	char ip_addr[16];
 
+	// Prevent this function to re-enter while waiting on MegaWifi commands
 	stat = mw_sys_stat_get();
 	if (!stat) {
 		err = MW_ERR;
@@ -67,9 +68,9 @@ int download_mode_cb(struct menu_entry_instance *instance)
 	if (!err) {
 		menu_str_replace(&item[0].caption, "Connected to client!");
 		menu_item_draw(MENU_PLACE_CENTER);
-		sf_init(cmd_buf, MW_BUFLEN);
-		while (!sf_cycle(instance));
-		menu_str_replace(&item[0].caption, "ERR?");
+		sf_init(cmd_buf, MW_BUFLEN, instance);
+		sf_start();
+//		menu_str_replace(&item[0].caption, "FINISHED");
 	}
 
 	return err;

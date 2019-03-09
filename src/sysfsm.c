@@ -5,83 +5,103 @@
  * \author Jesús Alonso (doragasu)
  * \date   2017
  ****************************************************************************/
+#include <string.h>
 #include "sysfsm.h"
 #include "cmds.h"
 #include "flash.h"
 #include "util.h"
+#include "loop.h"
 #include "menu_imp/menu_itm.h"
 
 //#include "vdp.h"
 
 /// System states
-enum sf_stat {
-	WF_IDLE,			///< Idle state, waiting for commands
-	WF_DATA_WAIT,		///< Waiting for data to write to Flash
-	WF_STATE_MAX		///< State limit. Do not use.
+//enum sf_stat {
+//	WF_IDLE = 0,		///< Idle state, waiting for commands
+//	WD_CMD_WAIT,		///< Waiting for a command
+//	WF_DATA_WAIT,		///< Waiting for data to write to Flash
+//	WF_FLASHING,		///< Using flash chip
+//	WF_STATE_MAX		///< State limit. Do not use.
+//};
+
+const char * const lsd_err[] = {
+	"FRAMING ERROR",
+	"INVALID CHANNEL",
+	"FRAME TOO LONG",
+	"IN PROGRESS",
+	"UNDEFINED ERROR",
+	"COMPLETE",
+	"BUSY"
 };
+
+static const char *get_lsd_err(enum lsd_status stat)
+{
+	return lsd_err[stat - LSD_STAT_ERR_FRAMING];
+}
 
 /// Local module data structure
 struct sf_data {
-	char *buf;		///< Command buffer
+	char *buf[2];		///< Command buffer (double buffered)
+	uint32_t addr;		///< Address to which write
+	int32_t rem_recv;	///< Remaining bytes to receive
+	int32_t rem_write;	///< Remaining bytes to write
+	struct loop_func f;	///< Loop function for flash polling
+//	uint16_t pos;		///< Position in receive buffer
 	int16_t buf_length;	///< Command buffer length
-	uint32_t waddr;		///< Word address to which write
-	uint32_t wrem;		///< Remaining words to write
-	enum sf_stat s;		///< System status
+	uint16_t recvd[2];	///< Number of bytes received on each buffer
+	uint16_t to_write;	///< Number of bytes from buffer to write
+	/// Menu instance for text drawing
+	struct menu_entry_instance *instance;
+	uint8_t next_idx;	///< Next empty frame
+	uint8_t avail_idx;	///< Next ready frame
+	uint8_t avail_frames;	///< Available (filled) frames
+	struct {
+		uint8_t busy_flash:1;	///< Flash is erasing/writing data
+		uint8_t busy_recv:1;	///< We are receiving data
+	};
 };
+
+// Local callback function prototypes
+static void cmd_recv_cb(enum lsd_status stat, uint8_t ch,
+		char *data, uint16_t len, void *ctx);
+static void flash_done_cb(int err, void *ctx);
+static void data_recv_cb(enum lsd_status stat, uint8_t ch,
+		char *data, uint16_t len, void *ctx);
 
 /// Module local data
 static struct sf_data d;
 
-void sf_init(char *cmd_buf, int16_t buf_length)
+static void flash_poll_cb(struct loop_func *f)
 {
-	d.buf = cmd_buf;
-	d.buf_length = buf_length;
-	d.s = WF_IDLE;
+	UNUSED_PARAM(f);
+	flash_poll_proc();
 }
 
-/************************************************************************//**
- * Write data to flash chip.
- *
- * \param[in] in  Input data buffer to write to cart.
- * \param[in] len Length of the data buffer to write to cart.
- *
- * \return 0 if OK but more data is pending. 1 if finished. -1 if error.
- ****************************************************************************/
-static int sf_write(wf_buf *in, uint16_t len) {
-	uint16_t i, wlen;
-	uint8_t wwrite;
+void sf_init(char *cmd_buf, int16_t buf_length,
+		struct menu_entry_instance *instance)
+{
+	d.buf[0] = cmd_buf;
+	d.buf[1] = cmd_buf + buf_length;
+	d.buf_length = buf_length;
+	d.instance = instance;
+	d.f.func_cb = flash_poll_cb;
+	d.f.disabled = TRUE;
+	flash_completion_cb_set(flash_done_cb);
+}
 
-	// Convert byte length into word length
-	wlen = len>>1;
-
-	if (wlen > d.wrem) {
-		return -1;
+// If context is not NULL, command reception is not restarted
+static void send_complete_cb(enum lsd_status stat, void *ctx)
+{
+	if (LSD_STAT_COMPLETE == stat && !ctx) {
+		// Command complete, receive another one
+		sf_start();
 	}
-
-	// Write not aligned data
-	wwrite = FLASH_CHIP_WBUFLEN - (d.waddr & (FLASH_CHIP_WBUFLEN - 1));
-	wwrite = MIN(wwrite, wlen);
-	if (FlashWriteBuf(d.waddr<<1, in->wdata, wwrite) != wwrite) return -1;
-	d.waddr += wwrite;
-	// Write received buffer in blocks
-	for (i = wwrite; i < wlen; i += wwrite, d.waddr += wwrite) {
-		wwrite = MIN(FLASH_CHIP_WBUFLEN, wlen - i);
-		if (FlashWriteBuf(d.waddr<<1, in->wdata + i, wwrite) != wwrite) {
-			return -1;
-		}
-
-	}
-	// Update remaining words, and check if finished
-	d.wrem  -= wlen;
-	if (!d.wrem) return 1;
-	return 0;
 }
 
 static int sf_cmd_version_get(wf_buf *in, int16_t len)
 {
 	int ret = len;
 
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("VERSION_GET"), 2, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
 	// sanity checks
 	if (0 == ByteSwapWord(in->cmd.len) &&
 			WF_HEADLEN == len) {
@@ -89,13 +109,13 @@ static int sf_cmd_version_get(wf_buf *in, int16_t len)
 		in->cmd.cmd = WF_CMD_OK;
 		in->cmd.data[0] = WF_VERSION_MAJOR;
 		in->cmd.data[1] = WF_VERSION_MINOR;
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("SENDING"), 3, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN + 2, 0);
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("SENT"), 3, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN + 2,
+				NULL, send_complete_cb);
 	} else {
 		in->cmd.len = 0;
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		ret = -1;
 	}
 
@@ -106,23 +126,20 @@ static int sf_cmd_id_get(wf_buf *in, int len)
 {
 	int ret = len;
 
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("ID_GET"), 2, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
 	// sanity checks
 	if (0 == ByteSwapWord(in->cmd.len) &&
 			WF_HEADLEN == len) {
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("QUERY FLASH"), 3, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
 		in->cmd.data[0] = FlashGetManId();
 		FlashGetDevId(in->cmd.data + 1);
 		in->cmd.cmd = WF_CMD_OK;
 		in->cmd.len = ByteSwapWord(4);
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("SENDING"), 3, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN + 4, 0);
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("SENT"), 3, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN + 4,
+				NULL, send_complete_cb);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
 		in->cmd.len = 0;
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("FRAME ERROR"), 3, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		ret = -1;
 	}
 
@@ -136,11 +153,12 @@ static int sf_cmd_echo(wf_buf *in, int16_t len)
 	// sanity check
 	if (len == ByteSwapWord(in->cmd.len) + WF_HEADLEN) {
 		in->cmd.cmd = WF_CMD_OK;
-		mw_send_sync(WF_CHANNEL, in->sdata, len, 0);
+		mw_send(WF_CHANNEL, in->sdata, len, NULL, send_complete_cb);
 	} else {
 		in->cmd.len = 0;
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		ret = -1;
 	}
 
@@ -166,37 +184,162 @@ static int sf_cmd_erase(wf_buf *in, int16_t len, struct menu_item *item)
 		}
 	}
 	in->cmd.len = 0;
-	mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+	mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN, NULL, send_complete_cb);
 
 	return ret;
+}
+
+static void sf_err_print(const char *err)
+{
+	struct menu_str str = {.str = (char*)err};
+	str.length = strlen(err);
+	menu_str_line_draw(&str, 3, 0, MENU_H_ALIGN_CENTER, 0, 0);
+}
+
+static int frame_check(enum lsd_status stat, char *buf, uint8_t ch,
+		int16_t len, lsd_recv_cb retry_cb)
+{
+	if (LSD_STAT_COMPLETE != stat) {
+		sf_err_print(get_lsd_err(stat));
+		return 1;
+	}
+	if (ch != SF_CHANNEL) {
+		sf_err_print("INVALID CHANNEL!");
+		mw_recv(buf, d.buf_length, NULL, retry_cb);
+		return 1;
+	}
+
+	if (len <= 0) {
+		if (MW_SOCK_TCP_EST != mw_sock_stat_get(SF_CHANNEL)) {
+			// Connection lost
+			sf_err_print("CONNECTION LOST!");
+			return 1;
+		} else {
+			// No data to process, return error but try again
+			mw_recv(buf, d.buf_length, NULL, retry_cb);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static void flash_action(void)
+{
+	if (!d.busy_recv && (d.rem_recv > 0) && d.avail_frames < 2) {
+		d.busy_recv = TRUE;
+		mw_recv(d.buf[d.next_idx], d.buf_length, NULL, data_recv_cb);
+	}
+	if (!d.busy_flash && (d.rem_write) && d.avail_frames) {
+		d.busy_flash = TRUE;
+		d.to_write = MIN(d.recvd[d.avail_idx], d.rem_write);
+		flash_write_long(d.addr, (uint16_t*)d.buf[d.avail_idx],
+				d.to_write / 2);
+		loop_func_enable(&d.f);
+	}
+}
+
+static void flash_done_cb(int err, void *ctx)
+{
+	UNUSED_PARAM(ctx);
+	uint16_t remaining;
+
+	if (err) {
+		// Programming failed!
+		loop_func_del(&d.f);
+		sf_err_print("PROGRAMMING FAILED!");
+		// TODO Cancel reception of remaining data
+		return;
+	}
+	d.rem_write -= d.to_write;
+	if (d.rem_write <= 0) {
+		// We are done. If there are remaining bytes, they are from
+		// a new command following the data transfer
+		loop_func_del(&d.f);
+		remaining = d.recvd[d.avail_idx] - d.to_write;
+		if (remaining > 0) {
+			cmd_recv_cb(LSD_STAT_COMPLETE, SF_CHANNEL,
+					d.buf[d.avail_idx] + d.to_write,
+					remaining, NULL);
+		}
+	} else {
+		// More data to come
+		d.avail_frames--;
+		d.busy_flash = FALSE;
+		d.avail_idx ^= 1;
+		d.addr += d.to_write;
+		loop_func_disable(&d.f);
+	
+		flash_action();
+	}
+}
+
+static void data_recv_cb(enum lsd_status stat, uint8_t ch,
+		char *data, uint16_t len, void *ctx)
+{
+	UNUSED_PARAM(ctx);
+	int err;
+
+	err = frame_check(stat, data, ch, len, data_recv_cb);
+	if (err) {
+		loop_func_del(&d.f);
+		d.rem_recv = d.rem_write = -1;
+		// TODO Cancel writing
+		return;
+	}
+
+	d.busy_recv = FALSE;
+	d.recvd[d.next_idx] = len;
+	d.avail_frames++;
+	d.rem_recv -= len;
+	d.next_idx ^= 1;
+
+	flash_action();
 }
 
 static int sf_cmd_program(wf_buf *in, int16_t len, struct menu_item *item)
 {
 	int ret = len;
-	char addr[7];
 
 	// sanity check
 	if ((len == (ByteSwapWord(in->cmd.len) + WF_HEADLEN)) &&
 			((ByteSwapDWord(in->cmd.mem.addr) +
 			  ByteSwapDWord(in->cmd.mem.len)) <
 			 FLASH_CHIP_LENGTH)) {
-		// Acknowledge command and transition to WF_DATA_WAIT
+		// Acknowledge command and start data reception
 		menu_str_replace(&item[2].caption, "PROGRAM: ");
-		uint32_to_hex_str(ByteSwapDWord(in->cmd.mem.addr), addr, 6);
-		menu_str_append(&item[2].caption, addr);
+		item[2].caption.length +=
+			uint32_to_hex_str(ByteSwapDWord(in->cmd.mem.addr),
+					item[2].caption.str + 9, 6);
 		menu_item_draw(MENU_PLACE_CENTER);
 		
+		in->cmd.len = 0;
 		in->cmd.cmd = WF_CMD_OK;
-		d.s = WF_DATA_WAIT;
-		d.waddr = ByteSwapDWord(in->cmd.mem.addr)>>1;
-		d.wrem = ByteSwapDWord(in->cmd.mem.len)>>1;
+		d.addr = ByteSwapDWord(in->cmd.mem.addr);
+		d.rem_recv = ByteSwapDWord(in->cmd.mem.len);
+		d.rem_write = d.rem_recv;
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				(void*)1, send_complete_cb);
+		// Start data reception and program
+		// For the first data frame, use buffer 1, since buffer
+		// 0 is in use for the command response
+		d.next_idx = 1;
+		d.avail_idx = 1;
+		d.avail_frames = 0;
+		d.busy_flash = FALSE;
+		d.busy_recv = FALSE;
+		loop_func_add(&d.f);
+		loop_func_disable(&d.f);
+
+		flash_action();
 	} else {
+		sf_err_print("PROGRAM CMD ERROR!");
+		in->cmd.len = 0;
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
 		ret = -1;
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 	}
-	in->cmd.len = 0;
-	mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
 
 	return ret;
 }
@@ -213,11 +356,13 @@ static int sf_cmd_run(wf_buf *in, int len)
 		// Boot program at specified address
 		entry = ByteSwapDWord(in->cmd.dwdata[0]);
 		in->cmd.cmd = WF_CMD_OK;
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		sf_boot(entry);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		ret = -1;
 	}
 
@@ -233,11 +378,13 @@ static int sf_cmd_autorun(wf_buf *in, int len)
 	if ((WF_HEADLEN == len) &&
 		(0 == ByteSwapWord(in->cmd.len))) {
 		in->cmd.cmd = WF_CMD_OK;
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		sf_boot(SF_ENTRY_POINT_ADDR);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		ret = -1;
 	}
 
@@ -254,25 +401,27 @@ static int sf_cmd_bload_addr_get(wf_buf *in, int16_t len)
 		in->cmd.cmd = WF_CMD_OK;
 		in->cmd.len = ByteSwapWord(4);
 		in->cmd.dwdata[0] = ByteSwapDWord(SF_BOOTLOADER_ADDR);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN + 4, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN + 4,
+				NULL, send_complete_cb);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
-		mw_send_sync(WF_CHANNEL, in->sdata, WF_HEADLEN, 0);
+		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
+				NULL, send_complete_cb);
 		ret = -1;
 	}
 
 	return ret;
 }
 
-static int sf_cmd_proc(wf_buf *in, int16_t len, struct menu_item *item)
+static int sf_cmd_proc(wf_buf *in, int16_t len)
 {
+	struct menu_item *item = d.instance->entry->item_entry->item;
 	// NOTE: A write command should never be accompanied by data
 	// payload, write command must be acknowledged befor client
 	// starts sending data.
 	switch (ByteSwapWord(in->cmd.cmd)) {
 	// Get bootloader version
 	case WF_CMD_VERSION_GET:
-	menu_str_line_draw(&(struct menu_str)MENU_STR_RO("VERSION_GET"), 2, 1, MENU_H_ALIGN_CENTER, MENU_COLOR_ITEM, 0);
 		len = sf_cmd_version_get(in, len);
 		break;
 
@@ -318,115 +467,29 @@ static int sf_cmd_proc(wf_buf *in, int16_t len, struct menu_item *item)
 	return len;
 }
 
-static int sf_data_write(wf_buf *in, uint16_t len, struct menu_item *item)
+static void cmd_recv_cb(enum lsd_status stat, uint8_t ch,
+		char *data, uint16_t len, void *ctx)
 {
-	uint16_t to_write;
+	UNUSED_PARAM(ctx);
+	int err;
 
-	// Because command does not require confirmation at this point,
-	// if we receive more data than remaining to write, it could be
-	// because TCP has joined on a single datagram the data payload
-	// and a command request sent immediately after the data. So
-	// there is more data to process after we finish writing.
-	//
-	// FIXME: It could happen that what is received after the data
-	// payload is a partial command (i.e. some command data is
-	// still missing). Support for handling this case is not yet
-	// implemented.
-	to_write = MIN(len, d.wrem<<1);
-	// Write data to Flash
-	switch (sf_write(in, to_write)) {
-	case -1: // Error
-		menu_str_replace(&item[2].caption, "ERROR!");
-		menu_item_draw(MENU_PLACE_CENTER);
-		to_write = -1;
-		break;
+	err = frame_check(stat, data, ch, len, cmd_recv_cb);
 
-	case 1: // Finished
-		// TODO: Draw position
-		d.s = WF_IDLE;
-		char temp[10];
-		uint32_to_hex_str(len, temp, 4);
-		temp[4] = ' ';
-		uint32_to_hex_str(to_write + 5, temp, 4);
-		temp[9] = '\0';
-		menu_str_replace(&item[2].caption, temp);
-//		item[2].caption.str[0] = '\0';
-//		item[2].caption.length = 0;
-		menu_item_draw(MENU_PLACE_CENTER);
-		break;
-
-	case 0:	// OK, more data pending
-	default:
-		break;
+	if (!err) {
+		sf_cmd_proc((wf_buf*)data, len);
 	}
-
-	return to_write;
 }
 
-static int sf_data_proc(wf_buf *in, int16_t len, struct menu_item *item)
+void sf_start(void)
 {
-	switch (d.s) {
-	case WF_IDLE:
-		// Awaiting command
-		len = sf_cmd_proc(in, len, item);
-		break;
-
-	case WF_DATA_WAIT:
-		len = sf_data_write(in, len, item);
-		break;
-
-	default:
-		len = -1;
-		break;
-	}
-
-	return len;
+	mw_recv(d.buf[0], d.buf_length, NULL, cmd_recv_cb);
 }
 
-enum mw_err sf_cycle(struct menu_entry_instance *instance)
+static void boot_timer_cb(struct loop_timer *t)
 {
-	struct menu_item *item = instance->entry->item_entry->item;
-	enum mw_err err;
-	uint8_t ch;
-	int16_t len = d.buf_length;
-	int16_t processed;
-	int offset = 0;
-	wf_buf *in = (wf_buf*)d.buf;
+	UNUSED_PARAM(t);
 
-	// Receive data
-	err = mw_recv_sync(&ch, d.buf, &len, 0);
-	if (err) {
-		return err;
-	}
-	if (ch != SF_CHANNEL) {
-		// Ignore frame
-		// FIXME Maybe someone should be able to read this data
-		return MW_ERR_NONE;
-	}
-
-	// If we have received no payload, maybe the connection has been lost
-	if (len <= 0) {
-		if (MW_SOCK_TCP_EST != mw_sock_stat_get(SF_CHANNEL)) {
-			return MW_ERR;
-		} else {
-			return MW_ERR_NONE;
-		}
-	}
-
-	// While there is data to process...
-	while (len) {
-		processed = sf_data_proc(in, len, item);
-		if (processed > 0) {
-			len -= processed;
-			offset += processed;
-			in = (wf_buf*)(d.buf + offset);
-		} else {
-			// Error, exit
-			len = 0;
-		}
-	}
-
-	return MW_ERR_NONE;
+	loop_post(1);
 }
 
 /************************************************************************//**
@@ -438,11 +501,15 @@ enum mw_err sf_cycle(struct menu_entry_instance *instance)
 void boot_addr(uint32_t addr);
 
 void sf_boot(uint32_t addr) {
-    int i;
+	struct loop_timer t = {
+		.timer_cb = boot_timer_cb,
+		.frames = 2
+	};
+	int i;
 
 	// Wait between 1 and 2 frames for the message to be sent
-	VdpVBlankWait();
-	VdpVBlankWait();
+	loop_timer_add(&t);
+	loop_pend();
 	// Clear CRAM
 	VdpRamRwPrep(VDP_CRAM_WR, 0);
 	for (i = 64; i > 0; i--) VDP_DATA_PORT_W = 0;

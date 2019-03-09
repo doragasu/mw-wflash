@@ -54,7 +54,7 @@ enum PACKED mw_command {
 	MW_CMD_SOCK_STAT	=  20,	///< Get socket status
 	MW_CMD_PING		=  21,	///< Ping host
 	MW_CMD_SNTP_CFG		=  22,	///< Configure SNTP service
-	MW_CMD_SNTP_CFG_GET     =  23,     ///< Get SNTP configuration
+	MW_CMD_SNTP_CFG_GET     =  23,  ///< Get SNTP configuration
 	MW_CMD_DATETIME		=  24,	///< Get date and time
 	MW_CMD_DT_SET       	=  25,	///< Set date and time
 	MW_CMD_FLASH_WRITE	=  26,	///< Write to WiFi module flash

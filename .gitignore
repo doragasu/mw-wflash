@@ -6,3 +6,4 @@ src/wflash
 *.vim
 octave-workspace
 *.swp
+gdbinit

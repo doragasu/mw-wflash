@@ -27,8 +27,10 @@ static void *alloc_cpy(const void *org, size_t length)
 	void *cpy;
 
 	cpy = mp_alloc(length);
-	if (cpy) {
+	if (org) {
 		memcpy(cpy, org, length);
+	} else {
+		memset(cpy, 0, length);
 	}
 
 	return cpy;
