@@ -4,6 +4,7 @@
 #include "menu_net.h"
 #include "menu_txt.h"
 #include "menu_dl.h"
+#include "menu_gtag.h"
 #include "../menu_imp/menu.h"
 #include "../menu_imp/menu_msg.h"
 #include "../mw/megawifi.h"
@@ -281,7 +282,7 @@ const struct menu_entry main_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("WELCOME TO 1985[ALT]Channel!"),
 	.left_context = MENU_STR_RO("Select an option"),
-	.item_entry = MENU_ITEM_ENTRY(3, 4, MENU_H_ALIGN_CENTER) {
+	.item_entry = MENU_ITEM_ENTRY(4, 4, MENU_H_ALIGN_CENTER) {
 		{
 			.caption = MENU_STR_RO("START!"),
 			.not_selectable = TRUE,
@@ -294,6 +295,10 @@ const struct menu_entry main_menu = {
 		{
 			.caption = MENU_STR_RO("CONFIGURATION"),
 			.next = (struct menu_entry*)&config_menu
+		},
+		{
+			.caption = MENU_STR_RO("GAMERTAGS"),
+			.next = (struct menu_entry*)&gamertag_menu
 		}
 	} MENU_ITEM_ENTRY_END
 };

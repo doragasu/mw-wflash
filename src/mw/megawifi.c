@@ -76,7 +76,7 @@ int mw_init(char *cmd_buf, uint16_t buf_len)
 	// Keep WiFi module in reset
 	mw_module_reset();
 	// Power down and Program not active (required for the module to boot)
-	UartClrBits(MCR, MW__PRG | MW__PD);
+	uart_clr_bits(MCR, MW__PRG | MW__PD);
 
 	// Try accessing UART scratch pad register to see if it is installed
 	UART_SPR = 0x55;
@@ -210,7 +210,7 @@ enum mw_err mw_detect(uint8_t *major, uint8_t *minor, char **variant)
 
 	do {
 		retries--;
-		UartResetFifos();
+		uart_reset_fifos();
 		err = mw_version_get(major, minor, variant);
 	} while (err != MW_ERR_NONE && retries);
 
@@ -306,7 +306,7 @@ enum mw_err mw_ap_cfg_set(uint8_t slot, const char *ssid, const char *pass)
 	}
 
 	d.cmd->cmd = MW_CMD_AP_CFG;
-	d.cmd->data_len = sizeof(MwMsgApCfg);
+	d.cmd->data_len = sizeof(struct mw_msg_ap_cfg);
 
 	memset(&d.cmd->ap_cfg, 0, sizeof(struct mw_msg_ap_cfg));
 	d.cmd->ap_cfg.cfg_num = slot;
@@ -366,7 +366,7 @@ enum mw_err mw_ip_cfg_set(uint8_t slot, const struct mw_ip_cfg *ip)
 	}
 
 	d.cmd->cmd = MW_CMD_IP_CFG;
-	d.cmd->data_len = sizeof(MwMsgIpCfg);
+	d.cmd->data_len = sizeof(struct mw_msg_ip_cfg);
 	d.cmd->ip_cfg.cfg_slot = slot;
 	d.cmd->ip_cfg.reserved[0] = 0;
 	d.cmd->ip_cfg.reserved[1] = 0;
@@ -875,7 +875,7 @@ enum mw_err mw_flash_sector_erase(uint16_t sect)
 }
 
 // Address 0 corresponds to flash address 0x80000
-enum mw_err mw_flash_write(uint32_t addr, uint8_t data[], uint16_t data_len)
+enum mw_err mw_flash_write(uint32_t addr, uint8_t *data, uint16_t data_len)
 {
 	enum mw_err err;
 
@@ -932,6 +932,68 @@ uint8_t *mw_hrng_get(uint16_t rnd_len) {
 	}
 
 	return d.cmd->data;
+}
+
+uint8_t *mw_bssid_get(enum mw_if_type interface_type)
+{
+	enum mw_err err;
+
+	if (!d.mw_ready || interface_type >= MW_IF_MAX) {
+		return NULL;
+	}
+
+	d.cmd->cmd = MW_CMD_BSSID_GET;
+	d.cmd->data_len = 1;
+	d.cmd->data[0] = interface_type;
+	err = mw_command(MW_COMMAND_TOUT);
+	if (err) {
+		return NULL;
+	}
+
+	return d.cmd->data;
+}
+
+enum mw_err mw_gamertag_set(uint8_t slot, struct mw_gamertag *gamertag)
+{
+	enum mw_err err;
+
+	if (!d.mw_ready) {
+		return MW_ERR_NOT_READY;
+	}
+
+	d.cmd->cmd = MW_CMD_GAMERTAG_SET;
+	d.cmd->gamertag_set.slot = slot;
+	d.cmd->gamertag_set.reserved[0] = 0;
+	d.cmd->gamertag_set.reserved[1] = 0;
+	d.cmd->gamertag_set.reserved[2] = 0;
+	d.cmd->data_len = sizeof(struct mw_gamertag_set_msg);
+	memcpy(&d.cmd->gamertag_set.gamertag, gamertag,
+			sizeof(struct mw_gamertag));
+	err = mw_command(MW_COMMAND_TOUT);
+	if (err) {
+		return MW_ERR;
+	}
+
+	return MW_ERR_NONE;
+}
+
+struct mw_gamertag *mw_gamertag_get(uint8_t slot)
+{
+	enum mw_err err;
+
+	if (!d.mw_ready) {
+		return NULL;
+	}
+
+	d.cmd->cmd = MW_CMD_GAMERTAG_GET;
+	d.cmd->data_len = 1;
+	d.cmd->data[0] = slot;
+	err = mw_command(MW_COMMAND_TOUT);
+	if (err) {
+		return NULL;
+	}
+
+	return &d.cmd->gamertag_get;
 }
 
 void mw_sleep(uint16_t frames)

@@ -49,25 +49,25 @@ enum send_state {
 
 /// Data holding the send state
 struct send_data {
-	enum send_state stat;
-	const char *buf;
-	int16_t pos;
-	int16_t total; 
-	void *ctx;
-	lsd_send_cb cb;
-	uint8_t ch;
+	enum send_state stat;	///< Status of the send process
+	const char *buf;	///< Send buffer
+	int16_t pos;		///< Buffer position
+	int16_t total; 		///< Total bytes to send
+	void *ctx;		///< Send context
+	lsd_send_cb cb;		///< Send completion callback
+	uint8_t ch;		///< Send channel
 };
 
 /// Data holding the recv state
 struct recv_data {
-	enum recv_state stat;
-	char *buf;
-	int16_t pos;
-	int16_t frame_len;
-	int16_t max;
-	void *ctx;
-	lsd_recv_cb cb;
-	uint8_t ch;
+	enum recv_state stat;	///< Status of the recv process
+	char *buf;		///< Receive buffer
+	int16_t pos;		///< Buffer position
+	int16_t frame_len;	///< Length of received frame
+	int16_t max;		///< Buffer size
+	void *ctx;		///< Receive context
+	lsd_recv_cb cb;		///< Reception callback
+	uint8_t ch;		///< Reception channel
 };
 
 /// Local data required by the module.
@@ -108,7 +108,7 @@ static void recv_complete(void)
 
 static void process_recv(void)
 {
-	uint8_t recv = UartGetc();
+	uint8_t recv = uart_getc();
 
 	switch (d.rx.stat) {
 	case LSD_RECV_STX:	// Wait for STX to arrive
@@ -163,6 +163,7 @@ static void process_recv(void)
 
 
 	default:
+		// Code should never reach here!
 		recv_error(LSD_STAT_ERROR);
 		break;
 	}
@@ -180,29 +181,29 @@ static void process_send(void)
 {
 	switch (d.tx.stat) {
 	case LSD_SEND_STX:
-		UartPutc(LSD_STX_ETX);
+		uart_putc(LSD_STX_ETX);
 		d.tx.stat = LSD_SEND_CH_LENH;
 		break;
 
 	case LSD_SEND_CH_LENH:
-		UartPutc((d.tx.ch<<4) | (d.tx.total>>8));
+		uart_putc((d.tx.ch<<4) | (d.tx.total>>8));
 		d.tx.stat = LSD_SEND_LEN;
 		break;
 
 	case LSD_SEND_LEN:
-		UartPutc(d.tx.total & 0xFF);
+		uart_putc(d.tx.total & 0xFF);
 		d.tx.stat = LSD_SEND_DATA;
 		break;
 
 	case LSD_SEND_DATA:
-		UartPutc(d.tx.buf[d.tx.pos++]);
+		uart_putc(d.tx.buf[d.tx.pos++]);
 		if (d.tx.pos >= d.tx.total) {
 			d.tx.stat = LSD_SEND_ETX;
 		}
 		break;
 
 	case LSD_SEND_ETX:
-		UartPutc(LSD_STX_ETX);
+		uart_putc(LSD_STX_ETX);
 		send_complete();
 		break;
 	default:
@@ -216,13 +217,13 @@ void lsd_process(void)
 
 	do {
 		active = FALSE;
-		if (d.rx.stat > LSD_RECV_IDLE && UartRxReady()) {
+		if (d.rx.stat > LSD_RECV_IDLE && uart_rx_ready()) {
 			active = TRUE;
-			while (UartRxReady() && d.rx.stat > LSD_RECV_IDLE) {
+			while (uart_rx_ready() && d.rx.stat > LSD_RECV_IDLE) {
 				process_recv();
 			}
 		}
-		if (UartTxReady() && d.tx.stat > LSD_SEND_IDLE) {
+		if (uart_tx_ready() && d.tx.stat > LSD_SEND_IDLE) {
 			active = TRUE;
 			for (int i = 0; i < UART_TX_FIFO_LEN &&
 					d.tx.stat > LSD_SEND_IDLE; i++) {
@@ -234,7 +235,7 @@ void lsd_process(void)
 
 void lsd_init(void)
 {
-	UartInit();
+	uart_init();
 	memset(&d, 0, sizeof(struct lsd_data));
 }
 

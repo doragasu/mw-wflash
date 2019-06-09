@@ -1,5 +1,12 @@
 /************************************************************************//**
- * \brief MeGaWiFi API implementation.
+ * \file
+ *
+ * \brief MegaWiFi API implementation.
+ *
+ * \defgroup megawifi megawifi
+ * \{
+ *
+ * \brief MegaWiFi API implementation.
  *
  * \author Jesus Alonso (doragasu)
  * \date 2015
@@ -8,9 +15,6 @@
  *
  * \todo Missing a lot of integrity checks, also module should track used
  *       channels, and is not currently doing it
- *
- * \defgroup MegaWiFi megawifi
- * \{
  ****************************************************************************/
 
 #ifndef _MEGAWIFI_H_
@@ -29,17 +33,18 @@
 /// Milliseconds between status polls while in wm_ap_assoc_wait()
 #define MW_STAT_POLL_MS		250
 
+/// Error codes for MegaWiFi API functions
 enum mw_err {
-	MW_ERR_NONE = 0,
-	MW_ERR,
-	MW_ERR_NOT_READY,
-	MW_ERR_BUFFER_TOO_SHORT,
-	MW_ERR_PARAM,
-	MW_ERR_SEND,
-	MW_ERR_RECV
+	MW_ERR_NONE = 0,		///< No error (success)
+	MW_ERR,				///< General error
+	MW_ERR_NOT_READY,		///< Not ready to run command
+	MW_ERR_BUFFER_TOO_SHORT,	///< Command buffer is too small
+	MW_ERR_PARAM,			///< Input parameter out of range
+	MW_ERR_SEND,			///< Error sending data
+	MW_ERR_RECV			///< Error receiving data
 };
 
-/** \addtogroup MwCtrlPins MwCtrlPins
+/** \addtogroup mw_ctrl_pins mw_ctrl_pins
  *  \brief Pins used to control WiFi module.
  *  \{ */
 #define MW__RESET	UART_MCR__OUT1	///< Reset out.
@@ -79,8 +84,15 @@ struct mw_ap_data {
 	char *ssid;		///< SSID string (not NULL terminated).
 };
 
+/// Interface type for the mw_bssid_get() function.
+enum mw_if_type {
+	MW_IF_STATION = 0,	///< Station interface
+	MW_IF_SOFTAP,		///< Access Point interface
+	MW_IF_MAX		///< Number of supported interface types
+};
+
 /************************************************************************//**
- * \brief MwInit Module initialization. Must be called once before using any
+ * \brief Module initialization. Must be called once before using any
  *        other function. It also initializes de UART.
  *
  * \param[in] cmd_buf Pointer to the buffer used to send and receive commands.
@@ -104,7 +116,7 @@ static inline void mw_process(void)	{lsd_process();}
  * \brief Sets the callback function to be run when network data is received
  * while waiting for a command reply.
  *
- * \param[in] cmd_recb_cb Callback to be run when data is received while
+ * \param[in] cmd_recv_cb Callback to be run when data is received while
  *                        waiting for a command reply.
  *
  * \warning If this callback is not set, data received while waiting for a
@@ -134,6 +146,15 @@ enum mw_err mw_detect(uint8_t *major, uint8_t *minor, char **variant);
  * \return MW_ERR_NONE on success, other code on failure.
  ****************************************************************************/
 enum mw_err mw_version_get(uint8_t *major, uint8_t *minor, char **variant);
+
+/************************************************************************//**
+ * \brief Gets the module BSSID (the MAC address) for the specified interface.
+ *
+ * \param[in] interface_type Type of the interface to obtain BSSID from.
+ *
+ * \return The requested BSSID (6 byte binary data), or NULL on error.
+ ****************************************************************************/
+uint8_t *mw_bssid_get(enum mw_if_type interface_type);
 
 /************************************************************************//**
  * \brief Set default module configuration.
@@ -178,7 +199,7 @@ enum mw_err mw_ap_cfg_get(uint8_t slot, char **ssid, char **pass);
  * \brief Set IPv4 configuration.
  *
  * \param[in] slot Configuration slot to use.
- * \param[in] ip   Pointer to the MwIpCfg structure, with IP configuration.
+ * \param[in] ip   Pointer to the mw_ip_cfg structure, with IP configuration.
  *
  * \return MW_ERR_NONE on success, other code on failure.
  *
@@ -191,7 +212,7 @@ enum mw_err mw_ip_cfg_set(uint8_t slot, const struct mw_ip_cfg *ip);
  * \brief Get IPv4 configuration.
  *
  * \param[in]  slot Configuration slot to use.
- * \param[out] ip   Double pointer to MwIpCfg structure, with IP conf.
+ * \param[out] ip   Double pointer to mw_ip_cfg structure, with IP conf.
  *
  * \return MW_ERR_NONE on success, other code on failure.
  ****************************************************************************/
@@ -210,7 +231,7 @@ enum mw_err mw_ip_current(struct mw_ip_cfg **ip);
  * \brief Scan for access points.
  *
  * \param[out] ap_data Data of the found access points. Each entry has the
- *             format specified on the MwApData structure.
+ *             format specified on the mw_ap_data structure.
  * \param[out] aps     Number of found access points.
  *
  * \return Length in bytes of the output data if operation completes
@@ -221,15 +242,15 @@ int mw_ap_scan(char **ap_data, uint8_t *aps);
 /************************************************************************//**
  * \brief Parses received AP data and fills information of the AP at "pos".
  *        Useful to extract AP information from the data obtained by
- *        calling MwApScan() function.
+ *        calling mw_ap_scan() function.
  *
- * \param[in]  ap_data  Access point data obtained from MwApScan().
+ * \param[in]  ap_data  Access point data obtained from mw_ap_scan().
  * \param[in]  pos      Position at which to extract data.
  * \param[out] apd      Pointer to the extracted data from an AP.
  * \param[in]  data_len Lenght of apData.
  *
  * \return Position of the next AP entry in apData, 0 if no more APs
- *         available or MW_ERROR if apData/pos combination is not valid.
+ *         available or MW_ERROR if ap data/pos combination is not valid.
  *
  * \note This functions executes locally, does not communicate with the
  *       WiFi module.
@@ -474,7 +495,7 @@ enum mw_err mw_flash_sector_erase(uint16_t sect);
  *
  * \return MW_ERR_NONE on success, other code on failure.
  ****************************************************************************/
-enum mw_err mw_flash_write(uint32_t addr, uint8_t data[], uint16_t data_len);
+enum mw_err mw_flash_write(uint32_t addr, uint8_t *data, uint16_t data_len);
 
 /************************************************************************//**
  * \brief Read data from specified flash address.
@@ -489,19 +510,26 @@ uint8_t *mw_flash_read(uint32_t addr, uint16_t data_len);
 /************************************************************************//**
  * \brief Puts the WiFi module in reset state.
  ****************************************************************************/
-#define mw_module_reset()	do{UartSetBits(MCR, MW__RESET);}while(0)
+#define mw_module_reset()	do{uart_set_bits(MCR, MW__RESET);}while(0)
 
 /************************************************************************//**
  * \brief Releases the module from reset state.
  ****************************************************************************/
-#define mw_module_start()	do{UartClrBits(MCR, MW__RESET);}while(0)
+#define mw_module_start()	do{uart_clr_bits(MCR, MW__RESET);}while(0)
+
+/************************************************************************//**
+ * \brief Sleep the specified amount of frames
+ *
+ * \param[in] frames Number of frames to sleep.
+ ****************************************************************************/
+void mw_sleep(uint16_t frames);
 
 /****** THE FOLLOWING COMMANDS ARE LOWER LEVEL AND USUALLY NOT NEEDED ******/
 
 /************************************************************************//**
  * \brief Send a command to the WiFi module.
  *
- * \param[in] cmd     Pointer to the filled MwCmd command structure.
+ * \param[in] cmd     Pointer to the filled mw_cmd command structure.
  * \param[in] ctx     Context for callback function.
  * \param[in] send_cb Callback for the send operation completion.
  *
@@ -529,12 +557,9 @@ static inline enum lsd_status mw_cmd_recv(mw_cmd *rep, void *ctx,
 	return lsd_recv(rep->packet, sizeof(mw_cmd), ctx, recv_cb);
 }
 
-/************************************************************************//**
- * \brief Sleep the specified amount of frames
- *
- * \param[in] frames Number of frames to sleep.
- ****************************************************************************/
-void mw_sleep(uint16_t frames);
+enum mw_err mw_gamertag_set(uint8_t slot, struct mw_gamertag *gamertag);
+
+struct mw_gamertag *mw_gamertag_get(uint8_t slot);
 
 #endif /*_MEGAWIFI_H_*/
 

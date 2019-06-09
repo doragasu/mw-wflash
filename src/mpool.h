@@ -1,12 +1,12 @@
 /************************************************************************//**
  * \file
  *
- * \brief Memory Pool.
+ * \brief Memory Pool
  *
  * \defgroup mpool mpool
  * \{
  *
- * \brief Memory Pool.
+ * \brief Memory Pool
  *
  * Implements a memory pool for dynamic memory allocation. This memory pool
  * gets memory from the unused region between the end of the .bss section

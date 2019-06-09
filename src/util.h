@@ -1,3 +1,14 @@
+/************************************************************************//**
+ * \file
+ *
+ * \brief General purpose utilities.
+ *
+ * \defgroup util util
+ * \{
+ *
+ * \brief General purpose utilities.
+ ****************************************************************************/
+
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
@@ -5,13 +16,16 @@
 #include <stddef.h>
 
 #ifndef TRUE
+/// TRUE value for boolean comparisons
 #define TRUE 1
 #endif
 #ifndef FALSE
+/// TRUE value for boolean comparisons
 #define FALSE 0
 #endif
 
 #ifndef NULL
+/// NULL Pointer
 #define NULL ((void*)0)
 #endif
 
@@ -24,7 +38,7 @@
 		const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
 		(type *)( (char *)__mptr - offsetof(type,member) );})
 
-/// Use for packing structures and enumerates
+/// Macro for packing structures and enumerates
 #define PACKED		__attribute__((__packed__))
 
 /// Section attribute definition for variables and functions. Examples:
@@ -57,6 +71,11 @@
 		((((uint32_t)(dw))>>8) & 0xFF00) | ((((uint32_t)(dw)) & 0xFF00)<<8) | \
 	  	(((uint32_t)(dw))<<24))
 
+/************************************************************************//**
+ * \brief Converts input string to uppercase.
+ *
+ * \param[inout] str String to be converted to uppercase.
+ ****************************************************************************/
 static inline void to_upper(char *str) {
 	uint16_t i;
 	for (i = 0; str[i] != '\0'; i++) {
@@ -68,6 +87,8 @@ static inline void to_upper(char *str) {
 /************************************************************************//**
  * \brief Evaluates if a string points to a number that can be stored in a
  * uint8_t type variable.
+ *
+ * \param[in] str String to be evaluated as a number.
  *
  * \return The pointer to the character following the last digit of the
  *         number, if the string represents a number fittint in a uint_8.
@@ -149,9 +170,9 @@ const char *str_to_uint8(const char *strIn, uint8_t *result);
  *
  * \param[in]  num  Number to convert to string.
  * \param[out] str  String that will hold the converted number.
- * \param[in]  bufLen Length of str buffer.
- * \param[in]  padLen Length of the padding to introduce. 0 for no padding.
- * \param[in]  padChr Character used for padding (typically '0' or ' ').
+ * \param[in]  buf_len Length of str buffer.
+ * \param[in]  pad_len Length of the padding to introduce. 0 for no padding.
+ * \param[in]  pad_chr Character used for padding (typically '0' or ' ').
  *
  * \return Number of characters written to str buffer, not including the
  * null termination. 0 if string does not fin in the buffer and has not
@@ -161,6 +182,15 @@ const char *str_to_uint8(const char *strIn, uint8_t *result);
  * ideas using it in a game loop.
  ****************************************************************************/
 int long_to_str(long num, char *str, int buf_len, int pad_len, char pad_chr);
+
+/************************************************************************//**
+ * \brief Converts a 8-bit number to its hexadecimal string representation.
+ *
+ * \param[in]  num Number to convert.
+ * \param[out] str Converted equivalent string. Must have room for at least
+ *             3 characters to guarantee an overrun will not accur.
+ ****************************************************************************/
+void uint8_to_hex_str(uint8_t num, char *str);
 
 /************************************************************************//**
  * \brief Converts a 32-bit number to its hexadecimal string representation.
@@ -176,14 +206,7 @@ int long_to_str(long num, char *str, int buf_len, int pad_len, char pad_chr);
  ****************************************************************************/
 int uint32_to_hex_str(uint32_t num, char *str, int pad);
 
-#ifndef TRUE
-/// TRUE value for logic comparisons
-#define TRUE 1
-/// FALSE value for logic comparisons
-#define TRUE 1
-#define FALSE 0
-#endif
-
 #endif //_UTIL_H_
 
+/** \} */
 
