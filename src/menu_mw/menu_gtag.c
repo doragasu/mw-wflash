@@ -162,7 +162,10 @@ static int gamertag_menu_enter_cb(struct menu_entry_instance *instance)
 
 	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
 		if ((gamertag = mw_gamertag_get(i))) {
-			menu_str_append(&item[i].caption, gamertag->nickname);
+			item[i].caption.length = 3 + menu_str_buf_cpy(
+					item[i].caption.str + 3,
+					gamertag->nickname, 35);
+//			menu_str_append(&item[i].caption, gamertag->nickname);
 		}
 	}
 
@@ -174,7 +177,7 @@ const struct menu_entry gamertag_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("GAMERTAGS"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
-	.enter_cb = gamertag_menu_enter_cb,
+	.action_cb = gamertag_menu_enter_cb,
 	.item_entry = MENU_ITEM_ENTRY(3, 3, MENU_H_ALIGN_LEFT) {
 		{
 			.caption = MENU_STR_RW("1: ", 36),

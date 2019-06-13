@@ -269,11 +269,12 @@ int menu_item_enter(void)
 		menu_item_next();
 	}
 
-	menu_item_draw(MENU_PLACE_CENTER);
-
 	if (instance->entry->action_cb) {
 		err = instance->entry->action_cb(instance);
 	}
+
+	menu_item_draw(MENU_PLACE_CENTER);
+
 	return err;
 }
 

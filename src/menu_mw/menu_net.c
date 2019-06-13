@@ -280,6 +280,8 @@ static int net_menu_save(struct menu_entry_instance *instance)
 		return 1;
 	}
 
+	mw_def_ap_cfg(slot);
+
 	return 0;
 }
 

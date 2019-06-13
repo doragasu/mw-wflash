@@ -31,23 +31,18 @@
 static char cmd_buf[2 * MW_BUFLEN];
 
 /// This callback will be run when user enters DOWNLOAD MODE
+/// \note This should be moved to menu_mw/menu_dl.c, but since it needs to see
+/// cmd_buf, we are leaving it here by now.
 int download_mode_menu_cb(struct menu_entry_instance *instance)
 {
 	struct menu_item_entry *entry = instance->entry->item_entry;
 	struct menu_item *item = entry->item;
-	union mw_msg_sys_stat *stat;
+	uint8_t slot = instance->prev->sel_item;
 	struct mw_ip_cfg *ip;
 	enum mw_err err = FALSE;
 	char ip_addr[16];
 
-	// Prevent this function to re-enter while waiting on MegaWifi commands
-	stat = mw_sys_stat_get();
-	if (!stat) {
-		err = MW_ERR;
-	}
-	if (!err) {
-		err = mw_ap_assoc(stat->cfg);
-	}
+	err = mw_ap_assoc(slot);
 	if (!err) {
 		err = mw_ap_assoc_wait(30 * 60);
 	}
