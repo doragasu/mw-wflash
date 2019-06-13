@@ -21,8 +21,10 @@
 	.align = item_align,						\
 	.item = (struct menu_item*)(const struct menu_item[items])
 
+/// Macro to close a previously opened MENU_ITEM_ENTRY
 #define MENU_ITEM_ENTRY_END }
 
+/// Macro to build on-screen keyboard entries.
 #define MENU_OSK_ENTRY (struct menu_osk_entry*)&(const struct menu_osk_entry)
 
 /************************************************************************//**
@@ -62,6 +64,14 @@ void menu_update(uint8_t gp_press);
  ****************************************************************************/
 void menu_enter(const struct menu_entry *next);
 
+/************************************************************************//**
+ * Draw a message box.
+ *
+ * \param[in] title       Title to display in the message box title bar.
+ * \param[in] caption     Message to display.
+ * \param[in] flags       Message box option flags.
+ * \param[in] wait_frames Number of frames to wait before closing the dialog.
+ ****************************************************************************/
 void menu_msg(const char *title, const char *caption,
 		enum menu_msg_flags flags, uint16_t wait_frames);
 
