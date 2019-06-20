@@ -8,6 +8,14 @@
  *
  * \brief MegaWiFi API implementation.
  *
+ * API to communicate with the wifi module and the Internet. API calls are
+ * documented and most of them are self explanatory. Mostly the only weird
+ * thing about the API is UDP reuse mode. If you enable reuse mode (setting
+ * the dst_addr and/or dst_port to NULL in the mw_udp_set() call), received
+ * data will prepend the IP and port of the peer (using mw_reuse_payload data
+ * structure), and data to be sent also requires the IP and port to be
+ * prepended to the payload.
+ *
  * \author Jesus Alonso (doragasu)
  * \date 2015
  *
@@ -317,13 +325,37 @@ enum mw_err mw_tcp_connect(uint8_t ch, const char *dst_addr,
 		const char *dst_port, const char *src_port);
 
 /************************************************************************//**
- * \brief Disconnects a TCP socket from specified channel.
+ * \brief Closes and disconnects a socket from specified channel.
+ *
+ * This function can be used to free the channel associated to both TCP and
+ * UDP sockets.
  *
  * \param[in] ch Channel associated to the socket to disconnect.
  *
  * \return MW_ERR_NONE on success, other code on failure.
  ****************************************************************************/
-enum mw_err mw_tcp_disconnect(uint8_t ch);
+enum mw_err mw_close(uint8_t ch);
+
+/// Closes a TCP socket. This is an alias of mw_close().
+#define mw_tcp_disconnect(ch)	mw_close(ch)
+
+/************************************************************************//**
+ * \brief Configures a UDP socket to send/receive data.
+ *
+ * \param[in] ch       Channel used for the connection.
+ * \param[in] dst_addr Address (IP or DNS entry) to send data to.
+ * \param[in] dst_port Port to send data to.
+ * \param[in] src_port Local port to listen message on.
+ *
+ * \return MW_ERR_NONE on success, other code if connection failed.
+ *
+ * \note Setting to NULL dst_addr and/or dst_port, enables reuse mode.
+ ****************************************************************************/
+enum mw_err mw_udp_set(uint8_t ch, const char *dst_addr, const char *dst_port,
+		const char *src_port);
+
+/// Frees a UDP socket. This is an alias of mw_close().
+#define mw_udp_unset(ch)	mw_close(ch)
 
 /************************************************************************//**
  * \brief Binds a socket to a port, and listens to connections on the port.
@@ -365,6 +397,40 @@ static inline enum lsd_status mw_recv(char *buf, int16_t len, void *ctx,
 	return lsd_recv(buf, len, ctx, recv_cb);
 }
 
+/************************************************************************//**
+ * \brief Receive data using an UDP socket in reuse mode.
+ *
+ * \param[in] data    Receive buffer including the remote address and the
+ *                    data payload.
+ * \param[in] len     Length of the receive buffer.
+ * \param[in] ctx     Context pointer to pass to the reception callbak.
+ * \param[in] recv_cb Callback to run when reception is complete or errors.
+ *
+ * \return Status of the receive procedure.
+ ****************************************************************************/
+static inline enum lsd_status mw_udp_reuse_recv(struct mw_reuse_payload *data,
+		int16_t len, void *ctx, lsd_recv_cb recv_cb)
+{
+	return lsd_recv((char*)data, len, ctx, recv_cb);
+}
+
+/************************************************************************//**
+ * \brief Send data using a UDP socket in reuse mode.
+ *
+ * \param[in] data    Send buffer including the remote address and the
+ *                    data payload.
+ * \param[in] len     Length of the receive buffer.
+ * \param[in] ctx     Context pointer to pass to the reception callbak.
+ * \param[in] recv_cb Callback to run when reception is complete or errors.
+ *
+ * \return Status of the receive procedure.
+ ****************************************************************************/
+static inline enum lsd_status mw_udp_reuse_send(uint8_t ch,
+		const struct mw_reuse_payload *data, int16_t len, void *ctx,
+		lsd_send_cb send_cb)
+{
+	return lsd_send(ch, (const char*)data, len, ctx, send_cb);
+}
 
 /************************************************************************//**
  * \brief Sends data through a socket, using a previously allocated channel.
@@ -395,7 +461,7 @@ static inline enum lsd_status mw_send(uint8_t ch, const char *data, int16_t len,
  *
  * \param[out] ch         Channel on which data was received.
  * \param[out] buf        Reception buffer.
- * \param[inout] len      On input, length of the buffer.
+ * \param[inout] buf_len  On input, length of the buffer.
  *                        On output, received data length in bytes.
  * \param[in] tout_frames Reception timeout in frames. Set to 0 for infinite
  *                        wait (dangerous!).
@@ -444,7 +510,7 @@ enum mw_sock_stat mw_sock_stat_get(uint8_t ch);
 /************************************************************************//**
  * \brief Configure SNTP parameters and timezone.
  *
- * \param[in] servers  Array of up to three NTP servers. If less than three
+ * \param[in] server   Array of up to three NTP servers. If less than three
  *                     servers are desired, unused entries must be empty.
  * \param[in] up_delay Update delay in seconds. Minimum value is 15.
  * \param[in] timezone Time zone information (from -11 to 13).
@@ -452,8 +518,22 @@ enum mw_sock_stat mw_sock_stat_get(uint8_t ch);
  *
  * \return MW_ERR_NONE on success, other code on failure.
  ****************************************************************************/
-enum mw_err mw_sntp_cfg_set(const char *servers[3], uint8_t up_delay,
+enum mw_err mw_sntp_cfg_set(const char *server[3], uint16_t up_delay,
 		int8_t timezone, int8_t dst);
+
+/************************************************************************//**
+ * \brief Get SNTP parameters and timezone configuration.
+ *
+ * \param[out] server   Array of three NTP server pointers. If less than 3
+ *                      servers are configured, unused ones will be NULL.
+ * \param[out] up_delay Update delay in seconds.
+ * \param[out] timezone Time zone information (from -11 to 13).
+ * \param[out] dst      Daylight saving. When 1, 1 hour offset is applied.
+ *
+ * \return MW_ERR_NONE on success, other code on failure.
+ ****************************************************************************/
+enum mw_err mw_sntp_cfg_get(char **server[3], uint16_t *up_delay,
+		int8_t *timezone, int8_t *dst);
 
 /************************************************************************//**
  * \brief Get date and time.

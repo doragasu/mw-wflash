@@ -11,13 +11,14 @@
 
 #define NTP_SERV_MAXLEN 	32
 
+/// Item offsets for the NTP configuration menu
 enum {
 	MENU_NTP_SERV1 = 1,
 	MENU_NTP_SERV2 = 2,
 	MENU_NTP_SERV3 = 3,
 	MENU_NTP_TIMEZONE = 6,
 	MENU_NTP_UPDATE_INTERVAL = 9,
-	MENU_NTP_DAILIGHT_SAVING = 11
+	MENU_NTP_DAYLIGHT_SAVING = 11
 };
 
 
@@ -113,7 +114,7 @@ static int menu_ntp_save(struct menu_entry_instance *instance)
 	}
 	up_delay = atoi(item[MENU_NTP_UPDATE_INTERVAL].caption.str);
 	timezone = atoi(item[MENU_NTP_TIMEZONE].caption.str);
-	dst = menu_on_off_status(&item[MENU_NTP_DAILIGHT_SAVING]);
+	dst = menu_on_off_status(&item[MENU_NTP_DAYLIGHT_SAVING]);
 
 	if (MW_ERR_NONE != mw_sntp_cfg_set((const char**)servers, up_delay,
 				timezone, dst)) {
@@ -126,22 +127,51 @@ static int menu_ntp_save(struct menu_entry_instance *instance)
 	return 0;
 }
 
+static void menu_on_off_draw(struct menu_item *item, int8_t on)
+{
+	if (on) {
+		item->caption.str[item->offset + 1] = 'N';
+		item->caption.length = item->offset + 2;
+	} else {
+		item->caption.str[item->offset + 1] = 'F';
+		item->caption.str[item->offset + 2] = 'F';
+		item->caption.length = item->offset + 3;
+	}
+}
+
 static int menu_on_off_toggle(struct menu_entry_instance *instance)
 {
 	struct menu_item *item = &instance->entry->item_entry->
 		item[instance->sel_item];
 
-	if ('N' == item->caption.str[item->offset + 1])
-	{
-		item->caption.str[item->offset + 1] = 'F';
-		item->caption.str[item->offset + 2] = 'F';
-		item->caption.length = item->offset + 3;
-	} else {
-		item->caption.str[item->offset + 1] = 'N';
-		item->caption.length = item->offset + 2;
+	menu_on_off_draw(item, 'F' == item->caption.str[item->offset + 1]);
+	menu_item_draw(MENU_PLACE_CENTER);
+
+	return 0;
+}
+
+static int menu_ntp_enter_cb(struct menu_entry_instance *instance)
+{
+	struct menu_item *item = instance->entry->item_entry->item;
+	char *server[3];
+	uint16_t update_delay;
+	int8_t timezone;
+	int8_t dst;
+	enum mw_err err;
+
+	err = mw_sntp_cfg_get((char***)&server, &update_delay, &timezone, &dst);
+	if (err) {
+		return 1;
 	}
 
-	menu_item_draw(MENU_PLACE_CENTER);
+	for (int i = 0; i < 3 && server[i]; i++) {
+		menu_str_replace(&item[MENU_NTP_SERV1].caption, server[i]);
+	}
+	item[MENU_NTP_UPDATE_INTERVAL].caption.length = uint16_to_str(update_delay,
+			item[MENU_NTP_UPDATE_INTERVAL].caption.str);
+	item[MENU_NTP_TIMEZONE].caption.length = int8_to_str(timezone,
+			item[MENU_NTP_TIMEZONE].caption.str);
+	menu_on_off_draw(&item[MENU_NTP_DAYLIGHT_SAVING], dst);
 
 	return 0;
 }
@@ -151,6 +181,7 @@ const struct menu_entry ntp_menu = {
 	.margin = 8,
 	.title = MENU_STR_RO("TIME CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
+	.enter_cb = menu_ntp_enter_cb,
 	.item_entry = MENU_ITEM_ENTRY(16, 1, MENU_H_ALIGN_LEFT) {
 		{
 			.caption = MENU_STR_RO("TIME SERVERS:"),
@@ -158,15 +189,15 @@ const struct menu_entry ntp_menu = {
 			.alt_color = TRUE
 		},
 		{
-			.caption = MENU_STR_RW("0.pool.ntp.org", NTP_SERV_MAXLEN),
+			.caption = MENU_STR_EMPTY(NTP_SERV_MAXLEN),
 			.next = (struct menu_entry*)&menu_ntp_serv_osk
 		},
 		{
-			.caption = MENU_STR_RW("1.pool.ntp.org", NTP_SERV_MAXLEN),
+			.caption = MENU_STR_EMPTY(NTP_SERV_MAXLEN),
 			.next = (struct menu_entry*)&menu_ntp_serv_osk
 		},
 		{
-			.caption = MENU_STR_RW("2.pool.ntp.org", NTP_SERV_MAXLEN),
+			.caption = MENU_STR_EMPTY(NTP_SERV_MAXLEN),
 			.next = (struct menu_entry*)&menu_ntp_serv_osk
 		},
 		{
@@ -179,7 +210,7 @@ const struct menu_entry ntp_menu = {
 			.alt_color = TRUE
 		},
 		{
-			.caption = MENU_STR_RW("0", 3),
+			.caption = MENU_STR_EMPTY(3),
 			.next = (struct menu_entry*)&menu_ntp_tz_osk
 		},
 		{
@@ -192,7 +223,7 @@ const struct menu_entry ntp_menu = {
 			.alt_color = TRUE
 		},
 		{
-			.caption = MENU_STR_RW("300", 4),
+			.caption = MENU_STR_EMPTY(4),
 			.next = (struct menu_entry*)&menu_ntp_interval_osk
 		},
 		{
@@ -200,7 +231,7 @@ const struct menu_entry ntp_menu = {
 			.hidden = TRUE
 		},
 		{
-			.caption = MENU_STR_RW("Daylight saving: OFF", 20),
+			.caption = MENU_STR_RW("Daylight saving: OXX", 20),
 			.offset = 17,
 			.entry_cb = menu_on_off_toggle
 		},

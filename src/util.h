@@ -153,6 +153,30 @@ uint8_t uint8_to_str(uint8_t num, char *str);
 int8_t int8_to_str(int8_t num, char *str);
 
 /************************************************************************//**
+ * \brief Converts an unsigned 16-bit number to its character
+ * string representation.
+ *
+ * \param[in]  num Input number to convert.
+ * \param[out] str String representing the input number.
+ *
+ * \return Resulting str length (not including null termination).
+ * \note str buffer length shall be at least 6 bytes.
+ ****************************************************************************/
+uint8_t uint16_to_str(uint16_t num, char *str);
+
+/************************************************************************//**
+ * \brief Converts an signed 16-bit number to its character
+ * string representation.
+ *
+ * \param[in]  num Input number to convert.
+ * \param[out] str String representing the input number.
+ *
+ * \return Resulting str length (not including null termination).
+ * \note str buffer length shall be at least 7 bytes.
+ ****************************************************************************/
+uint8_t int16_to_str(int16_t num, char *str);
+
+/************************************************************************//**
  * \brief Converts a character string representing an 8-bit unsigned number,
  * to its binary (uint8_t) representation.
  *

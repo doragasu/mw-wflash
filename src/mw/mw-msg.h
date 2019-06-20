@@ -12,7 +12,7 @@
  * is not directly used by the application, but by megawifi internally.
  *
  * \author Jesus Alonso (doragasu)
- * \date 2015
+ * \date 2015~2019
  ****************************************************************************/
 #ifndef _MW_MSG_H_
 #define _MW_MSG_H_
@@ -54,7 +54,7 @@ enum PACKED mw_command {
 	MW_CMD_AP_CFG		=   4,	///< Configure access point
 	MW_CMD_AP_CFG_GET   	=   5,	///< Get access point configuration
 	MW_CMD_IP_CURRENT 	=   6,	///< Get current IPv4 configuration
-	MW_CMD_RESERVED		=   7,	///< Reserved for future use
+// Reserved
 	MW_CMD_IP_CFG		=   8,	///< Configure IPv4
 	MW_CMD_IP_CFG_GET	=   9,	///< Get IPv4 configuration
 	MW_CMD_DEF_AP_CFG	=  10,	///< Set default AP configuration
@@ -63,10 +63,10 @@ enum PACKED mw_command {
 	MW_CMD_AP_LEAVE		=  13,	///< Leave previously joined AP
 	MW_CMD_TCP_CON		=  14,	///< Connect TCP socket
 	MW_CMD_TCP_BIND		=  15,	///< Bind TCP socket to port
-	MW_CMD_TCP_ACCEPT	=  16,	///< Accept incomint TCP connection
-	MW_CMD_TCP_DISC		=  17,	///< Disconnect and free TCP socket
+// Reserved
+	MW_CMD_CLOSE		=  17,	///< Disconnect and free TCP/UDP socket
 	MW_CMD_UDP_SET		=  18,	///< Configure UDP socket
-	MW_CMD_UDP_CLR		=  19,	///< Clear and free UDP socket
+// Reserved (for setting socket options)
 	MW_CMD_SOCK_STAT	=  20,	///< Get socket status
 	MW_CMD_PING		=  21,	///< Ping host
 	MW_CMD_SNTP_CFG		=  22,	///< Configure SNTP service
@@ -103,12 +103,12 @@ union ip_addr {
 };
 
 /// TCP/UDP address message
-struct mw_msg_in_addr{
+struct mw_msg_in_addr {
 	char dst_port[6];	///< TCP destination port string
 	char src_port[6];	///< TCP source port string
 	uint8_t channel;	///< LSD channel used for communications
 	/// Data payload
-	char dst_addr[MW_CMD_MAX_BUFLEN - 6 - 6 - 1];
+	char dst_addr[];
 };
 
 /// IP configuration parameters
@@ -261,6 +261,17 @@ typedef union mw_cmd {
 		};
 	};
 } mw_cmd;
+
+/// Data sent/received using UDP sockets, uses this special format when reuse
+/// flag has been set in the mw_udp_set() call. This allows the program using
+/// the UDP socket, to filter incoming IPs, and to be able to properly answer
+/// to incoming packets from several peers.
+struct mw_reuse_payload {
+	uint32_t remote_ip;	///< IP of the remote end
+	uint16_t remote_port;	///< Port of the remote end
+	/// Data payload
+	char payload[MW_CMD_MAX_BUFLEN - 4 - 2];
+};
 
 #endif //_MW_MSG_H_
 
