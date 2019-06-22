@@ -836,7 +836,7 @@ enum mw_err mw_sntp_cfg_set(const char *server[3], uint16_t up_delay,
 	offset += strlen(server[2]) + 1;
 	// Mark the end of the list with two adjacent '\0'
 	d.cmd->sntp_cfg.servers[offset] = '\0';
-	d.cmd->data_len = offset + 1;
+	d.cmd->data_len = offset + 1 + 4;
 	err = mw_command(MW_COMMAND_TOUT);
 	if (err) {
 		return MW_ERR;
@@ -845,7 +845,7 @@ enum mw_err mw_sntp_cfg_set(const char *server[3], uint16_t up_delay,
 	return MW_ERR_NONE;
 }
 
-enum mw_err mw_sntp_cfg_get(char **server[3], uint16_t *up_delay,
+enum mw_err mw_sntp_cfg_get(char *server[3], uint16_t *up_delay,
 		int8_t *timezone, int8_t *dst)
 {
 	enum mw_err err;
@@ -856,7 +856,7 @@ enum mw_err mw_sntp_cfg_get(char **server[3], uint16_t *up_delay,
 		return MW_ERR_NOT_READY;
 	}
 
-	d.cmd->cmd = MW_CMD_SNTP_CFG;
+	d.cmd->cmd = MW_CMD_SNTP_CFG_GET;
 	d.cmd->data_len = 0;
 
 	err = mw_command(MW_COMMAND_TOUT);
@@ -864,18 +864,24 @@ enum mw_err mw_sntp_cfg_get(char **server[3], uint16_t *up_delay,
 		return MW_ERR;
 	}
 
-	*up_delay = d.cmd->sntp_cfg.up_delay;
-	*timezone = d.cmd->sntp_cfg.tz;
-	*dst = d.cmd->sntp_cfg.dst;
+	if (up_delay) {
+		*up_delay = d.cmd->sntp_cfg.up_delay;
+	}
+	if (timezone) {
+		*timezone = d.cmd->sntp_cfg.tz;
+	}
+	if (dst) {
+		*dst = d.cmd->sntp_cfg.dst;
+	}
 
-	*server[0] = *server[1] = *server[2] = NULL;
+	server[0] = server[1] = server[2] = NULL;
 
-	for (i = 0, offset = 0; i <= 3; i++) {
+	for (i = 0, offset = 0; i < 3; i++) {
 		if (!d.cmd->sntp_cfg.servers[offset]) {
 			goto out;
 		}
-		*server[i] = d.cmd->sntp_cfg.servers + offset;
-		offset += strlen(*server[i]) + 1;
+		server[i] = d.cmd->sntp_cfg.servers + offset;
+		offset += strlen(server[i]) + 1;
 	}
 out:
 	return MW_ERR_NONE;

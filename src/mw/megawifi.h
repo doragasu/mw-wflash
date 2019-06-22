@@ -532,7 +532,7 @@ enum mw_err mw_sntp_cfg_set(const char *server[3], uint16_t up_delay,
  *
  * \return MW_ERR_NONE on success, other code on failure.
  ****************************************************************************/
-enum mw_err mw_sntp_cfg_get(char **server[3], uint16_t *up_delay,
+enum mw_err mw_sntp_cfg_get(char *server[3], uint16_t *up_delay,
 		int8_t *timezone, int8_t *dst);
 
 /************************************************************************//**

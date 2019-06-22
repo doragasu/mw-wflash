@@ -26,6 +26,20 @@ const struct menu_entry download_start_menu = {
 	} MENU_ITEM_ENTRY_END
 };
 
+int download_menu_select_default_cb(struct menu_entry_instance *instance)
+{
+	int ap;
+
+	// Select the last saved slot by default
+	ap = mw_def_ap_cfg_get();
+	if (ap < 0) {
+		return 1;
+	}
+	instance->sel_item = ap;
+
+	return 0;
+}
+
 /// Fill slot names with SSIDs
 static int download_menu_enter_cb(struct menu_entry_instance *instance)
 {
@@ -59,6 +73,8 @@ static int download_menu_enter_cb(struct menu_entry_instance *instance)
 
 	// If only 1 config, do not bother user and select it by default
 	if (1 == configs) {
+		download_menu_select_default_cb(instance);
+		instance->prev->sel_item = instance->sel_item;
 		menu_enter(&download_start_menu);
 		// No error, but we set err to 1 to avoid transition to the
 		// current menu, since we are entering download_start_menu.
@@ -68,20 +84,6 @@ static int download_menu_enter_cb(struct menu_entry_instance *instance)
 
 out:
 	return err;
-}
-
-int download_menu_select_default_cb(struct menu_entry_instance *instance)
-{
-	int ap;
-
-	// Select the last saved slot by default
-	ap = mw_def_ap_cfg_get();
-	if (ap < 0) {
-		return 1;
-	}
-	instance->sel_item = ap;
-
-	return 0;
 }
 
 const struct menu_entry download_menu = {

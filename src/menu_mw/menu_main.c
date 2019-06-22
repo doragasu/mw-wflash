@@ -105,7 +105,7 @@ static int menu_ntp_save(struct menu_entry_instance *instance)
 {
 	struct menu_item *item = instance->entry->item_entry->item;
 	char *servers[3];
-	uint8_t up_delay;
+	uint16_t up_delay;
 	int8_t timezone;
 	int8_t dst;
 
@@ -153,19 +153,25 @@ static int menu_on_off_toggle(struct menu_entry_instance *instance)
 static int menu_ntp_enter_cb(struct menu_entry_instance *instance)
 {
 	struct menu_item *item = instance->entry->item_entry->item;
-	char *server[3];
+	char *server[3] = {0};
 	uint16_t update_delay;
 	int8_t timezone;
 	int8_t dst;
 	enum mw_err err;
+	int i;
 
-	err = mw_sntp_cfg_get((char***)&server, &update_delay, &timezone, &dst);
+	err = mw_sntp_cfg_get(server, &update_delay, &timezone, &dst);
 	if (err) {
+		menu_msg("ERROR", "Failed to get time configuration", 0, 180);
 		return 1;
 	}
 
-	for (int i = 0; i < 3 && server[i]; i++) {
-		menu_str_replace(&item[MENU_NTP_SERV1].caption, server[i]);
+	for (i = 0; i < 3 && server[i]; i++) {
+		menu_str_replace(&item[MENU_NTP_SERV1 + i].caption, server[i]);
+	}
+
+	for (; i < 3; i++) {
+		menu_str_replace(&item[MENU_NTP_SERV1 + i].caption, "");
 	}
 	item[MENU_NTP_UPDATE_INTERVAL].caption.length = uint16_to_str(update_delay,
 			item[MENU_NTP_UPDATE_INTERVAL].caption.str);
