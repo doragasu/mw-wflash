@@ -1,17 +1,25 @@
 /************************************************************************//**
+ * \file
+ *
+ * \brief Loop handling for single threaded Megadrive programs.
+ *
+ * \defgroup loop loop
+ * \{
+ *
  * \brief Loop handling for single threaded Megadrive programs.
  *
  * Allows easily adding and removing functions to be run on the main loop, as
- * well as timers based on the frame counter. It also provices a hacky
+ * well as timers based on the frame counter. It also provides a hacky
  * interface to perform pseudo syncrhonous calls (through the loop_pend() and
- * loop_post() functions) without disturbing the loop execution.
+ * loop_post() semantics) without disturbing the loop execution.
  *
  * \note Timers will take more frames than expected if loop load is high
  * enough to take more than a frame to complete.
  * \warning Due to the crappy/hacky implementation of the syncrhonous API, when
  * nesting loop_pend() calls, loop_post() will restore control flow reversing
  * the order of the loop_pend() calls. This is probably not what you want, and
- * it is thus discouraged to nest loop_pend() calls.
+ * it is thus discouraged to nest loop_pend() calls unless you know what you
+ * are doing.
  ****************************************************************************/
 
 #include <stdint.h>
@@ -19,6 +27,7 @@
 #ifndef _LOOP_H_
 #define _LOOP_H_
 
+/// Frames per second (60 on NTSC consoles, 50 on PAL machines)
 #define FPS	60
 
 /// Converts milliseconds to frames, rounding to the nearest.
@@ -36,6 +45,7 @@ struct loop_func {
 	struct {
 		// Do not manually modify these fields
 		uint16_t to_delete:1; ///< Delete function when 1
+		uint16_t blocked:1;   ///< Blocked on a loop_pend()
 		uint16_t disabled:1;  ///< Function disabled when 1
 	};
 };
@@ -54,14 +64,15 @@ struct loop_timer {
 		uint16_t auto_reload:1;	///< Set for timer auto-reload
 	/// Delete timer when 1 (do not manually modify)
 		uint16_t to_delete:1;
+		uint16_t blocked:1;   ///< Blocked on a loop_pend()
 	};
 };
 
 /************************************************************************//**
  * \brief Initialize loop
  *
- * \param[in] max_func  Maximum number of loop functions to support.
- * \param[in] max_timer Maximum number of loop timers to support.
+ * \param[in] max\_func  Maximum number of loop functions to support.
+ * \param[in] max\_timer Maximum number of loop timers to support.
  *
  * \return 0 on success, 1 on error.
  ****************************************************************************/
@@ -197,4 +208,6 @@ int loop_pend(void);
 void loop_post(int return_value);
 
 #endif /*_LOOP_H_*/
+
+/** \} */
 

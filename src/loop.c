@@ -13,10 +13,16 @@ enum loop_check {
 	LOOP_CHECK_TIMERS
 };
 
+struct pend_env {
+	struct loop_func *f;
+	struct loop_timer *t;
+};
+
 struct loop_data {
 	struct loop_func **f;
 	struct loop_timer **t;
-	jmp_buf *env;
+	struct pend_env *env;
+	jmp_buf *jmp;
 	enum loop_check check;
 	int8_t func_max;
 	int8_t timer_max;
@@ -143,8 +149,9 @@ static void run_funcs(void)
 			delete_func(d->idx);
 		} else {
 			d->idx++;
-			if (!f->disabled) {
+			if (!f->disabled && !f->blocked) {
 				f->func_cb(f);
+				d->env->f = NULL;
 			}
 		}
 	}
@@ -161,7 +168,7 @@ static void delete_timer(int i)
 
 static void update_timer(struct loop_timer *t)
 {
-	if (t->frames) {
+	if (t->frames && !t->blocked) {
 		t->count++;
 		if (t->count >= t->frames) {
 			if (t->auto_reload) {
@@ -170,6 +177,7 @@ static void update_timer(struct loop_timer *t)
 				t->frames = 0;
 			}
 			t->timer_cb(t);
+			d->env->t = NULL;
 		}
 	}
 }
@@ -191,16 +199,18 @@ static void check_timers(void)
 
 int loop(void)
 {
+	struct pend_env env = {};
+	d->env = &env;
+
 	while (!d->exit) {
-		if (LOOP_CHECK_FUNCS == d->check) {
-			run_funcs();
-			d->idx = 0;
-		}
-		if (frame_update()) {
+		if (LOOP_CHECK_TIMERS == d->check || frame_update()) {
 			d->check = LOOP_CHECK_TIMERS;
 			check_timers();
 			d->idx = 0;
 			d->check = LOOP_CHECK_FUNCS;
+		} else {
+			run_funcs();
+			d->idx = 0;
 		}
 	}
 
@@ -215,21 +225,45 @@ void loop_deinit(void)
 	d = NULL;
 }
 
+static int jmp_set(void)
+{
+	jmp_buf jmp;
+	int returned;
+	struct pend_env *prev_env = d->env;
+	jmp_buf *prev_jmp = d->jmp;
+
+	d->jmp = &jmp;
+
+	returned = setjmp(jmp);
+	if (!returned) {
+		loop();
+	}
+	d->env = prev_env;
+	d->jmp = prev_jmp;
+
+	return returned;
+}
+
 int loop_pend(void)
 {
-	jmp_buf env;
-	jmp_buf *prev;
-	int returned;
+	int returned = 0;
 
-	prev = d->env;
-	returned = setjmp(env);
-	if (!returned) {
-		d->env = &env;
-		loop();
-		// Loop call above should not return
+	if (!d->env->f && !d->env->t) {
+		if (LOOP_CHECK_FUNCS == d->check) {
+			d->env->f = d->f[d->idx - 1];
+		} else {
+			d->env->t = d->t[d->idx - 1];
+		}
 	}
-	// Restore environment before the setjmp() call
-	d->env = prev;
+	if (d->env->f) {
+		d->env->f->blocked = 1;
+		returned = jmp_set();
+		d->env->f->blocked = 0;
+	} else if (d->env->t) {
+		d->env->t->blocked = 1;
+		returned = jmp_set();
+		d->env->t->blocked = 0;
+	}
 
 	return returned;
 }
@@ -237,7 +271,7 @@ int loop_pend(void)
 void loop_post(int return_value)
 {
 	if (d->env) {
-		longjmp(*d->env, return_value);
+		longjmp(*d->jmp, return_value);
 	}
 }
 
