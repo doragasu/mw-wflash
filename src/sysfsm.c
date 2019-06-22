@@ -258,9 +258,13 @@ static void flash_done_cb(int err, void *ctx)
 		loop_func_del(&d.f);
 		remaining = d.recvd[d.avail_idx] - d.to_write;
 		if (remaining > 0) {
+			// Got next command, process it
 			cmd_recv_cb(LSD_STAT_COMPLETE, SF_CHANNEL,
 					d.buf[d.avail_idx] + d.to_write,
 					remaining, NULL);
+		} else {
+                       // Clean end, restart command parser
+                       sf_start();
 		}
 	} else {
 		// More data to come
