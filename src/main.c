@@ -96,6 +96,8 @@ static void megawifi_init_cb(struct loop_func  *f)
 	// Try detecting the module
 	err = mw_detect(&ver_major, &ver_minor, &variant);
 
+	mw_log("MW 68k API initialized");
+
 	if (MW_ERR_NONE != err) {
 		// Set menu status string to show Megawifi was not found
 		stat.length = menu_str_buf_cpy(str_buf, "MegaWiFi?", 20 - 1);

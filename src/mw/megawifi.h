@@ -641,6 +641,8 @@ enum mw_err mw_gamertag_set(uint8_t slot, struct mw_gamertag *gamertag);
 
 struct mw_gamertag *mw_gamertag_get(uint8_t slot);
 
+enum mw_err mw_log(const char *msg);
+
 #endif /*_MEGAWIFI_H_*/
 
 /** \} */
