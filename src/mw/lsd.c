@@ -161,7 +161,6 @@ static void process_recv(void)
 		}
 		break;
 
-
 	default:
 		// Code should never reach here!
 		recv_error(LSD_STAT_ERROR);
@@ -237,6 +236,7 @@ void lsd_init(void)
 {
 	uart_init();
 	memset(&d, 0, sizeof(struct lsd_data));
+	lsd_line_sync();
 }
 
 int lsd_ch_enable(uint8_t ch)
@@ -363,6 +363,15 @@ enum lsd_status lsd_recv_sync(char *buf, uint16_t *len, uint8_t *ch)
 		return LSD_STAT_COMPLETE;
 	} else {
 		return LSD_STAT_ERROR;
+	}
+}
+
+void lsd_line_sync(void)
+{
+	for (int i = 0; i < 256; i++) {
+		if (uart_tx_ready()) {
+			uart_putc(0x55);
+		}
 	}
 }
 

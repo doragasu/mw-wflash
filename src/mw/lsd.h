@@ -50,9 +50,9 @@
  *  \brief OK/Error codes returned by several functions.
  *  \{ */
 /// Function completed successfully
-#define LSD_OK				0
+#define LSD_OK			0
 /// Generic error code
-#define LSD_ERROR			-1
+#define LSD_ERROR		-1
 /// A framing error occurred. Possible data loss.
 #define LSD_FRAMING_ERROR	-2
 /** \} */
@@ -69,14 +69,15 @@
 /// Number of buffer frames available
 #define LSD_BUF_FRAMES		2
 
+/// Return status codes for LSD functions
 enum lsd_status {
-	LSD_STAT_ERR_FRAMING = -5,
-	LSD_STAT_ERR_INVALID_CH = -4,
-	LSD_STAT_ERR_FRAME_TOO_LONG = -3,
-	LSD_STAT_ERR_IN_PROGRESS = -2,
-	LSD_STAT_ERROR = -1,
-	LSD_STAT_COMPLETE = 0,
-	LSD_STAT_BUSY = 1
+	LSD_STAT_ERR_FRAMING = -5,		///< Frame format error
+	LSD_STAT_ERR_INVALID_CH = -4,		///< Invalid channel
+	LSD_STAT_ERR_FRAME_TOO_LONG = -3,	///< Frame is too long
+	LSD_STAT_ERR_IN_PROGRESS = -2,		///< Operation in progress
+	LSD_STAT_ERROR = -1,			///< General error
+	LSD_STAT_COMPLETE = 0,			///< No error
+	LSD_STAT_BUSY = 1			///< Doing requested operation
 };
 
 /// Callback for the asynchronous lsd_send() function.
@@ -172,6 +173,15 @@ enum lsd_status lsd_recv_sync(char *buf, uint16_t *len, uint8_t *ch);
  * lsd_send() and lsd_receive() functions.
  ****************************************************************************/
 void lsd_process(void);
+
+/************************************************************************//**
+ * \brief Sends syncrhonization frame.
+ *
+ * This function sends a chunk of 0x55 bytes to help physical layer to
+ * synchronize. It is usually not necessary to use this function, but might
+ * help some UART chips to compute an accurate clock.
+ ****************************************************************************/
+void lsd_line_sync(void);
 
 /** \} */
 
