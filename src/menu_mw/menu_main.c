@@ -261,6 +261,83 @@ const struct menu_entry ntp_menu = {
 	} MENU_ITEM_ENTRY_END
 };
 
+static int root_menu_cb(struct menu_entry_instance *instance)
+{
+	UNUSED_PARAM(instance);
+
+	menu_back(3);
+
+	return 0;
+}
+
+static int default_cfg_cb(struct menu_entry_instance *instance)
+{
+	enum mw_err err;
+
+	err = mw_factory_settings();
+	if (MW_ERR_NONE == err) {
+		menu_msg("SUCCESS!", "Factory configuration restored", 0, 0);
+		mw_sleep(120);
+		menu_msg_close();
+	} else {
+		menu_msg("ERROR!", "Factory restore failed", 0, 0);
+		mw_sleep(180);
+		menu_msg_close();
+	}
+
+	root_menu_cb(instance);
+
+	return 0;
+}
+
+const struct menu_entry defaults_menu = {
+	.type = MENU_TYPE_ITEM,
+	.margin = MENU_DEF_LEFT_MARGIN,
+	.title = MENU_STR_RO("CONFIRM FACTORY SETTINGS"),
+	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
+	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_CENTER) {
+		{
+			.caption = MENU_STR_RO("THIS WILL DELETE ALL USER SETTINGS!"),
+			.alt_color = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("ARE YOU SURE?"),
+			.alt_color = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("NO, TAKE ME OUT!"),
+			.entry_cb = root_menu_cb
+		},
+		{
+			.caption = MENU_STR_RO("YES, DELETE EVERYTHING"),
+			.entry_cb = default_cfg_cb
+		},
+	} MENU_ITEM_ENTRY_END
+};
+
+const struct menu_entry advanced_menu = {
+	.type = MENU_TYPE_ITEM,
+	.margin = MENU_DEF_LEFT_MARGIN,
+	.title = MENU_STR_RO("ADVANCED CONFIGURATION"),
+	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
+	.item_entry = MENU_ITEM_ENTRY(2, 3, MENU_H_ALIGN_CENTER) {
+		{
+			.caption = MENU_STR_RO("TIME CONFIGURATION"),
+			.next = (struct menu_entry*)&ntp_menu
+		},
+		{
+			.caption = MENU_STR_RO("RESET TO DEFAULTS"),
+			.next = (struct menu_entry*)&defaults_menu
+		},
+	} MENU_ITEM_ENTRY_END
+};
+
 /// Fill slot names with SSIDs
 static int config_menu_enter_cb(struct menu_entry_instance *instance)
 {
@@ -309,16 +386,16 @@ const struct menu_entry config_menu = {
 			.hidden = TRUE
 		},
 		{
-			.caption = MENU_STR_RO("TIME CONFIGURATION"),
-			.next = (struct menu_entry*)&ntp_menu
-		},
+			.caption = MENU_STR_RO("ADVANCED"),
+			.next = (struct menu_entry*)&advanced_menu
+		}
 	} MENU_ITEM_ENTRY_END
 };
 
 static int main_menu_enter_cb(struct menu_entry_instance *instance)
 {
 	// Enable START option only if a flashed game is detected
-	if (SF_ENTRY_POINT_ADDR && SF_ENTRY_POINT_ADDR != 0xFFFFFFFF) {
+	if (SF_ENTRY_POINT_ADDR && SF_ENTRY_POINT_ADDR != 0x20202020) {
 		instance->entry->item_entry->item[0].not_selectable = FALSE;
 		instance->entry->item_entry->item[0].alt_color = FALSE;
 	}

@@ -22,7 +22,7 @@ const struct
     char notes[40];                 /* Memo (40) */
     char region[16];                /* Country Support (16) */
 } rom_header = {
-    "SEGA MEGA DRIVE ",
+    "SEGA MEGAWIFI   ",
     "(c)doragasu 2017",
     "wfboot: WiFi Flash bootloader                   ",
     "wfboot: WiFi Flash bootloader                   ",
@@ -38,6 +38,6 @@ const struct
     0x00200000,
     0x002001FF,
     "            ",
-    "PART OF MEGAWIFI PROJECT                ",
+    "                                        ",
     "JUE             "
 };
