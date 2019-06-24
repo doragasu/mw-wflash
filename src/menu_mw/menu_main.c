@@ -5,6 +5,7 @@
 #include "menu_txt.h"
 #include "menu_dl.h"
 #include "menu_gtag.h"
+#include "../sysfsm.h"
 #include "../menu_imp/menu.h"
 #include "../menu_imp/menu_msg.h"
 #include "../mw/megawifi.h"
@@ -314,16 +315,38 @@ const struct menu_entry config_menu = {
 	} MENU_ITEM_ENTRY_END
 };
 
+static int main_menu_enter_cb(struct menu_entry_instance *instance)
+{
+	// Enable START option only if a flashed game is detected
+	if (SF_ENTRY_POINT_ADDR && SF_ENTRY_POINT_ADDR != 0xFFFFFFFF) {
+		instance->entry->item_entry->item[0].not_selectable = FALSE;
+		instance->entry->item_entry->item[0].alt_color = FALSE;
+	}
+
+	return 0;
+}
+
+static int game_boot_cb(struct menu_entry_instance *instance)
+{
+	UNUSED_PARAM(instance);
+
+	sf_boot(SF_ENTRY_POINT_ADDR);
+
+	return 0;
+}
+
 const struct menu_entry main_menu = {
 	.type = MENU_TYPE_ITEM,
 	.margin = MENU_DEF_LEFT_MARGIN,
-	.title = MENU_STR_RO("WELCOME TO 1985[ALT]Channel!"),
+	.title = MENU_STR_RO("MegaWiFi bootloader by doragasu"),
 	.left_context = MENU_STR_RO("Select an option"),
+	.enter_cb = main_menu_enter_cb,
 	.item_entry = MENU_ITEM_ENTRY(4, 4, MENU_H_ALIGN_CENTER) {
 		{
 			.caption = MENU_STR_RO("START!"),
 			.not_selectable = TRUE,
-			.alt_color = TRUE
+			.alt_color = TRUE,
+			.entry_cb = game_boot_cb
 		},
 		{
 			.caption = MENU_STR_RO("DOWNLOAD MODE"),
