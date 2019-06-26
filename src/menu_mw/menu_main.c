@@ -412,6 +412,47 @@ static int game_boot_cb(struct menu_entry_instance *instance)
 	return 0;
 }
 
+static int dl_menu_set_cb(struct menu_entry_instance *instance)
+{
+	int i;
+	char *ssid;
+	unsigned int configs = 0;
+	unsigned int last_valid_cfg;
+	struct menu_item *item =
+		&instance->entry->item_entry->item[instance->sel_item];
+
+	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
+		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL)) {
+			if (ssid[0]) {
+				configs++;
+				last_valid_cfg = i;
+			}
+		} else {
+			return 1;
+		}
+	}
+
+	switch (configs) {
+	case 0:
+		item->next = NULL;
+		menu_msg("NOT CONFIGURED", "Configure a WiFi "
+				"and try again!", 0, 0);
+		break;
+
+	case 1:
+		mw_log("ONE CONFIG");
+		instance->sel_item = last_valid_cfg;
+		item->next = (struct menu_entry*)&download_start_menu;
+		break;
+
+	default:
+		item->next = (struct menu_entry*)&download_menu;
+		break;
+	}
+
+	return 0;
+}
+
 const struct menu_entry main_menu = {
 	.type = MENU_TYPE_ITEM,
 	.margin = MENU_DEF_LEFT_MARGIN,
@@ -427,7 +468,8 @@ const struct menu_entry main_menu = {
 		},
 		{
 			.caption = MENU_STR_RO("DOWNLOAD MODE"),
-			.next = (struct menu_entry*)&download_menu
+//			.next = (struct menu_entry*)&download_menu,
+			.entry_cb = dl_menu_set_cb
 		},
 		{
 			.caption = MENU_STR_RO("CONFIGURATION"),

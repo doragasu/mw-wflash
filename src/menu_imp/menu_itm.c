@@ -217,12 +217,13 @@ static struct menu_entry *menu_accept(struct menu_entry_instance *instance)
 	menu_callback cb = entry->item[instance->sel_item].entry_cb;
 	int err = FALSE;
 	struct menu_entry *next = NULL;
+	uint8_t sel_item = instance->sel_item;
 
 	if (cb) {
 		err = cb(instance);
 	}
        	if (!err) {
-		next = entry->item[instance->sel_item].next;
+		next = entry->item[sel_item].next;
 	}
 
 	return next;

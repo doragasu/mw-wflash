@@ -9,10 +9,11 @@ const struct menu_entry download_start_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("DOWNLOAD MODE"),
 	.left_context = MENU_STR_RO("[B]ack"),
-	.action_cb = download_mode_menu_cb,
+	.enter_cb = download_mode_menu_cb,
 	.item_entry = MENU_ITEM_ENTRY(3, 2, MENU_H_ALIGN_CENTER) {
 		{
-			.caption = MENU_STR_RW("Associating to access point...", 38),
+			.caption = MENU_STR_RW("Associating to access "
+					"point...", 38),
 			.not_selectable = TRUE
 		},
 		{
@@ -26,7 +27,7 @@ const struct menu_entry download_start_menu = {
 	} MENU_ITEM_ENTRY_END
 };
 
-int download_menu_select_default_cb(struct menu_entry_instance *instance)
+static int download_menu_select_default_cb(struct menu_entry_instance *instance)
 {
 	int ap;
 
@@ -47,7 +48,6 @@ static int download_menu_enter_cb(struct menu_entry_instance *instance)
 	char *ssid;
 	int err = 0;
 	int configs = 0;
-
 	struct menu_item *item = instance->entry->item_entry->item;
 
 	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
@@ -63,23 +63,6 @@ static int download_menu_enter_cb(struct menu_entry_instance *instance)
 			err = 1;
 			goto out;
 		}
-	}
-
-	if (!configs) {
-		menu_msg("NOT CONFIGURED", "Configure WiFi and try again!", 0, 120);
-		err = 1;
-		goto out;
-	}
-
-	// If only 1 config, do not bother user and select it by default
-	if (1 == configs) {
-		download_menu_select_default_cb(instance);
-		instance->prev->sel_item = instance->sel_item;
-		menu_enter(&download_start_menu);
-		// No error, but we set err to 1 to avoid transition to the
-		// current menu, since we are entering download_start_menu.
-		err = 1;
-		goto out;
 	}
 
 out:
