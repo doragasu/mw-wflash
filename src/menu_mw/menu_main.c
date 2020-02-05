@@ -11,6 +11,7 @@
 #include "../mw/megawifi.h"
 
 #define NTP_SERV_MAXLEN 	32
+#define TIMEZONE_MAXLEN		32
 
 /// Item offsets for the NTP configuration menu
 enum {
@@ -20,26 +21,14 @@ enum {
 	MENU_NTP_TIMEZONE = 6
 };
 
-
 static int menu_tz_validate(struct menu_entry_instance *instance)
 {
 	struct menu_str *text = &instance->entry->osk_entry->tmp;
-	char *endptr = NULL;
-	long number = strtol(text->str, &endptr, 10);
 	int err = 0;
 
-	if ('\0' == *text->str) {
+	if (text->length < 3) {
+		menu_msg("INVALID TIMEZONE", "Must have at least 3 characters", 0, 5 * 60);
 		err = 1;
-	}
-	if (*endptr != '\0') {
-		err = 1;
-	}
-	if (!err) {
-		err = !IN_RANGE(number, -11, 13);
-	}
-	if (err) {
-		menu_msg("INVALID TIMEZONE", "Invalid timezone "
-				"(-11 to 13)", 0, 5 * 60);
 	}
 
 	return err;
@@ -51,9 +40,9 @@ const struct menu_entry menu_ntp_tz_osk = {
 	.left_context = MENU_STR_RO(QWERTY_LEFT_CTX_STR),
 	.action_cb = menu_tz_validate,
 	.osk_entry = MENU_OSK_ENTRY {
-		.caption = MENU_STR_RO(	"Time zone (-11 to 13):"),
-		.osk_type = MENU_TYPE_OSK_NUMERIC_NEG,
-		.line_len = 3
+		.caption = MENU_STR_RO("Time zone string (e.g. \"UTC+1\"):"),
+		.osk_type = MENU_TYPE_OSK_QWERTY,
+		.line_len = TIMEZONE_MAXLEN
 	}
 };
 
@@ -66,18 +55,6 @@ static int menu_non_empty_validate(struct menu_entry_instance *instance)
 
 	return 0;
 }
-
-const struct menu_entry menu_ntp_interval_osk = {
-	.type = MENU_TYPE_OSK,
-	.margin = MENU_DEF_LEFT_MARGIN,
-	.left_context = MENU_STR_RO(QWERTY_LEFT_CTX_STR),
-	.action_cb = menu_non_empty_validate,
-	.osk_entry = MENU_OSK_ENTRY {
-		.caption = MENU_STR_RO("Update interval (15+ seconds):"),
-		.osk_type = MENU_TYPE_OSK_NUMERIC,
-		.line_len = 4
-	}
-};
 
 const struct menu_entry menu_ntp_serv_osk = {
 	.type = MENU_TYPE_OSK,
@@ -145,7 +122,7 @@ const struct menu_entry ntp_menu = {
 	.title = MENU_STR_RO("TIME CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = menu_ntp_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(11, 1, MENU_H_ALIGN_LEFT, 0) {
+	.item_entry = MENU_ITEM_ENTRY(11, 1, MENU_H_ALIGN_LEFT, 1) {
 		{
 			.caption = MENU_STR_RO("TIME SERVERS:"),
 			.not_selectable = TRUE,
@@ -168,12 +145,12 @@ const struct menu_entry ntp_menu = {
 			.hidden = TRUE
 		},
 		{
-			.caption = MENU_STR_RO("Time zone string (e.g. \"UTC+1\":"),
+			.caption = MENU_STR_RO("Time zone string:"),
 			.not_selectable = TRUE,
 			.alt_color = TRUE
 		},
 		{
-			.caption = MENU_STR_EMPTY(3),
+			.caption = MENU_STR_EMPTY(TIMEZONE_MAXLEN),
 			.next = (struct menu_entry*)&menu_ntp_tz_osk
 		},
 		{
@@ -229,7 +206,7 @@ const struct menu_entry defaults_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("CONFIRM FACTORY SETTINGS"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
-	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_CENTER, 0) {
+	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_CENTER, 1) {
 		{
 			.caption = MENU_STR_RO("THIS WILL DELETE ALL USER SETTINGS!"),
 			.alt_color = TRUE,
@@ -260,7 +237,7 @@ const struct menu_entry advanced_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("ADVANCED CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
-	.item_entry = MENU_ITEM_ENTRY(2, 3, MENU_H_ALIGN_CENTER, 0) {
+	.item_entry = MENU_ITEM_ENTRY(2, 3, MENU_H_ALIGN_CENTER, 1) {
 		{
 			.caption = MENU_STR_RO("TIME CONFIGURATION"),
 			.next = (struct menu_entry*)&ntp_menu
@@ -296,7 +273,7 @@ const struct menu_entry config_menu = {
 	.title = MENU_STR_RO("CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = config_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_LEFT, 0) {
+	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_LEFT, 1) {
 		{
 			.caption = MENU_STR_RW("1: ", 36),
 			.offset = 3,
@@ -393,7 +370,7 @@ const struct menu_entry main_menu = {
 	.title = MENU_STR_RO("MegaWiFi bootloader by doragasu"),
 	.left_context = MENU_STR_RO("Select an option"),
 	.enter_cb = main_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(4, 4, MENU_H_ALIGN_CENTER, 0) {
+	.item_entry = MENU_ITEM_ENTRY(4, 4, MENU_H_ALIGN_CENTER, 1) {
 		{
 			.caption = MENU_STR_RO("START!"),
 			.not_selectable = TRUE,

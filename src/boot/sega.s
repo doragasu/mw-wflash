@@ -43,8 +43,8 @@ _Vecteurs_68K:
 
         .incbin "boot/rom_head.bin", 0, 0x100
 
-* Locate the boot sector at the last 32 KiB sector of the Flash chip.
-        .org    0x003F8000
+* Locate the boot sector at the last 64 KiB sector of the Flash chip.
+        .org    0x003F0000
 _Entry_Point:
         move    #0x2700,%sr
         lea     Table,%a5

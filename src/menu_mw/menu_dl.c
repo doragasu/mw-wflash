@@ -76,7 +76,7 @@ const struct menu_entry download_menu = {
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = download_menu_enter_cb,
 	.action_cb = download_menu_select_default_cb,
-	.item_entry = MENU_ITEM_ENTRY(3, 2, MENU_H_ALIGN_LEFT, 0) {
+	.item_entry = MENU_ITEM_ENTRY(3, 2, MENU_H_ALIGN_LEFT, 1) {
 		{
 			.caption = MENU_STR_RW("1: ", 36),
 			.offset = 3,

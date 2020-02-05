@@ -102,7 +102,7 @@ const struct menu_entry gamertag_entry_menu = {
 	.title = MENU_STR_RO("GAMERTAG"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = gte_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(10, 2, MENU_H_ALIGN_LEFT, 0) {
+	.item_entry = MENU_ITEM_ENTRY(10, 2, MENU_H_ALIGN_LEFT, 1) {
 		{
 			.caption = MENU_STR_RO("NICKNAME:"),
 			.not_selectable = TRUE,
@@ -178,7 +178,7 @@ const struct menu_entry gamertag_menu = {
 	.title = MENU_STR_RO("GAMERTAGS"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.action_cb = gamertag_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(3, 3, MENU_H_ALIGN_LEFT, 0) {
+	.item_entry = MENU_ITEM_ENTRY(3, 3, MENU_H_ALIGN_LEFT, 1) {
 		{
 			.caption = MENU_STR_RW("1: ", 36),
 			.offset = 3,

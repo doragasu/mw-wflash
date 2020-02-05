@@ -11,9 +11,9 @@
 #define MENU_NET_DATA_OFF	10
 
 enum {
-	MENU_NET_SSID = 0,
+	MENU_NET_SCAN = 0,
+	MENU_NET_SSID,
 	MENU_NET_PASS,
-	MENU_NET_SCAN,
 	MENU_NET_IP_CONFIG,
 	MENU_NET_IP,
 	MENU_NET_MASK,
@@ -107,7 +107,7 @@ const struct menu_entry net_menu_test = {
 	.title = MENU_STR_RO("WIFI CONFIGURATION TEST"),
 	.enter_cb = net_menu_test_run,
 	.left_context = MENU_STR_EMPTY(2),
-	.item_entry = MENU_ITEM_ENTRY(3, 4, MENU_H_ALIGN_CENTER, 0) {
+	.item_entry = MENU_ITEM_ENTRY(3, 4, MENU_H_ALIGN_CENTER, MENU_BACK_ALL) {
 		{
 			.caption = MENU_STR_RW("Associating to AP... ", 27),
 			.not_selectable = TRUE,
@@ -132,7 +132,7 @@ const struct menu_entry net_menu_done = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("CONFIGURATION COMPLETE!"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
-	.item_entry = MENU_ITEM_ENTRY(2, 4, MENU_H_ALIGN_CENTER, 0) {
+	.item_entry = MENU_ITEM_ENTRY(2, 4, MENU_H_ALIGN_CENTER, MENU_BACK_ALL) {
 		{
 			.caption = MENU_STR_RO("TEST"),
 			.next = (struct menu_entry*)&net_menu_test
@@ -220,6 +220,7 @@ static int net_menu_ap_scan(struct menu_entry_instance *instance)
 	// Fill items
 	entry->n_items = n_aps;
 	entry->pages = MENU_PAGES(n_aps, 1);
+	entry->back_levels = 1;
 	for (i = 0; i < n_aps && (pos = mw_ap_fill_next(data, pos, &ap,
 					data_len)); i++) {
 		net_menu_ap_fill(i, entry, &ap);
@@ -431,7 +432,11 @@ const struct menu_entry net_menu = {
 	.title = MENU_STR_RO("NETWORK CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = net_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(10, 2, MENU_H_ALIGN_LEFT, 0) {
+	.item_entry = MENU_ITEM_ENTRY(10, 2, MENU_H_ALIGN_LEFT, 1) {
+		{
+			.caption = MENU_STR_RO("SCAN..."),
+			.next = (struct menu_entry*)&net_menu_scan,
+		},
 		{
 			.caption = MENU_STR_RW("SSID: ", 38),
 			.offset = 6,
@@ -444,10 +449,6 @@ const struct menu_entry net_menu = {
 			.offset = 6,
 			.draw_empty = TRUE,
 			.next = (struct menu_entry*)&menu_net_pass_osk
-		},
-		{
-			.caption = MENU_STR_RO("SCAN..."),
-			.next = (struct menu_entry*)&net_menu_scan,
 		},
 		{
 			.caption = MENU_STR_RW("IP CONFIG: ", 17),
