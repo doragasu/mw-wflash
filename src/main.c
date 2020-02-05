@@ -23,10 +23,16 @@
 #define MW_CH_PORT 	1985
 
 /// Maximum number of loop functions
-#define MW_MAX_LOOP_FUNCS	2
+#define MW_MAX_LOOP_FUNCS	4
 
 /// Maximun number of loop timers
 #define MW_MAX_LOOP_TIMERS	4
+
+/// Configuration to signal game wants to configure WiFi
+#define MAGIC_WIFI_CONFIG	0xA5A5A5A5
+
+/// Configuration to signal user wants to configure WiFi
+#define USER_WIFI_CONFIG	(GP_LEFT_MASK + GP_UP_MASK + GP_START_MASK + GP_C_MASK)
 
 /// Holds data required for the download process
 struct download_menu_data {
@@ -165,15 +171,47 @@ static void main_loop_init(void)
 	loop_func_add(&megawifi_loop);
 }
 
+static void check_game_boot(void)
+{
+	extern uint32_t dirty_dw;
+	volatile uint8_t pad;
+
+	pad = gp_read();
+	// Boot game by default unless any of these happen:
+	// - No game is installed.
+	// - Anything other than combination of --- pressed in gamepad 1
+	// - Anything other than magic value 0xA5A5A5A5 is stored in dirty RAM
+	if (!SF_ENTRY_POINT_ADDR || SF_ENTRY_POINT_ADDR == 0x20202020) {
+		goto out;
+	}
+
+	if (MAGIC_WIFI_CONFIG == dirty_dw) {
+		goto out;
+	}
+
+	pad = ~gp_read();
+	if (USER_WIFI_CONFIG == pad) {
+		goto out;
+	}
+
+	// No config conditions, boot game
+	sf_boot(SF_ENTRY_POINT_ADDR);
+
+out:
+	return;
+}
+
 /// Global initialization
 static void init(void)
 {
+	// Initialize gamepad
+	gp_init();
+	// Check if we have to boot the installed game
+	check_game_boot();
 	// Initialize memory pool
 	mp_init(0);
 	// Initialize VDP
 	VdpInit();
-	// Initialize gamepad
-	gp_init();
 	// Initialize menu system
 	menu_init(&main_menu, &(struct menu_str)MENU_STR_RO("Init..."));
 	// Initialize game loop
@@ -197,4 +235,5 @@ int entry_point(uint16_t hard)
 }
 
 /** \} */
+
 

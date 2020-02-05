@@ -197,7 +197,7 @@ static void sf_err_print(const char *err)
 }
 
 static int frame_check(enum lsd_status stat, char *buf, uint8_t ch,
-		int16_t len, lsd_recv_cb retry_cb)
+		uint16_t len, lsd_recv_cb retry_cb)
 {
 	if (LSD_STAT_COMPLETE != stat) {
 		sf_err_print(get_lsd_err(stat));
@@ -209,14 +209,10 @@ static int frame_check(enum lsd_status stat, char *buf, uint8_t ch,
 		return 1;
 	}
 
-	if (len <= 0) {
+	if (0 == len) {
 		if (MW_SOCK_TCP_EST != mw_sock_stat_get(SF_CHANNEL)) {
 			// Connection lost
 			sf_err_print("CONNECTION LOST!");
-			return 1;
-		} else {
-			// No data to process, return error but try again
-			mw_recv(buf, d.buf_length, NULL, retry_cb);
 			return 1;
 		}
 	}
