@@ -3,6 +3,7 @@
 #include "../mpool.h"
 #include "../gamepad.h"
 #include "../util.h"
+#include "../snd/sound.h"
 
 static void menu_draw_pager(enum menu_placement loc)
 {
@@ -16,6 +17,7 @@ static void menu_draw_pager(enum menu_placement loc)
 	pager[i++] = '/';
 	i += uint8_to_str(entry->pages, pager + i);
 	/// \todo Should we replace this with menu_line_draw()?
+	VdpDmaWait();
 	VdpDrawText(VDP_PLANEA_ADDR, loc + MENU_LINE_CHARS - 
 			MENU_DEF_RIGHT_MARGIN - i, MENU_LINE_PAGER,
 			MENU_COLOR_PAGER, i, pager, ' ');
@@ -186,6 +188,7 @@ static void menu_item_page_up(void)
 		}
 	}
 	menu_item_change(MENU_PLACE_CENTER, item_num);
+	psgfx_play(SFX_MENU_PAGE);
 }
 
 /// Select the previous page
@@ -209,6 +212,7 @@ static void menu_item_page_down(void)
 		}
 	}
 	menu_item_change(MENU_PLACE_CENTER, item_num);
+	psgfx_play(SFX_MENU_PAGE);
 }
 
 static struct menu_entry *menu_accept(struct menu_entry_instance *instance)
@@ -232,7 +236,7 @@ static struct menu_entry *menu_accept(struct menu_entry_instance *instance)
 int menu_item_update(uint8_t gp_press, struct menu_entry **next)
 {
 	struct menu_entry_instance *instance = menu->instance;
-	int back = FALSE;
+	int back = 0;
 
 	*next = NULL;
 
@@ -241,15 +245,17 @@ int menu_item_update(uint8_t gp_press, struct menu_entry **next)
 	if (gp_press & GP_A_MASK) {
 		*next = menu_accept(instance);
 	} else if (gp_press & GP_B_MASK) {
-		back = TRUE;
+		back = instance->entry->item_entry->back_levels;
 	} else if (gp_press & GP_C_MASK) {
 		if (instance->entry->c_button_cb) {
 			instance->entry->c_button_cb(instance);
 		}
 	} else if (gp_press & GP_DOWN_MASK) {
 		menu_item_next();
+		psgfx_play(SFX_MENU_ITEM);
 	} else if (gp_press & GP_UP_MASK) {
 		menu_item_prev();
+		psgfx_play(SFX_MENU_ITEM);
 	} else if (gp_press & GP_RIGHT_MASK) {
 		menu_item_page_up();
 	} else if (gp_press & GP_LEFT_MASK) {
@@ -274,6 +280,7 @@ int menu_item_enter(void)
 		err = instance->entry->action_cb(instance);
 	}
 
+	menu_str_line_clear(MENU_PLACE_CENTER, MENU_LINE_PAGER);
 	menu_item_draw(MENU_PLACE_CENTER);
 
 	return err;

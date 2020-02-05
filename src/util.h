@@ -29,6 +29,11 @@
 #define NULL ((void*)0)
 #endif
 
+/// Stringify helper macro (do not use directly)
+#define _STR(item)	#item
+/// Stringify macro
+#define STR(item)	_STR(item)
+
 /// Returns TRUE if number is in the specified range
 #define IN_RANGE(num, lower, upper)					\
 	(((number) >= (lower)) && ((number) <= (upper)))
@@ -45,6 +50,11 @@
 /// - int a SECTION(data);
 /// - void foo(void) SECTION(text);
 #define SECTION(name)	__attribute__((section(#name)))
+
+/// Put next symbol in named section .text.ro_text.symbol
+#define ROM_TEXT(name)	SECTION(.text.ro_text.name)
+/// Put next symbol in named section .text.ro_data.symbol
+#define ROM_DATA(name)	SECTION(.text.ro_data.name)
 
 /// Get number of rows of a 2D array
 #define ARRAY_ROWS(array_2d)		(sizeof(array_2d) / sizeof(array_2d[0]) / sizeof(array_2d[0][0]))
@@ -229,6 +239,14 @@ void uint8_to_hex_str(uint8_t num, char *str);
  *         including the null termination.
  ****************************************************************************/
 int uint32_to_hex_str(uint32_t num, char *str, int pad);
+
+#ifndef TRUE
+/// TRUE value for logic comparisons
+#define TRUE 1
+/// FALSE value for logic comparisons
+#define TRUE 1
+#define FALSE 0
+#endif
 
 #endif //_UTIL_H_
 

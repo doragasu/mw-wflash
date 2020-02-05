@@ -17,9 +17,7 @@ enum {
 	MENU_NTP_SERV1 = 1,
 	MENU_NTP_SERV2 = 2,
 	MENU_NTP_SERV3 = 3,
-	MENU_NTP_TIMEZONE = 6,
-	MENU_NTP_UPDATE_INTERVAL = 9,
-	MENU_NTP_DAYLIGHT_SAVING = 11
+	MENU_NTP_TIMEZONE = 6
 };
 
 
@@ -93,32 +91,18 @@ const struct menu_entry menu_ntp_serv_osk = {
 	}
 };
 
-
-
-static int menu_on_off_status(const struct menu_item *item)
-{
-	int offset = item->offset + 1;
-
-	return item->caption.str[offset] == 'N'?1:0;
-}
-
 static int menu_ntp_save(struct menu_entry_instance *instance)
 {
 	struct menu_item *item = instance->entry->item_entry->item;
-	char *servers[3];
-	uint16_t up_delay;
-	int8_t timezone;
-	int8_t dst;
+	const char *servers[3];
+	const char *tz;
 
 	for (int i = 0; i < 3; i++) {
-		servers[i] = item[i + 1].caption.str;
+		servers[i] = item[i + MENU_NTP_SERV1].caption.str;
 	}
-	up_delay = atoi(item[MENU_NTP_UPDATE_INTERVAL].caption.str);
-	timezone = atoi(item[MENU_NTP_TIMEZONE].caption.str);
-	dst = menu_on_off_status(&item[MENU_NTP_DAYLIGHT_SAVING]);
+	tz = item[MENU_NTP_TIMEZONE].caption.str;
 
-	if (MW_ERR_NONE != mw_sntp_cfg_set((const char**)servers, up_delay,
-				timezone, dst)) {
+	if (MW_ERR_NONE != mw_sntp_cfg_set(tz, servers)) {
 		menu_msg("ERROR", "Failed to save configuration!", 0, 5 * 60);
 		return 1;
 	}
@@ -128,40 +112,15 @@ static int menu_ntp_save(struct menu_entry_instance *instance)
 	return 0;
 }
 
-static void menu_on_off_draw(struct menu_item *item, int8_t on)
-{
-	if (on) {
-		item->caption.str[item->offset + 1] = 'N';
-		item->caption.length = item->offset + 2;
-	} else {
-		item->caption.str[item->offset + 1] = 'F';
-		item->caption.str[item->offset + 2] = 'F';
-		item->caption.length = item->offset + 3;
-	}
-}
-
-static int menu_on_off_toggle(struct menu_entry_instance *instance)
-{
-	struct menu_item *item = &instance->entry->item_entry->
-		item[instance->sel_item];
-
-	menu_on_off_draw(item, 'F' == item->caption.str[item->offset + 1]);
-	menu_item_draw(MENU_PLACE_CENTER);
-
-	return 0;
-}
-
 static int menu_ntp_enter_cb(struct menu_entry_instance *instance)
 {
 	struct menu_item *item = instance->entry->item_entry->item;
 	char *server[3] = {0};
-	uint16_t update_delay;
-	int8_t timezone;
-	int8_t dst;
+	char *tz = NULL;
 	enum mw_err err;
 	int i;
 
-	err = mw_sntp_cfg_get(server, &update_delay, &timezone, &dst);
+	err = mw_sntp_cfg_get(&tz, server);
 	if (err) {
 		menu_msg("ERROR", "Failed to get time configuration", 0, 180);
 		return 1;
@@ -170,15 +129,12 @@ static int menu_ntp_enter_cb(struct menu_entry_instance *instance)
 	for (i = 0; i < 3 && server[i]; i++) {
 		menu_str_replace(&item[MENU_NTP_SERV1 + i].caption, server[i]);
 	}
-
 	for (; i < 3; i++) {
 		menu_str_replace(&item[MENU_NTP_SERV1 + i].caption, "");
 	}
-	item[MENU_NTP_UPDATE_INTERVAL].caption.length = uint16_to_str(update_delay,
-			item[MENU_NTP_UPDATE_INTERVAL].caption.str);
-	item[MENU_NTP_TIMEZONE].caption.length = int8_to_str(timezone,
-			item[MENU_NTP_TIMEZONE].caption.str);
-	menu_on_off_draw(&item[MENU_NTP_DAYLIGHT_SAVING], dst);
+	if (tz) {
+		menu_str_replace(&item[MENU_NTP_TIMEZONE].caption, tz);
+	}
 
 	return 0;
 }
@@ -189,7 +145,7 @@ const struct menu_entry ntp_menu = {
 	.title = MENU_STR_RO("TIME CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = menu_ntp_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(16, 1, MENU_H_ALIGN_LEFT) {
+	.item_entry = MENU_ITEM_ENTRY(11, 1, MENU_H_ALIGN_LEFT, 0) {
 		{
 			.caption = MENU_STR_RO("TIME SERVERS:"),
 			.not_selectable = TRUE,
@@ -212,35 +168,13 @@ const struct menu_entry ntp_menu = {
 			.hidden = TRUE
 		},
 		{
-			.caption = MENU_STR_RO("Time zone:"),
+			.caption = MENU_STR_RO("Time zone string (e.g. \"UTC+1\":"),
 			.not_selectable = TRUE,
 			.alt_color = TRUE
 		},
 		{
 			.caption = MENU_STR_EMPTY(3),
 			.next = (struct menu_entry*)&menu_ntp_tz_osk
-		},
-		{
-			.not_selectable = TRUE,
-			.hidden = TRUE
-		},
-		{
-			.caption = MENU_STR_RO("Update interval:"),
-			.not_selectable = TRUE,
-			.alt_color = TRUE
-		},
-		{
-			.caption = MENU_STR_EMPTY(4),
-			.next = (struct menu_entry*)&menu_ntp_interval_osk
-		},
-		{
-			.not_selectable = TRUE,
-			.hidden = TRUE
-		},
-		{
-			.caption = MENU_STR_RW("Daylight saving: OXX", 20),
-			.offset = 17,
-			.entry_cb = menu_on_off_toggle
 		},
 		{
 			.not_selectable = TRUE,
@@ -295,7 +229,7 @@ const struct menu_entry defaults_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("CONFIRM FACTORY SETTINGS"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
-	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_CENTER) {
+	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_CENTER, 0) {
 		{
 			.caption = MENU_STR_RO("THIS WILL DELETE ALL USER SETTINGS!"),
 			.alt_color = TRUE,
@@ -326,7 +260,7 @@ const struct menu_entry advanced_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("ADVANCED CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
-	.item_entry = MENU_ITEM_ENTRY(2, 3, MENU_H_ALIGN_CENTER) {
+	.item_entry = MENU_ITEM_ENTRY(2, 3, MENU_H_ALIGN_CENTER, 0) {
 		{
 			.caption = MENU_STR_RO("TIME CONFIGURATION"),
 			.next = (struct menu_entry*)&ntp_menu
@@ -362,7 +296,7 @@ const struct menu_entry config_menu = {
 	.title = MENU_STR_RO("CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = config_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_LEFT) {
+	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_LEFT, 0) {
 		{
 			.caption = MENU_STR_RW("1: ", 36),
 			.offset = 3,
@@ -459,7 +393,7 @@ const struct menu_entry main_menu = {
 	.title = MENU_STR_RO("MegaWiFi bootloader by doragasu"),
 	.left_context = MENU_STR_RO("Select an option"),
 	.enter_cb = main_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(4, 4, MENU_H_ALIGN_CENTER) {
+	.item_entry = MENU_ITEM_ENTRY(4, 4, MENU_H_ALIGN_CENTER, 0) {
 		{
 			.caption = MENU_STR_RO("START!"),
 			.not_selectable = TRUE,

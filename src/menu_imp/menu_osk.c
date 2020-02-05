@@ -3,9 +3,7 @@
 #include "menu_osk.h"
 #include "../vdp.h"
 #include "../gamepad.h"
-
-/// \todo We are constantly reading the menu type index. Maybe it should be
-/// wiser to have it as an input parameter of functions requiring it.
+#include "../snd/sound.h"
 
 /// Number of rows of the QWERTY menu
 #define MENU_OSK_QWERTY_ROWS		4
@@ -349,6 +347,7 @@ static void menu_osk_row_change(int8_t value)
 	menu_osk_draw_key(MENU_COLOR_ITEM, MENU_PLACE_CENTER);
 	menu_osk_row_move(value);
 	menu_osk_draw_key(MENU_COLOR_ITEM_SEL, MENU_PLACE_CENTER);
+	psgfx_play(SFX_MENU_KEY_MOVE);
 }
 
 static void menu_osk_col_move(int8_t value)
@@ -416,6 +415,7 @@ static void menu_osk_col_change(int8_t value)
 	menu_osk_draw_key(MENU_COLOR_ITEM, MENU_PLACE_CENTER);
 	menu_osk_col_move(value);
 	menu_osk_draw_key(MENU_COLOR_ITEM_SEL, MENU_PLACE_CENTER);
+	psgfx_play(SFX_MENU_KEY_MOVE);
 }
 
 static void menu_osk_add_char(char chr)
@@ -435,6 +435,7 @@ static void menu_osk_add_char(char chr)
 				MENU_DEF_LEFT_MARGIN, MENU_H_ALIGN_LEFT,
 				MENU_COLOR_OSK_DATA, MENU_PLACE_CENTER);
 		menu_osk_draw_cursor(MENU_PLACE_CENTER);
+		psgfx_play(SFX_MENU_KEY_TYPE);
 	}
 
 }
@@ -453,6 +454,7 @@ static void menu_osk_del_char(void)
 				MENU_DEF_LEFT_MARGIN, MENU_H_ALIGN_LEFT,
 				MENU_COLOR_OSK_DATA, MENU_PLACE_CENTER);
 		menu_osk_draw_cursor(MENU_PLACE_CENTER);
+		psgfx_play(SFX_MENU_KEY_DEL);
 	}
 }
 
@@ -470,6 +472,7 @@ static void menu_osk_move_chr(int value)
 			MENU_DEF_LEFT_MARGIN, MENU_H_ALIGN_LEFT,
 			MENU_COLOR_OSK_DATA, MENU_PLACE_CENTER);
 	menu_osk_draw_cursor(MENU_PLACE_CENTER);
+	psgfx_play(SFX_MENU_ENTER);
 }
 
 static enum menu_osk_ret menu_osk_done(struct menu_entry_instance *instance)

@@ -15,6 +15,8 @@
 #include "menu_mw/menu_main.h"
 #include "loop.h"
 #include "sysfsm.h"
+#include "snd/sound.h"
+#include "gfx/background.h"
 
 /// Length of the wflash buffer
 #define MW_BUFLEN	1440
@@ -174,13 +176,16 @@ static void init(void)
 	VdpInit();
 	// Initialize gamepad
 	gp_init();
-	// Initialize menu system
-	menu_init(&main_menu, &(struct menu_str)MENU_STR_RO("Init..."));
 	// Initialize game loop
 	main_loop_init();
 	// Initialize MegaWiFi
 	mw_init(cmd_buf, MW_BUFLEN);
-
+	// Initialize menu system
+	menu_init(&main_menu, &(struct menu_str)MENU_STR_RO("Init..."));
+	// Initializes sound, starts the song
+	sound_init(menu_01_00_data, sfx_data);
+	// Initialize scrolling background layer
+	bg_init();
 }
 
 /// Entry point

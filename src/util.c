@@ -130,7 +130,7 @@ uint8_t uint8_to_str(uint8_t num, char *str)
 
 	// Compute digits and write decimal number
 	// On 3 digit numbers, first one can only be 1 or 2. Take advantage of
-	// this to avoid division (TODO test if this is really faster).
+	// this to avoid division (test if this is really faster).
 	if (num > 199) {
 		str[i++] = '2';
 		num -= 200;

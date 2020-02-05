@@ -62,7 +62,7 @@
 /** \} */
 
 /// Maximum string length
-#define MENU_STR_MAX_LEN	32
+#define MENU_STR_MAX_LEN	38
 
 /// Number of characters horizontally separating each menu
 #define MENU_SEPARATION_CHR		(VDP_SCREEN_WIDTH_PX/8)

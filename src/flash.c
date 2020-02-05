@@ -49,14 +49,9 @@ struct write_long_data {
 struct poll_data {
 	completion_cb cb;
 	void *ctx;
-	union {
-		uint32_t addr;
-		struct {
-			// For sector range erase
-			uint16_t cur_sect;
-			uint16_t fin_sect;
-		};
-	};
+	uint32_t addr;
+	uint16_t cur_sect;
+	uint16_t fin_sect;
 	struct write_long_data write;
 	uint8_t data;
 	enum poll_type type;
@@ -284,8 +279,8 @@ static void range_erase_cb(int err, void *ctx)
 		}
 		return;
 	}
-	poll.cur_sect++;
-	if (poll.cur_sect <= poll.fin_sect) {
+	if (poll.cur_sect > poll.fin_sect) {
+		poll.cur_sect--;
 		// Relaunch sector erase with new sector
 		flash_sector_erase((uint32_t)saddr[poll.cur_sect]<<
 				FLASH_SADDR_SHIFT, ctx);
@@ -297,10 +292,11 @@ static void range_erase_cb(int err, void *ctx)
 	}
 }
 
+/// \todo Reverse erase order to minimize probability of losing loader data
 int flash_range_erase(uint32_t addr, uint32_t len)
 {
 	// Index
-	uint8_t i, j;
+	uint8_t start, end;
 	// Shifted address to compare with 
 	uint16_t caddr = addr>>FLASH_SADDR_SHIFT;
 	uint16_t clen = (len - 1)>>FLASH_SADDR_SHIFT;
@@ -312,22 +308,22 @@ int flash_range_erase(uint32_t addr, uint32_t len)
 	}
 
 	// Find sector containing the initial address
-	for (i = FLASH_NSECT - 1; (caddr < saddr[i]) && i; i--);
+	for (start = FLASH_NSECT - 1; start && (caddr < saddr[start]); start--);
 
 	// Find sector containing the end address
-	for (j = FLASH_NSECT - 1; ((caddr + clen) < saddr[j]) && j; j--);
+	for (end = FLASH_NSECT - 1; end && ((caddr + clen) < saddr[end]); end--);
 
 	// Special case: erase full chip
-	if ((0 == i) && ((FLASH_NSECT - 1 ) == j)) {
+	if ((0 == start) && ((FLASH_NSECT - 1 ) == end)) {
 		flash_chip_erase(NULL);
 	} else {
 		ctx = poll.cb;
 		poll.cb = range_erase_cb;
 		poll.type = FLASH_POLL_SECT;
 		// Store end sector address
-		poll.cur_sect = i;
-		poll.fin_sect = j;
-		flash_sector_erase(((uint32_t)saddr[i])<<FLASH_SADDR_SHIFT,
+		poll.cur_sect = end;
+		poll.fin_sect = start;
+		flash_sector_erase(((uint32_t)saddr[end])<<FLASH_SADDR_SHIFT,
 				ctx);
 	}
 

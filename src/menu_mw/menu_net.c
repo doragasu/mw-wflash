@@ -107,7 +107,7 @@ const struct menu_entry net_menu_test = {
 	.title = MENU_STR_RO("WIFI CONFIGURATION TEST"),
 	.enter_cb = net_menu_test_run,
 	.left_context = MENU_STR_EMPTY(2),
-	.item_entry = MENU_ITEM_ENTRY(3, 4, MENU_H_ALIGN_CENTER) {
+	.item_entry = MENU_ITEM_ENTRY(3, 4, MENU_H_ALIGN_CENTER, 0) {
 		{
 			.caption = MENU_STR_RW("Associating to AP... ", 27),
 			.not_selectable = TRUE,
@@ -132,7 +132,7 @@ const struct menu_entry net_menu_done = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("CONFIGURATION COMPLETE!"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
-	.item_entry = MENU_ITEM_ENTRY(2, 4, MENU_H_ALIGN_CENTER) {
+	.item_entry = MENU_ITEM_ENTRY(2, 4, MENU_H_ALIGN_CENTER, 0) {
 		{
 			.caption = MENU_STR_RO("TEST"),
 			.next = (struct menu_entry*)&net_menu_test
@@ -431,7 +431,7 @@ const struct menu_entry net_menu = {
 	.title = MENU_STR_RO("NETWORK CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = net_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(10, 2, MENU_H_ALIGN_LEFT) {
+	.item_entry = MENU_ITEM_ENTRY(10, 2, MENU_H_ALIGN_LEFT, 0) {
 		{
 			.caption = MENU_STR_RW("SSID: ", 38),
 			.offset = 6,

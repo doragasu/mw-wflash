@@ -2,23 +2,25 @@
 #define _MENU_H_
 
 #include "menu_def.h"
+#include "../util.h"
 
 /// Compute the number of items fitting one page
 #define MENU_ITEMS_PER_PAGE(items, spacing)			\
-	MIN(1 + MENU_ITEM_LINES/(spacing), items)
+	MIN(MENU_ITEM_LINES/(spacing), items)
 
 /// Compute the number of pages needed for a menu item entry
 #define MENU_PAGES(items, spacing)				\
 	(1 + (items - 1)/MENU_ITEMS_PER_PAGE(items, spacing))
 
 /// Macro to ease building menu item entries
-#define MENU_ITEM_ENTRY(items, item_spacing, item_align)		\
+#define MENU_ITEM_ENTRY(items, item_spacing, item_align, back)		\
 	(struct menu_item_entry*)&(const struct menu_item_entry) {	\
 	.n_items = items,						\
 	.spacing = item_spacing,					\
 	.items_per_page = MENU_ITEMS_PER_PAGE(items, item_spacing),	\
 	.pages = MENU_PAGES(items, item_spacing),			\
 	.align = item_align,						\
+	.back_levels = back,					\
 	.item = (struct menu_item*)(const struct menu_item[items])
 
 /// Macro to close a previously opened MENU_ITEM_ENTRY
@@ -41,6 +43,11 @@ void menu_init(const struct menu_entry *root, struct menu_str *status);
  * \param[in] status Status string.
  ****************************************************************************/
 void menu_stat_str_set(struct menu_str *status);
+
+/************************************************************************//**
+ * Redraws the context line
+ ****************************************************************************/
+void menu_redraw_context(void);
 
 /************************************************************************//**
  * Updates the menus.

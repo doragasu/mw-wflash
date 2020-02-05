@@ -7,6 +7,9 @@
 
 #define MENU_STATUS_MAX_CHR	12
 
+/// back_level is set to this value, go back to root menu
+#define MENU_BACK_ALL		7
+
 enum PACKED menu_msg_flags {
 	MENU_MSG_BUTTON_YES = 1,
 	MENU_MSG_BUTTON_NO = 2,
@@ -58,11 +61,14 @@ struct menu_item {
 };
 
 struct menu_item_entry {
-	uint8_t n_items;
-	uint8_t spacing;
-	uint8_t items_per_page;
-	uint8_t pages;
-	enum menu_h_align align;
+	struct {
+		uint8_t n_items;
+		uint8_t pages;
+		uint8_t items_per_page:5;
+		uint8_t back_levels:3;
+		uint8_t spacing:4;
+		enum menu_h_align align:2;
+	};
 	struct menu_item *item;
 };
 
@@ -104,6 +110,7 @@ struct menu_entry {
 	struct menu_str left_context;
 	menu_callback enter_cb;
 	menu_callback exit_cb;
+	menu_callback periodic_cb;
 	menu_callback action_cb;
 	menu_callback c_button_cb;
 	union {

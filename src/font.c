@@ -1,8 +1,9 @@
 #include "font.h"
+#include "util.h"
 
 /// 1 bpp font. 8 bytes per character.
 /// See https://www.coranac.com/tonc/text/text.htm
-const uint32_t font[] = {
+const uint32_t font[] ROM_DATA(font) = {
     0x00000000, 0x00000000, 0x18181818, 0x00180018, 0x00003636, 0x00000000, 0x367F3636, 0x0036367F, 
     0x3C067C18, 0x00183E60, 0x1B356600, 0x0033566C, 0x6E16361C, 0x00DE733B, 0x000C1818, 0x00000000, 
     0x0C0C1830, 0x0030180C, 0x3030180C, 0x000C1830, 0xFF3C6600, 0x0000663C, 0x7E181800, 0x00001818, 

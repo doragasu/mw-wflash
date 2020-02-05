@@ -6,6 +6,8 @@
 #include "menu_msg.h"
 #include "../mpool.h"
 #include "../gamepad.h"
+#include "../snd/sound.h"
+#include "../gfx/background.h"
 
 /// The global menu instance
 struct menu_instance *menu;
@@ -179,9 +181,12 @@ void menu_stat_str_set(struct menu_str *status)
 
 static void menu_animate(void)
 {
-	menu->offset += MENU_STAT_ENTERING == menu->stat?
+	int16_t delta = MENU_STAT_ENTERING == menu->stat?
 		-anim_delta[menu->anim_step]:anim_delta[menu->anim_step];
+
+	menu->offset += delta;
 	MENU_SCROLL(menu->offset);
+	bg_hscroll(-delta>>2);
 	menu->anim_step++;
 	if (menu->anim_step >= MENU_ANIM_STEPS ) {
 		MENU_STAT_CHANGE(MENU_STAT_IDLE);
@@ -218,6 +223,7 @@ void menu_enter(const struct menu_entry *next)
 	entry = menu_alloc_cpy(next);
 	instance->entry = entry;
 	instance->prev = menu->instance;
+	psgfx_play(SFX_MENU_ENTER);
 	if (instance->entry->enter_cb) {
 		err = instance->entry->enter_cb(instance);
 	}
@@ -280,6 +286,11 @@ void menu_back(int levels)
 		menu_back_animation_start();
 	}
 
+	// Check if we must go back all levels
+	if (MENU_BACK_ALL == levels) {
+		levels = menu->level - 1;
+	}
+
 	menu->level -= levels;
 	while (levels--) {
 		to_dealloc = menu->instance;
@@ -293,21 +304,27 @@ void menu_back(int levels)
 	if (MENU_TYPE_MSG != type) {
 		menu_item_enter();
 	}
+	psgfx_play(SFX_MENU_BACK);
 }
 
 // FIXME Rewrite using menu_draw()
-static void menu_update_item(uint8_t gp_press)
+static int menu_update_item(uint8_t gp_press)
 {
 	struct menu_entry *next = NULL;
 	int back = FALSE;
+	int busy = FALSE;
 
 	back = menu_item_update(gp_press, &next);
 
 	if (back) {
-		menu_back(1);
+		menu_back(back);
+		busy = TRUE;
 	} else if (next) {
 		menu_enter(next);
+		busy = TRUE;
 	}
+
+	return busy;
 }
 
 void menu_reset(void)
@@ -315,38 +332,49 @@ void menu_reset(void)
 	menu_back(menu->level - 1);
 }
 
-static void menu_update_osk(uint8_t gp_press)
+static int menu_update_osk(uint8_t gp_press)
 {
+	int busy = FALSE;
 	int action;
 
 	action = menu_osk_update(gp_press);
 	switch (action) {
 	case MENU_OSK_ACTION_DONE:
 		menu_back(1);
+		busy = TRUE;
 		break;
 
 	case MENU_OSK_ACTION_CANCEL:
 		menu_back(1);
+		busy = TRUE;
 		break;
 
 	default:
 		break;
 	}
+
+	return busy;
 }
 
-static void menu_update_msg(uint8_t gp_press)
+static int menu_update_msg(uint8_t gp_press)
 {
 	enum menu_msg_action action;
+	int busy = FALSE;
 
 	action = menu_msg_update(gp_press);
 
 	if (action) {
 		menu_back(1);
+		busy = TRUE;
 	}
+
+	return busy;
 }
 
 void menu_update(uint8_t gp_press)
 {
+	int busy = FALSE;
+
 	// Perform entry/exit animation when appropriate
 	switch (menu->stat) {
 	case MENU_STAT_IDLE:
@@ -354,20 +382,23 @@ void menu_update(uint8_t gp_press)
 		// returns the entry/exit event
 		switch (menu->instance->entry->type) {
 		case MENU_TYPE_ITEM:
-			menu_update_item(gp_press);
+			busy = menu_update_item(gp_press);
 			break;
 
 		case MENU_TYPE_OSK:
-			menu_update_osk(gp_press);
+			busy = menu_update_osk(gp_press);
 			break;
 
 		case MENU_TYPE_MSG:
-			menu_update_msg(gp_press);
+			busy = menu_update_msg(gp_press);
 
 		default:
 			break;
 		}
 		
+		if (!busy && menu->instance->entry->periodic_cb) {
+			menu->instance->entry->periodic_cb(menu->instance);
+		}
 		
 		// Perform entry/exit if requested
 		break;
@@ -411,3 +442,7 @@ void menu_msg(const char *title, const char *caption,
 	menu_enter(&entry);
 }
 
+void menu_redraw_context(void)
+{
+	menu_draw_context(MENU_PLACE_CENTER);
+}
