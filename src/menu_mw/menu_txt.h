@@ -4,7 +4,9 @@
 #define _MENU_TXT_H_
 
 #define ITEM_LEFT_CTX_STR	"[A]ccept, [B]ack"
+#define ITEM_ACCEPT_STR		"[A]ccept"
 #define ITEM_BACK_STR		"[B]ack"
+#define WAIT_STR		"Please wait..."
 #define QWERTY_LEFT_CTX_STR	"A:In, B:Del, C:Caps, S:DONE"
 #define NUMERIC_LEFT_CTX_STR	"A:In, B:Del, S:DONE"
 #define EMPTY_STR		"<EMPTY>"
@@ -13,7 +15,7 @@
 #define DEF_MASK_STR 		"255.255.255.0"
 #define DEF_GW_STR 		"192.168.1.1"
 #define DEF_DNS1_STR 		"192.168.1.1"
-#define DEF_DNS2_STR 		"8.8.8.8"
+#define DEF_DNS2_STR 		"1.1.1.1"
 
 #endif /*_MENU_TXT_H_*/
 

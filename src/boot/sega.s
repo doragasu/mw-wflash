@@ -81,17 +81,16 @@ PsgMute:
 		dbf		%d1, PsgMute
 
 * clear Genesis RAM
-        lea     0xff0000,%a0
-        move.w  #0x3FFF,%d1
+        lea     _end_dirty,%a0
+        move.w  #0x3FFE,%d1
 
 ClearRam:
         move.l  %d0,(%a0)+
         dbra    %d1,ClearRam
 
 * Copy initialized variables from ROM to Work RAM
-#        lea     _etext,%a0
         lea     _sboot,%a0
-        lea     0xFF0000,%a1
+        lea     _end_dirty,%a1
         move.l  #_sdata,%d0
         lsr.l   #1,%d0
         beq     2f

@@ -49,8 +49,9 @@ void sf_start(void);
  * Clear environment and boot from specified address.
  *
  * \param[in] addr Address from which to boot.
+ * \param[in] quick When true, do not wait any frames before performing boot
  ****************************************************************************/
-void sf_boot(uint32_t addr);
+void sf_boot(uint32_t addr, int quick);
 
 #endif /*_SYSFSM_H_*/
 

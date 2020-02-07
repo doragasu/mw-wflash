@@ -57,7 +57,14 @@ SECTIONS
   } > rom
   _stext = SIZEOF(.text);
 
-  .data 0xFF0000 :
+  /* For boot type detection */
+  .dirty 0xFF0000:
+  {
+    dirty_dw = .;
+    . = . + 4 ;
+    _end_dirty = .;
+  } > ram
+  .data _end_dirty :
   AT ( ADDR (.text) + _stext )
   {
     *(.data .data.*)

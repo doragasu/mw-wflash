@@ -309,7 +309,7 @@ static int game_boot_cb(struct menu_entry_instance *instance)
 {
 	UNUSED_PARAM(instance);
 
-	sf_boot(SF_ENTRY_POINT_ADDR);
+	sf_boot(SF_ENTRY_POINT_ADDR, FALSE);
 
 	return 0;
 }

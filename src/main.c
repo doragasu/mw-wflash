@@ -11,15 +11,13 @@
 #include "gamepad.h"
 #include "mpool.h"
 #include "mw/megawifi.h"
+#include "menu_mw/comm_buf.h"
 #include "menu_imp/menu.h"
 #include "menu_mw/menu_main.h"
 #include "loop.h"
 #include "sysfsm.h"
 #include "snd/sound.h"
 #include "gfx/background.h"
-
-/// Length of the wflash buffer
-#define MW_BUFLEN	1460
 
 /// TCP port to use (set to Megadrive release year ;-)
 #define MW_CH_PORT 	1985
@@ -29,77 +27,6 @@
 
 /// Maximun number of loop timers
 #define MW_MAX_LOOP_TIMERS	4
-
-/// Holds data required for the download process
-struct download_menu_data {
-	/// Loop timer running the download operation
-	struct loop_timer timer;
-	/// Menu instance
-	struct menu_entry_instance *instance;
-};
-
-/// Command buffer (double buffered)
-static char cmd_buf[2 * MW_BUFLEN];
-
-/// Local data for the download operation
-static struct download_menu_data dl;
-
-/// Function that performs the download in a loop_timer context
-static void download_mode_frame_cb(struct loop_timer *t)
-{
-	struct download_menu_data *d = container_of(t,
-			struct download_menu_data, timer);
-	struct menu_item_entry *entry = d->instance->entry->item_entry;
-	struct menu_item *item = entry->item;
-	uint8_t slot = d->instance->prev->sel_item;
-	struct mw_ip_cfg *ip;
-	enum mw_err err = FALSE;
-	char ip_addr[16];
-
-	err = mw_ap_assoc(slot);
-	if (!err) {
-		err = mw_ap_assoc_wait(30 * 60);
-	}
-	if (!err) {
-		err = mw_ip_current(&ip);
-		uint32_to_ip_str(ip->addr.addr, ip_addr);
-	}
-	if (!err) {
-		err = mw_tcp_bind(SF_CHANNEL, SF_PORT);
-	}
-	if (!err) {
-		menu_str_replace(&item[0].caption, "Associated. IP: ");
-		menu_str_append(&item[0].caption, ip_addr);
-		menu_item_draw(MENU_PLACE_CENTER);
-
-		err = mw_sock_conn_wait(SF_CHANNEL, 0);
-	}
-	if (!err) {
-		menu_str_replace(&item[0].caption, "Connected to client!");
-		menu_item_draw(MENU_PLACE_CENTER);
-		sf_init(cmd_buf, MW_BUFLEN, d->instance);
-		sf_start();
-//		menu_str_replace(&item[0].caption, "FINISHED");
-	}
-	loop_timer_del(t);
-}
-
-/// This callback will be run when user enters DOWNLOAD MODE
-/// \note This should be moved to menu_mw/menu_dl.c, but since it needs to see
-/// cmd_buf, we are leaving it here by now.
-int download_mode_menu_cb(struct menu_entry_instance *instance)
-{
-	// Launch a one shot timer to do the work, and return for
-	// the menu to scroll
-	memset(&dl.timer, 0, sizeof(struct loop_timer));
-	dl.timer.frames = 1;
-	dl.timer.timer_cb = download_mode_frame_cb;
-	dl.instance = instance;
-
-	loop_timer_add(&dl.timer);
-
-	return 0;
-}
 
 static void idle_cb(struct loop_func *f)
 {

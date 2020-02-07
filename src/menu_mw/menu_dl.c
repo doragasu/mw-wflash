@@ -1,15 +1,125 @@
 #include "menu_dl.h"
 #include "menu_txt.h"
+#include "comm_buf.h"
+#include "../globals.h"
+#include "../sysfsm.h"
 #include "../mw/megawifi.h"
 #include "../menu_imp/menu.h"
+#include "../menu_imp/menu_itm.h"
+
+enum con_stat {
+	CON_DISABLED,
+	CON_ERR,
+	CON_ASSOC_WAIT,
+	CON_CLIENT_WAIT,
+	CON_MAX
+};
+
+static enum con_stat stat = CON_DISABLED;
+
+static int reboot_cb(struct menu_entry_instance *instance)
+{
+	UNUSED_PARAM(instance);
+	extern uint32_t dirty_dw;
+
+	// Make sure we boot the loader again
+	dirty_dw = MAGIC_WIFI_CONFIG;
+	sf_boot(GL_BOOTLOADER_ADDR, TRUE);
+
+	return 1;
+}
+
+static void conn_err(struct menu_entry_instance *instance)
+{
+	struct menu_item_entry *entry = instance->entry->item_entry;
+	struct menu_item *item = entry->item;
+	struct menu_str *context = &instance->entry->left_context;
+
+	menu_str_replace(&item[0].caption, "Connection error!");
+	menu_str_replace(&item[2].caption, "BACK");
+	menu_item_draw(MENU_PLACE_CENTER);
+	stat = CON_ERR;
+	mw_ap_disassoc();
+	context->str = ITEM_ACCEPT_STR;
+	context->length = context->max_length = sizeof(ITEM_ACCEPT_STR) - 1;
+	item[1].entry_cb = reboot_cb;
+	menu_redraw_context();
+}
+
+static int download_mode_menu_cb(struct menu_entry_instance *instance)
+{
+	struct menu_item_entry *entry = instance->entry->item_entry;
+	struct menu_item *item = entry->item;
+	uint8_t ap_slot = instance->prev->prev->sel_item;
+	enum mw_err err = FALSE;
+	int count = 0;
+	char ip_addr[16] = {0};
+	struct mw_ip_cfg *ip = NULL;
+
+	switch (stat) {
+	case CON_DISABLED:
+		err = mw_ap_assoc(ap_slot);
+		stat = CON_ASSOC_WAIT;
+		count = 0;
+		break;
+
+	case CON_ASSOC_WAIT:
+		// Wait a bit for the animation to play before locking
+		if (count++ > 60) {
+			err = mw_ap_assoc_wait(39 * 60);
+			if (!err) {
+				menu_str_replace(&item[0].caption, "Connecting to server...");
+				menu_item_draw(MENU_PLACE_CENTER);
+				stat = CON_CLIENT_WAIT;
+			}
+		}
+		if (!err) {
+			err = mw_ip_current(&ip);
+			uint32_to_ip_str(ip->addr.addr, ip_addr);
+		}
+		if (!err) {
+			err = mw_tcp_bind(SF_CHANNEL, SF_PORT);
+		}
+		if (!err) {
+			menu_str_replace(&item[0].caption, "Associated. IP: ");
+			menu_str_append(&item[0].caption, ip_addr);
+			menu_item_draw(MENU_PLACE_CENTER);
+
+			err = mw_sock_conn_wait(SF_CHANNEL, 0);
+		}
+		break;
+
+	case CON_CLIENT_WAIT:
+		if (!err) {
+			menu_str_replace(&item[0].caption, "Connected to client!");
+			menu_item_draw(MENU_PLACE_CENTER);
+			sf_init(cmd_buf, MW_BUFLEN, instance);
+			sf_start();
+			stat = CON_DISABLED;
+			instance->entry->periodic_cb = NULL;
+		}
+		break;
+
+	default:
+		err = MW_ERR;
+		break;
+	}
+
+	if (err) {
+		stat = CON_DISABLED;
+		conn_err(instance);
+	}
+
+	return err;
+}
 
 /// Empty menu, data will be manually written on the screen
 const struct menu_entry download_start_menu = {
 	.type = MENU_TYPE_ITEM,
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("DOWNLOAD MODE"),
-	.left_context = MENU_STR_RO("[B]ack"),
-	.enter_cb = download_mode_menu_cb,
+	.left_context = MENU_STR_RO(WAIT_STR),
+	.periodic_cb = download_mode_menu_cb,
 	.item_entry = MENU_ITEM_ENTRY(3, 2, MENU_H_ALIGN_CENTER, 0) {
 		{
 			.caption = MENU_STR_RW("Associating to access "
@@ -63,6 +173,12 @@ static int download_menu_enter_cb(struct menu_entry_instance *instance)
 			err = 1;
 			goto out;
 		}
+	}
+
+	if (!configs) {
+		err = TRUE;
+		menu_msg("NO NETWORK CONFIGURED!", "Configure a network"
+				" and try again", 0, 60 * 5);
 	}
 
 out:

@@ -81,7 +81,7 @@ void sf_init(char *cmd_buf, int16_t buf_length,
 		struct menu_entry_instance *instance)
 {
 	d.buf[0] = cmd_buf;
-	d.buf[1] = cmd_buf + buf_length;
+	d.buf[1] = cmd_buf + buf_length + 2;
 	d.buf_length = buf_length;
 	d.instance = instance;
 	d.f.func_cb = flash_poll_cb;
@@ -362,7 +362,7 @@ static int sf_cmd_run(wf_buf *in, int len)
 		in->cmd.cmd = WF_CMD_OK;
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
 				NULL, send_complete_cb);
-		sf_boot(entry);
+		sf_boot(entry, TRUE);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
@@ -384,7 +384,7 @@ static int sf_cmd_autorun(wf_buf *in, int len)
 		in->cmd.cmd = WF_CMD_OK;
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
 				NULL, send_complete_cb);
-		sf_boot(SF_ENTRY_POINT_ADDR);
+		sf_boot(SF_ENTRY_POINT_ADDR, TRUE);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
@@ -489,13 +489,6 @@ void sf_start(void)
 	mw_recv(d.buf[0], d.buf_length, NULL, cmd_recv_cb);
 }
 
-static void boot_timer_cb(struct loop_timer *t)
-{
-	UNUSED_PARAM(t);
-
-	loop_post(1);
-}
-
 /************************************************************************//**
  * Boot from specified address.
  *
@@ -504,16 +497,16 @@ static void boot_timer_cb(struct loop_timer *t)
  ****************************************************************************/
 void boot_addr(uint32_t addr);
 
-void sf_boot(uint32_t addr) {
-	struct loop_timer t = {
-		.timer_cb = boot_timer_cb,
-		.frames = 2
-	};
+void sf_boot(uint32_t addr, int quick) {
 	int i;
 
-	// Wait between 1 and 2 frames for the message to be sent
-	loop_timer_add(&t);
-	loop_pend();
+	if (!quick) {
+		// Wait between 1 and 2 frames for the message to be sent
+		mw_sleep(2);
+	}
+
+	VdpDisable();
+
 	// Clear CRAM
 	VdpRamRwPrep(VDP_CRAM_WR, 0);
 	for (i = 64; i > 0; i--) VDP_DATA_PORT_W = 0;
@@ -526,8 +519,13 @@ void sf_boot(uint32_t addr) {
 	VdpRamRwPrep(VDP_VSRAM_WR, 0);
 	for (i = 40; i > 0; i--) VDP_DATA_PORT_W = 0;
 	
-	// Put WiFi module in reset state
-	mw_module_reset();
+	VdpEnable();
+
+	if (!quick) {
+		// Put module to sleep
+		mw_power_off();
+		mw_sleep(2);
+	}
 
 	// boot
 	boot_addr(addr);

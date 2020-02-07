@@ -36,7 +36,14 @@ SECTIONS
   }
   _sboot = SIZEOF(.text.boot);
 
-  .text 0xFF0000 :
+  /* For boot type detection */
+  .dirty 0xFF0000:
+  {
+    dirty_dw = .;
+    . = . + 4 ;
+    _end_dirty = .;
+  } > ram
+  .text _end_dirty :
   AT (ADDR(.text.boot) + SIZEOF(.text.boot))
   {
     *(.text.*) *(.text)
@@ -56,7 +63,7 @@ SECTIONS
     _etext = .;
   } > ram
 
-  .data 0xFF0000 + SIZEOF(.text) :
+  .data _end_dirty + SIZEOF(.text) :
   AT ( LOADADDR(.text) + SIZEOF (.text))
   {
     *(.data .data.*)
