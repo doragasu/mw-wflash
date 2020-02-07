@@ -5,10 +5,12 @@
 #include "menu_txt.h"
 #include "menu_dl.h"
 #include "menu_gtag.h"
+#include "../globals.h"
 #include "../sysfsm.h"
 #include "../menu_imp/menu.h"
 #include "../menu_imp/menu_msg.h"
 #include "../mw/megawifi.h"
+#include "../rom_head.h"
 
 #define NTP_SERV_MAXLEN 	32
 #define TIMEZONE_MAXLEN		32
@@ -303,17 +305,6 @@ const struct menu_entry config_menu = {
 	} MENU_ITEM_ENTRY_END
 };
 
-static int main_menu_enter_cb(struct menu_entry_instance *instance)
-{
-	// Enable START option only if a flashed game is detected
-	if (SF_ENTRY_POINT_ADDR && SF_ENTRY_POINT_ADDR != 0x20202020) {
-		instance->entry->item_entry->item[0].not_selectable = FALSE;
-		instance->entry->item_entry->item[0].alt_color = FALSE;
-	}
-
-	return 0;
-}
-
 static int game_boot_cb(struct menu_entry_instance *instance)
 {
 	UNUSED_PARAM(instance);
@@ -364,15 +355,136 @@ static int dl_menu_set_cb(struct menu_entry_instance *instance)
 	return 0;
 }
 
+static int main_menu_enter_cb(struct menu_entry_instance *instance)
+{
+	struct menu_item *item = instance->entry->item_entry->item;
+
+	// If no game intalled (no valid boot addr), leave boot game
+	// entry as not selectable
+	if (!GL_ENTRY_POINT_ADDR || 0xFFFFFFFF == GL_ENTRY_POINT_ADDR ||
+			0x20202020 == GL_ENTRY_POINT_ADDR) {
+		goto out;
+	}
+
+	item->alt_color = FALSE;
+	item->not_selectable = FALSE;
+	menu_str_replace(&item->caption, ROM_TITLE);
+
+out:
+	return 0;
+}
+
+static int id_get(char *id)
+{
+	uint8_t *bssid;
+	int err = 0;
+
+	bssid = mw_bssid_get(MW_IF_STATION);
+	if (bssid) {
+		for (int i = 0; i < 6; i++) {
+			uint8_to_hex_str(bssid[i], &id[i<<1]);
+		}
+	} else {
+		strcpy(id, "UNKNOWN");
+		err = 1;
+	}
+
+	return err;
+}
+
+static int about_menu_enter_cb(struct menu_entry_instance *instance)
+{
+	struct menu_item *item = instance->entry->item_entry->item;
+	struct menu_str *id_str = &item[2].caption;
+	char id[13] = "UNKNOWN";
+
+	id_get(id);
+	menu_str_append(id_str, id);
+
+	return 0;
+}
+
+const struct menu_entry about_menu ROM_DATA(about_menu) = {
+	.type = MENU_TYPE_ITEM,
+	.margin = MENU_DEF_LEFT_MARGIN,
+	.title = MENU_STR_RO("ABOUT"),
+	.left_context = MENU_STR_RO(ITEM_BACK_STR),
+	.enter_cb = about_menu_enter_cb,
+	.item_entry = MENU_ITEM_ENTRY(15, 1, MENU_H_ALIGN_CENTER, 1) {
+		{
+			.caption = MENU_STR_RW("MegaWiFi loader"
+					STR(GL_VER_MAJOR) "." STR(GL_VER_MINOR),
+					40),
+			.alt_color = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE
+		},
+		{
+			.caption = MENU_STR_RW("Cart ID: ", 22),
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("This is part of MegaWiFi project"),
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("Code and hardware: @doragasu"),
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("Font and logo: @Manu_Segura_"),
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("Music and SFX: @DavidBonus"),
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("Uses sound player from Shiru"),
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RO("(c) 1985alternativo, 2020"),
+			.not_selectable = TRUE
+		}
+	} MENU_ITEM_ENTRY_END
+};
+
 const struct menu_entry main_menu = {
 	.type = MENU_TYPE_ITEM,
 	.margin = MENU_DEF_LEFT_MARGIN,
-	.title = MENU_STR_RO("MegaWiFi bootloader by doragasu"),
+	.title = MENU_STR_RO("MegaWiFi loader by doragasu"),
 	.left_context = MENU_STR_RO("Select an option"),
 	.enter_cb = main_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(4, 4, MENU_H_ALIGN_CENTER, 1) {
+	.item_entry = MENU_ITEM_ENTRY(5, 4, MENU_H_ALIGN_CENTER, 1) {
 		{
-			.caption = MENU_STR_RO("START!"),
+			.caption = MENU_STR_RW("NO GAME INSTALLED", 40),
 			.not_selectable = TRUE,
 			.alt_color = TRUE,
 			.entry_cb = game_boot_cb
@@ -389,6 +501,10 @@ const struct menu_entry main_menu = {
 		{
 			.caption = MENU_STR_RO("GAMERTAGS"),
 			.next = (struct menu_entry*)&gamertag_menu
+		},
+		{
+			.caption = MENU_STR_RO("ABOUT"),
+			.next = (struct menu_entry*)&about_menu
 		}
 	} MENU_ITEM_ENTRY_END
 };

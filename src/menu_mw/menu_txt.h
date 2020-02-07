@@ -4,6 +4,7 @@
 #define _MENU_TXT_H_
 
 #define ITEM_LEFT_CTX_STR	"[A]ccept, [B]ack"
+#define ITEM_BACK_STR		"[B]ack"
 #define QWERTY_LEFT_CTX_STR	"A:In, B:Del, C:Caps, S:DONE"
 #define NUMERIC_LEFT_CTX_STR	"A:In, B:Del, S:DONE"
 #define EMPTY_STR		"<EMPTY>"

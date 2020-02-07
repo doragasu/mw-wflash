@@ -19,7 +19,7 @@
 #include "gfx/background.h"
 
 /// Length of the wflash buffer
-#define MW_BUFLEN	1440
+#define MW_BUFLEN	1460
 
 /// TCP port to use (set to Megadrive release year ;-)
 #define MW_CH_PORT 	1985

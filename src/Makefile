@@ -19,7 +19,7 @@ OBJCOPY = objcopy
 MDMA   ?= $(HOME)/src/github/mw-mdma-cli/mdma
 #PREFIX ?= /opt/toolchains/gen/m68k-elf/bin/m68k-elf-
 #EMU ?= wine $(HOME)/src/gendev/gens/gens.exe
-EMU ?= gens
+EMU ?= blastem
 OBJDIR  = tmp
 
 # List of directories with sources, excluding the boot stuff
