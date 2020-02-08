@@ -14,6 +14,8 @@
 #include <string.h>
 #include "lsd.h"
 #include "../util.h" 
+#include "../vdp.h"	// For debugging
+
 /// Uart used for LSD
 #define LSD_UART		0
 

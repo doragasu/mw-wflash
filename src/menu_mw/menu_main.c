@@ -368,7 +368,7 @@ static int main_menu_enter_cb(struct menu_entry_instance *instance)
 
 	item->alt_color = FALSE;
 	item->not_selectable = FALSE;
-	menu_str_replace(&item->caption, ROM_TITLE);
+	menu_str_replace(&item->caption, "START GAME");
 
 out:
 	return 0;

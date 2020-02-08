@@ -9,15 +9,10 @@
 #ifndef _CMDS_H_
 #define _CMDS_H_
 
-#include <stdint.h> 
-/// Major number of the commands implementation
-#define WF_VERSION_MAJOR	0x00
-/// Minor number of the commands implementation
-#define WF_VERSION_MINOR	0x01
+#include <stdint.h>
 
 /// Maximum payload length
-//#define WF_MAX_DATALEN	1152
-#define WF_MAX_DATALEN		1440
+#define WF_MAX_DATALEN		1460
 /// Header lenght
 #define WF_HEADLEN		4
 /// MegaWiFi channel

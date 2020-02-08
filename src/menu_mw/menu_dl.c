@@ -6,16 +6,8 @@
 #include "../mw/megawifi.h"
 #include "../menu_imp/menu.h"
 #include "../menu_imp/menu_itm.h"
-
-enum con_stat {
-	CON_DISABLED,
-	CON_ERR,
-	CON_ASSOC_WAIT,
-	CON_CLIENT_WAIT,
-	CON_MAX
-};
-
-static enum con_stat stat = CON_DISABLED;
+#include "../gfx/background.h"
+#include "../snd/sound.h"
 
 static int reboot_cb(struct menu_entry_instance *instance)
 {
@@ -38,7 +30,6 @@ static void conn_err(struct menu_entry_instance *instance)
 	menu_str_replace(&item[0].caption, "Connection error!");
 	menu_str_replace(&item[2].caption, "BACK");
 	menu_item_draw(MENU_PLACE_CENTER);
-	stat = CON_ERR;
 	mw_ap_disassoc();
 	context->str = ITEM_ACCEPT_STR;
 	context->length = context->max_length = sizeof(ITEM_ACCEPT_STR) - 1;
@@ -50,63 +41,45 @@ static int download_mode_menu_cb(struct menu_entry_instance *instance)
 {
 	struct menu_item_entry *entry = instance->entry->item_entry;
 	struct menu_item *item = entry->item;
-	uint8_t ap_slot = instance->prev->prev->sel_item;
+	uint8_t ap_slot = instance->prev->sel_item;
 	enum mw_err err = FALSE;
-	int count = 0;
 	char ip_addr[16] = {0};
 	struct mw_ip_cfg *ip = NULL;
 
-	switch (stat) {
-	case CON_DISABLED:
-		err = mw_ap_assoc(ap_slot);
-		stat = CON_ASSOC_WAIT;
-		count = 0;
-		break;
+	err = mw_ap_assoc(ap_slot);
 
-	case CON_ASSOC_WAIT:
-		// Wait a bit for the animation to play before locking
-		if (count++ > 60) {
-			err = mw_ap_assoc_wait(39 * 60);
-			if (!err) {
-				menu_str_replace(&item[0].caption, "Connecting to server...");
-				menu_item_draw(MENU_PLACE_CENTER);
-				stat = CON_CLIENT_WAIT;
-			}
-		}
+	if (!err) {
+		err = mw_ap_assoc_wait(39 * 60);
 		if (!err) {
-			err = mw_ip_current(&ip);
-			uint32_to_ip_str(ip->addr.addr, ip_addr);
-		}
-		if (!err) {
-			err = mw_tcp_bind(SF_CHANNEL, SF_PORT);
-		}
-		if (!err) {
-			menu_str_replace(&item[0].caption, "Associated. IP: ");
-			menu_str_append(&item[0].caption, ip_addr);
+			menu_str_replace(&item[0].caption, "Connecting to server...");
 			menu_item_draw(MENU_PLACE_CENTER);
-
-			err = mw_sock_conn_wait(SF_CHANNEL, 0);
 		}
-		break;
+	}
+	if (!err) {
+		err = mw_ip_current(&ip);
+		uint32_to_ip_str(ip->addr.addr, ip_addr);
+	}
+	if (!err) {
+		err = mw_tcp_bind(SF_CHANNEL, SF_PORT);
+	}
+	if (!err) {
+		menu_str_replace(&item[0].caption, "Associated. IP: ");
+		menu_str_append(&item[0].caption, ip_addr);
+		menu_item_draw(MENU_PLACE_CENTER);
 
-	case CON_CLIENT_WAIT:
-		if (!err) {
-			menu_str_replace(&item[0].caption, "Connected to client!");
-			menu_item_draw(MENU_PLACE_CENTER);
-			sf_init(cmd_buf, MW_BUFLEN, instance);
-			sf_start();
-			stat = CON_DISABLED;
-			instance->entry->periodic_cb = NULL;
-		}
-		break;
-
-	default:
-		err = MW_ERR;
-		break;
+		err = mw_sock_conn_wait(SF_CHANNEL, 0);
+	}
+	if (!err) {
+		menu_str_replace(&item[0].caption, "Connected to client!");
+		menu_item_draw(MENU_PLACE_CENTER);
+		sf_init(cmd_buf, MW_BUFLEN, instance);
+		sf_start();
+		instance->entry->periodic_cb = NULL;
+		sound_deinit();
+//		bg_deinit();
 	}
 
 	if (err) {
-		stat = CON_DISABLED;
 		conn_err(instance);
 	}
 

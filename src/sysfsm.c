@@ -11,18 +11,8 @@
 #include "flash.h"
 #include "util.h"
 #include "loop.h"
+#include "globals.h"
 #include "menu_imp/menu_itm.h"
-
-//#include "vdp.h"
-
-/// System states
-//enum sf_stat {
-//	WF_IDLE = 0,		///< Idle state, waiting for commands
-//	WD_CMD_WAIT,		///< Waiting for a command
-//	WF_DATA_WAIT,		///< Waiting for data to write to Flash
-//	WF_FLASHING,		///< Using flash chip
-//	WF_STATE_MAX		///< State limit. Do not use.
-//};
 
 const char * const lsd_err[] = {
 	"FRAMING ERROR",
@@ -46,7 +36,6 @@ struct sf_data {
 	int32_t rem_recv;	///< Remaining bytes to receive
 	int32_t rem_write;	///< Remaining bytes to write
 	struct loop_func f;	///< Loop function for flash polling
-//	uint16_t pos;		///< Position in receive buffer
 	int16_t buf_length;	///< Command buffer length
 	uint16_t recvd[2];	///< Number of bytes received on each buffer
 	uint16_t to_write;	///< Number of bytes from buffer to write
@@ -55,9 +44,11 @@ struct sf_data {
 	uint8_t next_idx;	///< Next empty frame
 	uint8_t avail_idx;	///< Next ready frame
 	uint8_t avail_frames;	///< Available (filled) frames
+	uint8_t odd_byte;	///< Extra byte for odd data reception
 	struct {
 		uint8_t busy_flash:1;	///< Flash is erasing/writing data
 		uint8_t busy_recv:1;	///< We are receiving data
+		uint8_t odd:1;		///< Received odd number of bytes
 	};
 };
 
@@ -80,6 +71,7 @@ static void flash_poll_cb(struct loop_func *f)
 void sf_init(char *cmd_buf, int16_t buf_length,
 		struct menu_entry_instance *instance)
 {
+	memset(&d, 0, sizeof(struct sf_data));
 	d.buf[0] = cmd_buf;
 	d.buf[1] = cmd_buf + buf_length + 2;
 	d.buf_length = buf_length;
@@ -107,8 +99,8 @@ static int sf_cmd_version_get(wf_buf *in, int16_t len)
 			WF_HEADLEN == len) {
 		in->cmd.len = ByteSwapWord(2);
 		in->cmd.cmd = WF_CMD_OK;
-		in->cmd.data[0] = WF_VERSION_MAJOR;
-		in->cmd.data[1] = WF_VERSION_MINOR;
+		in->cmd.data[0] = GL_VER_MAJOR;
+		in->cmd.data[1] = GL_VER_MINOR;
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN + 2,
 				NULL, send_complete_cb);
 	} else {
@@ -216,6 +208,7 @@ static int frame_check(enum lsd_status stat, char *buf, uint8_t ch,
 			return 1;
 		} else {
 			// No data to process, return error but try again
+			sf_err_print("RECOVERABLE ERROR");
 			mw_recv(buf, d.buf_length, NULL, retry_cb);
 			return 1;
 		}
@@ -226,12 +219,21 @@ static int frame_check(enum lsd_status stat, char *buf, uint8_t ch,
 
 static void flash_action(void)
 {
+	char *buf;
+
 	if (!d.busy_recv && (d.rem_recv > 0) && d.avail_frames < 2) {
 		d.busy_recv = TRUE;
-		mw_recv(d.buf[d.next_idx], d.buf_length, NULL, data_recv_cb);
+		VdpDrawChars(VDP_PLANEA_ADDR, 0, 0, VDP_TXT_COL_WHITE, 1, "1");
+		buf = d.buf[d.next_idx];
+		if (d.odd) {
+			buf[0] = d.odd_byte;
+			buf++;
+		}
+		mw_recv(buf, d.buf_length, NULL, data_recv_cb);
 	}
-	if (!d.busy_flash && (d.rem_write) && d.avail_frames) {
+	if (!d.busy_flash && (d.rem_write > 0) && d.avail_frames) {
 		d.busy_flash = TRUE;
+		VdpDrawChars(VDP_PLANEA_ADDR, 2, 0, VDP_TXT_COL_WHITE, 1, "1");
 		d.to_write = MIN(d.recvd[d.avail_idx], d.rem_write);
 		flash_write_long(d.addr, (uint16_t*)d.buf[d.avail_idx],
 				d.to_write / 2);
@@ -252,29 +254,34 @@ static void flash_done_cb(int err, void *ctx)
 		return;
 	}
 	d.rem_write -= d.to_write;
-	if (d.rem_write <= 0) {
-		// We are done. If there are remaining bytes, they are from
-		// a new command following the data transfer
-		loop_func_del(&d.f);
-		remaining = d.recvd[d.avail_idx] - d.to_write;
-		if (remaining > 0) {
-			// Got next command, process it
-			cmd_recv_cb(LSD_STAT_COMPLETE, SF_CHANNEL,
-					d.buf[d.avail_idx] + d.to_write,
-					remaining, NULL);
-		} else {
-                       // Clean end, restart command parser
-                       sf_start();
-		}
-	} else {
+	if (d.rem_write > 0 ) {
 		// More data to come
 		d.avail_frames--;
 		d.busy_flash = FALSE;
+		VdpDrawChars(VDP_PLANEA_ADDR, 2, 0, VDP_TXT_COL_WHITE, 1, "0");
 		d.avail_idx ^= 1;
 		d.addr += d.to_write;
 		loop_func_disable(&d.f);
 	
 		flash_action();
+	} else if (0 == d.rem_write) {
+		// We are done. If there are remaining bytes, they are from
+		// a new command following the data transfer
+		loop_func_del(&d.f);
+		remaining = d.recvd[d.avail_idx] - d.to_write;
+		if (0 == remaining) {
+                       // Clean end, restart command parser
+                       sf_start();
+		} else if (remaining > 0) {
+			// Got next command, process it
+			cmd_recv_cb(LSD_STAT_COMPLETE, SF_CHANNEL,
+					d.buf[d.avail_idx] + d.to_write,
+					remaining, NULL);
+		} else {
+			sf_err_print("RECEIVE LENGHT DOES NOT MATCH");
+		}
+	} else {
+		sf_err_print("WROTE MORE THAN EXPECTED");
 	}
 }
 
@@ -293,9 +300,20 @@ static void data_recv_cb(enum lsd_status stat, uint8_t ch,
 	}
 
 	d.busy_recv = FALSE;
-	d.recvd[d.next_idx] = len;
+	VdpDrawChars(VDP_PLANEA_ADDR, 0, 0, VDP_TXT_COL_WHITE, 1, "0");
+	// Add one received byte if we were on odd number of bytes recvd
+	d.recvd[d.next_idx] = len + d.odd;
 	d.avail_frames++;
 	d.rem_recv -= len;
+	// If we have received an odd number of bytes, pass the last byte to the
+	// other frame buffer so we always write 16-bit words to the flash
+	if (d.rem_recv & 1) {
+		d.odd_byte = data[len - 1];
+		d.recvd[d.next_idx]--;
+		d.odd = TRUE;
+	} else {
+		d.odd = FALSE;
+	}
 	d.next_idx ^= 1;
 
 	flash_action();
@@ -325,13 +343,13 @@ static int sf_cmd_program(wf_buf *in, int16_t len, struct menu_item *item)
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
 				(void*)1, send_complete_cb);
 		// Start data reception and program
-		// For the first data frame, use buffer 1, since buffer
-		// 0 is in use for the command response
-		d.next_idx = 1;
-		d.avail_idx = 1;
+		d.next_idx = d.avail_idx = d.avail_idx ^ 1;
 		d.avail_frames = 0;
 		d.busy_flash = FALSE;
+		VdpDrawChars(VDP_PLANEA_ADDR, 2, 0, VDP_TXT_COL_WHITE, 1, "0");
 		d.busy_recv = FALSE;
+		VdpDrawChars(VDP_PLANEA_ADDR, 0, 0, VDP_TXT_COL_WHITE, 1, "0");
+		d.odd = FALSE;
 		loop_func_add(&d.f);
 		loop_func_disable(&d.f);
 
@@ -362,7 +380,8 @@ static int sf_cmd_run(wf_buf *in, int len)
 		in->cmd.cmd = WF_CMD_OK;
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
 				NULL, send_complete_cb);
-		sf_boot(entry, TRUE);
+		mw_close(WF_CHANNEL);
+		sf_boot(entry, FALSE);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
@@ -384,7 +403,8 @@ static int sf_cmd_autorun(wf_buf *in, int len)
 		in->cmd.cmd = WF_CMD_OK;
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
 				NULL, send_complete_cb);
-		sf_boot(SF_ENTRY_POINT_ADDR, TRUE);
+		mw_close(WF_CHANNEL);
+		sf_boot(SF_ENTRY_POINT_ADDR, FALSE);
 	} else {
 		in->cmd.cmd = ByteSwapWord(WF_CMD_ERROR);
 		mw_send(WF_CHANNEL, in->sdata, WF_HEADLEN,
@@ -465,6 +485,7 @@ static int sf_cmd_proc(wf_buf *in, int16_t len)
 		break;
 
 	default:
+		sf_err_print("FAILED TO PROCESS COMMAND");
 		len = -1;
 	}
 
@@ -484,8 +505,7 @@ static void cmd_recv_cb(enum lsd_status stat, uint8_t ch,
 	}
 }
 
-void sf_start(void)
-{
+void sf_start(void) {
 	mw_recv(d.buf[0], d.buf_length, NULL, cmd_recv_cb);
 }
 

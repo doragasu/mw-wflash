@@ -158,7 +158,9 @@ boot_addr:
 * De-initialize pads. This is necessary for some games like uwol,
 * that skip initialization if they detect pads initialized.
 	moveq	#0x00,%d0
-	lea 	0xA10008,%a0
+	lea 	0xA10008, %a0
+	move.l	%d0,(%a0)
+	addq 	#4, %a0
 	move.w	%d0,(%a0)
 
 * Release Z80 from reset
@@ -185,9 +187,9 @@ boot_addr:
 * Release Z80 bus
 	move.b %d0, (%a1)
 
-* Clear WRAM
-	move.w  #0x3FFF,%d1
-	lea     0xff0000,%a0
+* Clear WRAM (skip dirty DW)
+	move.w  #0x3FFE,%d1
+	lea     _end_dirty,%a0
 WRamClear:
 	move.l  %d0,(a0)+
 	dbra    %d1,WRamClear
@@ -199,20 +201,20 @@ WRamClear:
 * Boot from entry point
 	move.l %d2,%a0
 
-*	move.l	%d0,%d1
-*	move.l	%d0,%d2
-*	move.l	%d0,%d3
-*	move.l	%d0,%d4
-*	move.l	%d0,%d5
-*	move.l	%d0,%d6
-*	move.l	%d0,%d7
-*
-*	move.l	%d0,%a1
-*	move.l	%d0,%a2
-*	move.l	%d0,%a3
-*	move.l	%d0,%a4
-*	move.l	%d0,%a5
-*	move.l	%d0,%a6
+	move.l	%d0,%d1
+	move.l	%d0,%d2
+	move.l	%d0,%d3
+	move.l	%d0,%d4
+	move.l	%d0,%d5
+	move.l	%d0,%d6
+	move.l	%d0,%d7
+
+	move.l	%d0,%a1
+	move.l	%d0,%a2
+	move.l	%d0,%a3
+	move.l	%d0,%a4
+	move.l	%d0,%a5
+	move.l	%d0,%a6
 
 	jmp (%a0)
 	.size	boot_addr, .-boot_addr
