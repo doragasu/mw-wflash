@@ -260,7 +260,7 @@ static int config_menu_enter_cb(struct menu_entry_instance *instance)
 	struct menu_item *item = instance->entry->item_entry->item;
 
 	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
-		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL) &&
+		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL, NULL) &&
 				ssid[0] != '\0') {
 			menu_str_append(&item[i].caption, ssid);
 		}
@@ -324,7 +324,7 @@ static int dl_menu_set_cb(struct menu_entry_instance *instance)
 		&instance->entry->item_entry->item[instance->sel_item];
 
 	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
-		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL)) {
+		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL, NULL)) {
 			if (ssid[0]) {
 				configs++;
 				last_valid_cfg = i;
@@ -404,7 +404,7 @@ static int about_menu_enter_cb(struct menu_entry_instance *instance)
 	return 0;
 }
 
-const struct menu_entry about_menu ROM_DATA(about_menu) = {
+const struct menu_entry about_menu = {
 	.type = MENU_TYPE_ITEM,
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("ABOUT"),

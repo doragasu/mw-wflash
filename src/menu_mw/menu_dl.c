@@ -134,7 +134,7 @@ static int download_menu_enter_cb(struct menu_entry_instance *instance)
 	struct menu_item *item = instance->entry->item_entry->item;
 
 	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
-		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL)) {
+		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL, NULL)) {
 			if (ssid[0]) {
 				menu_str_append(&item[i].caption, ssid);
 				configs++;
