@@ -13,6 +13,7 @@
 #include "loop.h"
 #include "globals.h"
 #include "menu_imp/menu_itm.h"
+#include "gfx/background.h"
 
 const char * const lsd_err[] = {
 	"FRAMING ERROR",
@@ -223,7 +224,7 @@ static void flash_action(void)
 
 	if (!d.busy_recv && (d.rem_recv > 0) && d.avail_frames < 2) {
 		d.busy_recv = TRUE;
-		VdpDrawChars(VDP_PLANEA_ADDR, 0, 0, VDP_TXT_COL_WHITE, 1, "1");
+		bg_led_draw(VDP_PLANEA_ADDR, 128, 1, 23, 2);
 		buf = d.buf[d.next_idx];
 		if (d.odd) {
 			buf[0] = d.odd_byte;
@@ -233,7 +234,6 @@ static void flash_action(void)
 	}
 	if (!d.busy_flash && (d.rem_write > 0) && d.avail_frames) {
 		d.busy_flash = TRUE;
-		VdpDrawChars(VDP_PLANEA_ADDR, 2, 0, VDP_TXT_COL_WHITE, 1, "1");
 		d.to_write = MIN(d.recvd[d.avail_idx], d.rem_write);
 		flash_write_long(d.addr, (uint16_t*)d.buf[d.avail_idx],
 				d.to_write / 2);
@@ -258,7 +258,6 @@ static void flash_done_cb(int err, void *ctx)
 		// More data to come
 		d.avail_frames--;
 		d.busy_flash = FALSE;
-		VdpDrawChars(VDP_PLANEA_ADDR, 2, 0, VDP_TXT_COL_WHITE, 1, "0");
 		d.avail_idx ^= 1;
 		d.addr += d.to_write;
 		loop_func_disable(&d.f);
@@ -300,7 +299,7 @@ static void data_recv_cb(enum lsd_status stat, uint8_t ch,
 	}
 
 	d.busy_recv = FALSE;
-	VdpDrawChars(VDP_PLANEA_ADDR, 0, 0, VDP_TXT_COL_WHITE, 1, "0");
+	bg_led_draw(VDP_PLANEA_ADDR, 128, 1, 23, 3);
 	// Add one received byte if we were on odd number of bytes recvd
 	d.recvd[d.next_idx] = len + d.odd;
 	d.avail_frames++;
@@ -346,9 +345,8 @@ static int sf_cmd_program(wf_buf *in, int16_t len, struct menu_item *item)
 		d.next_idx = d.avail_idx = d.avail_idx ^ 1;
 		d.avail_frames = 0;
 		d.busy_flash = FALSE;
-		VdpDrawChars(VDP_PLANEA_ADDR, 2, 0, VDP_TXT_COL_WHITE, 1, "0");
+		bg_led_draw(VDP_PLANEA_ADDR, 128, 1, 23, 3);
 		d.busy_recv = FALSE;
-		VdpDrawChars(VDP_PLANEA_ADDR, 0, 0, VDP_TXT_COL_WHITE, 1, "0");
 		d.odd = FALSE;
 		loop_func_add(&d.f);
 		loop_func_disable(&d.f);

@@ -1,9 +1,11 @@
+#include <string.h>
 #include "vdp.h"
-#include "font.h"
+#include "gfx/font.h"
 #include "util.h"
 
 /// VDP shadow register values.
 static uint8_t vdpRegShadow[VDP_REG_MAX];
+static uint16_t palShadow[4][16];
 
 /// Mask used to build control port data for VDP RAM writes.
 /// Bits 15 and 14: CD1 and CD0.
@@ -91,10 +93,11 @@ void VdpInit(void) {
 	for (i = 0; i < sizeof(vdpRegDefaults); i++)
 		VdpRegWrite(i, vdpRegDefaults[i]);
 
-    // Clear CRAM
+	memset(palShadow, 0, sizeof(palShadow));
+	// Clear CRAM
 	VdpRamRwPrep(VDP_CRAM_WR, 0);
 	for (i = 64; i > 0; i--) VDP_DATA_PORT_W = 0;
-    // Clear VRAM
+	// Clear VRAM
 	/// \bug I do not know why, but VRam Fill does not work. I suspect it
 	/// has something to do with transfer length.
 //	VdpDmaVRamFill(0, 0, 0);
@@ -103,16 +106,20 @@ void VdpInit(void) {
 	for (i = 32768; i > 0; i--) VDP_DATA_PORT_W = 0;
 
 	// Load font three times, to be able to use three different colors
-	VdpFontLoad(font, fontChars, 0, 1, 0);
-	VdpFontLoad(font, fontChars, fontChars * 32, 2, 0);
-	VdpFontLoad(font, fontChars, 2 * fontChars * 32, 3, 0);
+	VdpFontLoad(font, FONT_NCHARS, 0, 1, 0);
+	VdpFontLoad(font, FONT_NCHARS, FONT_NCHARS * 32, 2, 0);
+	VdpFontLoad(font, FONT_NCHARS, 2 * FONT_NCHARS * 32, 3, 0);
 
 	// Set background and font colors
 	VdpRamRwPrep(VDP_CRAM_WR, 0);
 	VDP_DATA_PORT_W = VDP_COLOR_BLACK;	// Background color
+	palShadow[0][0] = VDP_COLOR_BLACK;
 	VDP_DATA_PORT_W = VDP_COLOR_WHITE;	// Text color 1
+	palShadow[0][1] = VDP_COLOR_BLACK;
 	VDP_DATA_PORT_W = VDP_COLOR_CYAN;	// Text color 2
+	palShadow[0][2] = VDP_COLOR_BLACK;
 	VDP_DATA_PORT_W = VDP_COLOR_MAGENTA;	// Text color 3
+	palShadow[0][3] = VDP_COLOR_BLACK;
 
 	// Set  scroll to 0
 	VDP_DATA_PORT_W = 0;
@@ -329,5 +336,30 @@ void VdpDisable(void)
 void VdpEnable(void)
 {
 	VdpRegWrite(VDP_REG_MODE2, vdpRegShadow[VDP_REG_MODE2] | 0x40);
+}
+
+void VdpPalLoad(const uint16_t *pal, uint8_t pal_no)
+{
+	VdpDma((uint32_t)pal, pal_no * 32, 16, VDP_DMA_MEM_CRAM);
+	memcpy(palShadow[pal_no], pal, 16 * sizeof(uint16_t));
+}
+
+const uint16_t *VdpPalGet(uint8_t pal_no)
+{
+	return palShadow[pal_no];
+}
+
+void VdpPalFadeOut(uint8_t pal_no)
+{
+	uint16_t r, g, b;
+
+	for (int i = 15; i >= 0; i--) {
+		VdpToRGB(palShadow[pal_no][i], r, g, b);
+		if (r) r--;
+		if (g) g--;
+		if (b) b--;
+		palShadow[pal_no][i] = VdpColor(r, g, b);
+	}
+	VdpDma((uint32_t)palShadow[pal_no], pal_no * 32, 16, VDP_DMA_MEM_CRAM);
 }
 

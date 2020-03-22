@@ -412,7 +412,7 @@ const struct menu_entry about_menu = {
 	.enter_cb = about_menu_enter_cb,
 	.item_entry = MENU_ITEM_ENTRY(15, 1, MENU_H_ALIGN_CENTER, 1) {
 		{
-			.caption = MENU_STR_RW("MegaWiFi loader"
+			.caption = MENU_STR_RW("MegaWiFi loader "
 					STR(GL_VER_MAJOR) "." STR(GL_VER_MINOR),
 					40),
 			.alt_color = TRUE,

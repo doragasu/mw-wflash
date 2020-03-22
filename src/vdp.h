@@ -53,8 +53,15 @@
 #define VDP_HV_COUNT_W   (*((volatile uint16_t*)VDP_HV_COUNT_ADDR))
 /** \} */
 
-/// Build color in CRAM format, with 3-bit r, b and b components
+/// Build color in CRAM format, with 3-bit g, b and b components
 #define VdpColor(r, g, b)	(((r)<<1) | ((g)<<5) | ((b)<<9))
+
+/// Converts a VDP palette color entry into its 3-bit components
+#define VdpToRGB(color, r, g, b)	do {	\
+	(r) = ((color) & 0xF)>>1;		\
+	(g) = ((color) & 0xF0)>>5;		\
+	(b) = ((color) & 0xF00)>>9;		\
+} while(0)
 
 /** \addtogroup VdpColors VdpColors
  *  \brief Simple color definitions in CRAM format.
@@ -289,10 +296,25 @@ static inline void VdpTilesLoad(const uint32_t *tiles,
  * \param[in] pal    Palette to load.
  * \param[in] pal_no Palette number (from 0 to 3).
  ****************************************************************************/
-static inline void VdpPalLoad(const uint16_t *pal, uint8_t pal_no)
-{
-	VdpDma((uint32_t)pal, pal_no * 32, 16, VDP_DMA_MEM_CRAM);
-}
+void VdpPalLoad(const uint16_t *pal, uint8_t pal_no);
+
+/************************************************************************//**
+ * Gets the requested palette.
+ *
+ * \param[in] pal_no Palette number (from 0 to 3).
+ *
+ * \return The requested palette.
+ ****************************************************************************/
+const uint16_t *VdpPalGet(uint8_t pal_no);
+
+/************************************************************************//**
+ * Performs a single palette fade out cycle.
+ *
+ * At most, 7 calls to this function are required for a complete fade-out.
+ *
+ * \param[in] pal_no Palette number to fade (from 0 to 3).
+ ****************************************************************************/
+void VdpPalFadeOut(uint8_t pal_no);
 
 /************************************************************************//**
  * Load a time map (nametable) to the specified VRAM address.
