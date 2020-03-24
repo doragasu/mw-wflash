@@ -5,7 +5,7 @@
 
 #define LOGO_TILE_WIDTH		32
 #define LOGO_TILE_HEIGHT	32
-#define LOGO_NUM_TILES		126
+#define LOGO_NUM_TILES		114
 
 extern const uint32_t logo_tiles[LOGO_NUM_TILES * 8];
 extern const uint16_t logo_map[LOGO_TILE_WIDTH * LOGO_TILE_HEIGHT];

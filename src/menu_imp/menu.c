@@ -66,7 +66,7 @@ static void menu_draw_context(enum menu_placement loc)
 			MENU_DEF_LEFT_MARGIN, MENU_H_ALIGN_LEFT,
 			MENU_COLOR_CONTEXT_L, loc);
 	menu_str_pos_draw(&menu->right_context, loc + MENU_LINE_CHARS -
-			entry->margin - menu->right_context.length,
+			MENU_DEF_RIGHT_MARGIN - menu->right_context.length,
 			MENU_LINE_CONTEXT, MENU_STATUS_MAX_CHR,
 			MENU_COLOR_CONTEXT_R, loc);
 }

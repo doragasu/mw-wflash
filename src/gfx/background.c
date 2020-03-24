@@ -30,6 +30,7 @@ void bg_init(void)
 	VdpPalLoad(logo_pal, 1);
 	VdpPalLoad(led_green_pal, 2);
 	VdpPalLoad(led_green_pal, 3);
+	VdpPalFadeOut(1);
 	for (int i = 3; i >= 0; i--) {
 		VdpPalFadeOut(3);
 	}
@@ -60,11 +61,11 @@ void bg_led_draw(uint16_t plane_addr, uint8_t plane_width, uint8_t x, uint8_t y,
 	uint16_t tile_addr = 3 * FONT_NCHARS + LOGO_NUM_TILES;
 
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
-	VDP_DATA_PORT_W = tile_addr++ + (pal<<13);
-	VDP_DATA_PORT_W = tile_addr++ + (pal<<13);
+	VDP_DATA_PORT_W = tile_addr + (pal<<13);
+	VDP_DATA_PORT_W = tile_addr++ + (pal<<13) + (1<<11);
 	offset += 2 * plane_width;
 	VdpRamRwPrep(VDP_VRAM_WR, offset);
-	VDP_DATA_PORT_W = tile_addr++ + (pal<<13);
-	VDP_DATA_PORT_W = tile_addr   + (pal<<13);
+	VDP_DATA_PORT_W = tile_addr + (pal<<13);
+	VDP_DATA_PORT_W = tile_addr + (pal<<13) + (1<<11);
 }
 
