@@ -21,7 +21,7 @@
 #define GL_VER_MAJOR	0
 
 /// Minor version
-#define GL_VER_MINOR	8
+#define GL_VER_MINOR	9
 
 /// Configuration to signal game wants to configure WiFi
 #define MAGIC_WIFI_CONFIG      0xA5A5A5A5

@@ -123,7 +123,6 @@ static int gte_menu_save(struct menu_entry_instance *instance)
 	struct mw_gamertag gamertag;
 	struct menu_item *item = instance->entry->item_entry->item;
 	uint8_t slot = instance->prev->sel_item;
-	enum mw_err err;
 	struct menu_str *tg_id;
 	struct menu_str *tg_hash;
 
@@ -140,12 +139,14 @@ static int gte_menu_save(struct menu_entry_instance *instance)
 	}
 
 
-	err = mw_gamertag_set(slot, &gamertag);
-	if (err != MW_ERR_NONE) {
+	if (mw_gamertag_set(slot, &gamertag) || mw_cfg_save()) {
 		menu_msg("ERROR", "Failed to save configuration!", 0, 60 * 5);
 		return 1;
 	} else {
-		menu_msg("DONE", "Gamertag updated", 0, 60 * 5);
+		menu_msg("DONE", "Gamertag updated", 0, 0);
+		mw_sleep(180);
+		menu_back(1);
+		menu_back(MENU_BACK_ALL);
 	}
 
 	return 0;

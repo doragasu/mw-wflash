@@ -160,7 +160,6 @@ static int net_menu_ap_scan(struct menu_entry_instance *instance)
 	// Fill items
 	entry->n_items = n_aps;
 	entry->pages = MENU_PAGES(n_aps, 1);
-	entry->back_levels = 1;
 	for (i = 0; i < n_aps && (pos = mw_ap_fill_next(data, pos, &ap,
 					data_len)); i++) {
 		net_menu_ap_fill(i, entry, &ap);
@@ -179,7 +178,8 @@ static const struct menu_entry net_menu_scan = {
 	.item_entry = (struct menu_item_entry*)&(const struct menu_item_entry) {
 		.spacing = 1,
 		.items_per_page = MENU_ITEM_LINES,
-		.align = MENU_H_ALIGN_LEFT
+		.align = MENU_H_ALIGN_LEFT,
+		.back_levels = 1
 	}
 };
 
@@ -446,12 +446,12 @@ static int net_menu_save(struct menu_entry_instance *instance)
 	uint8_t slot = instance->prev->sel_item;
 
 	if (mw_ap_cfg_set(slot, ssid, pass, d->cfg.phy) ||
-			mw_ip_cfg_set(slot, &d->cfg.ip)) {
+			mw_ip_cfg_set(slot, &d->cfg.ip) ||
+			mw_def_ap_cfg(slot) ||
+			mw_cfg_save()) {
 		menu_msg("ERROR", "Failed to save configuration!", 0, 60 * 5);
 		return 1;
 	}
-
-	mw_def_ap_cfg(slot);
 
 	return 0;
 }
