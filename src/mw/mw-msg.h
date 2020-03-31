@@ -269,13 +269,23 @@ enum mw_sock_stat {
 union mw_msg_sys_stat {
 	uint32_t st_flags;		///< Accesses all the flags at once
 	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 		enum mw_state sys_stat:8;	///< System status
 		uint8_t online:1;	///< Module is connected to the Internet
 		uint8_t cfg_ok:1;	///< Configuration OK
 		uint8_t dt_ok:1;	///< Date and time synchronized at least once
-		uint8_t cfg:2;		///< Network configuration set
+		uint8_t cfg:2;		///< Default network configuration
 		uint16_t reserved:3;	///< Reserved flags
 		uint16_t ch_ev:16;	///< Channel flags with the pending event
+#else
+		uint16_t ch_ev:16;	///< Channel flags with the pending event
+		uint16_t reserved:3;	///< Reserved flags
+		uint8_t cfg:2;		///< Default network configuration
+		uint8_t dt_ok:1;	///< Date and time synchronized at least once
+		uint8_t cfg_ok:1;	///< Configuration OK
+		uint8_t online:1;	///< Module is connected to the Internet
+		enum mw_state sys_stat:8;	///< System status
+#endif
 	};
 };
 
@@ -314,10 +324,12 @@ typedef union mw_cmd {
 	};
 } mw_cmd;
 
-/// Data sent/received using UDP sockets, uses this special format when reuse
-/// flag has been set in the mw_udp_set() call. This allows the program using
-/// the UDP socket, to filter incoming IPs, and to be able to properly answer
-/// to incoming packets from several peers.
+/// \brief Payload with remote IP and port.
+///
+/// Data sent/received using UDP sockets, uses this special format when
+/// reuse flag has been set in the mw_udp_set() call. This allows the program
+/// using the UDP socket, to filter incoming IPs, and to be able to properly
+/// answer to incoming packets from several peers.
 struct mw_reuse_payload {
 	uint32_t remote_ip;	///< IP of the remote end
 	uint16_t remote_port;	///< Port of the remote end

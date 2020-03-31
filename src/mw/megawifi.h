@@ -256,10 +256,12 @@ enum mw_err mw_ip_cfg_get(uint8_t slot, struct mw_ip_cfg **ip);
  *
  * \return MW_ERR_NONE on success, other code on failure.
  *
- * \warning Changing these parameters is rarely needed, and setting incorrect
- * values, may render the connection unstable and/or crash the WiFi module.
+ * \warning This function is dangerous. Changing these parameters is rarely
+ * needed, and setting incorrect values, may render the connection unstable
+ * and/or crash the WiFi module. Invalid configurations can even cause the
+ * module to crash in a bootloop, requiring a programmer to unbrick it.
  * Make sure you thoroughly test the values you allow users to set here.
- * \note If you want to make WiFi parameters, the recommendation is to get
+ * \note If you want to change WiFi parameters, the recommendation is to get
  * the current configuration via mw_wifi_adv_cfg_get(), and from it change
  * only the required parameters.
  * \note These parameters will not take effect until saved to non-volatile
@@ -344,7 +346,7 @@ enum mw_err mw_ap_assoc(uint8_t slot);
 enum mw_err mw_ap_assoc_wait(int tout_frames);
 
 /************************************************************************//**
- * Sets default AP/IP configuration.
+ * \brief Sets default AP/IP configuration.
  *
  * \param[in] slot Configuration slot to use.
  *
@@ -363,7 +365,7 @@ enum mw_err mw_def_ap_cfg(uint8_t slot);
 enum mw_err mw_ap_disassoc(void);
 
 /************************************************************************//**
- * Gets default AP/IP configuration slot.
+ * \brief Gets default AP/IP configuration slot.
  *
  * \return The default configuration slot, of -1 on error.
  ****************************************************************************/
@@ -780,7 +782,7 @@ enum mw_err mw_http_open(uint32_t content_len);
 int mw_http_finish(uint32_t *content_len, int tout_frames);
 
 /************************************************************************//**
- * Query the X.509 hash of the installed PEM certificate.
+ * \brief Query the X.509 hash of the installed PEM certificate.
  *
  * \return 0xFFFFFFFF if certificate is not installed or error occurs, or
  * the installed X.509 certificate hash on success.

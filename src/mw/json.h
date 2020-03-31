@@ -13,6 +13,8 @@
  *
  * \author Jesus Alonso (doragasu)
  * \date 2019
+ *
+ * \todo Add more functions to extract data.
  ****************************************************************************/
 
 #ifndef _JSON_H_
