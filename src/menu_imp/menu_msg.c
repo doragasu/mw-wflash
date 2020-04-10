@@ -144,7 +144,7 @@ void menu_msg_enter(void)
 static enum menu_msg_action button_action(void)
 {
 	// TODO
-	return MENU_MSG_ACTION_NONE;
+	return MENU_MSG_ACTION_YES_OK;
 }
 
 static void button_move(int8_t value)
@@ -169,7 +169,9 @@ enum menu_msg_action menu_msg_update(uint8_t gp_press)
 	}
 
 	if (gp_press & GP_A_MASK) {
-		action = button_action();
+		if (!(entry->flags & MENU_MSG_MODAL)) {
+			action = button_action();
+		}
 	} else if (gp_press & GP_B_MASK) {
 		if (!(entry->flags & MENU_MSG_MODAL)) {
 			action = MENU_MSG_ACTION_CLOSE;

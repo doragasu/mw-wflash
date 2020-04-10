@@ -29,6 +29,8 @@ enum {
 	MENU_GTE_SAVE
 };
 
+static int done;
+
 static const struct menu_entry menu_gte_nickname_osk = {
 	.type = MENU_TYPE_OSK,
 	.margin = MENU_DEF_LEFT_MARGIN,
@@ -144,8 +146,17 @@ static int gte_menu_save(struct menu_entry_instance *instance)
 		return 1;
 	} else {
 		menu_msg("DONE", "Gamertag updated", 0, 0);
-		mw_sleep(180);
-		menu_back(1);
+		done = TRUE;
+	}
+
+	return 0;
+}
+
+static int done_check_cb(struct menu_entry_instance *instance)
+{
+	UNUSED_PARAM(instance);
+
+	if (done) {
 		menu_back(MENU_BACK_ALL);
 	}
 
@@ -158,6 +169,7 @@ const struct menu_entry gamertag_entry_menu = {
 	.title = MENU_STR_RO("GAMERTAG"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = gte_menu_enter_cb,
+	.periodic_cb = done_check_cb,
 	.item_entry = MENU_ITEM_ENTRY(16, 1, MENU_H_ALIGN_LEFT, 1) {
 		{
 			.caption = MENU_STR_RO("NICKNAME:"),
@@ -251,6 +263,8 @@ static int gamertag_menu_enter_cb(struct menu_entry_instance *instance)
 					gamertag->nickname, 35);
 		}
 	}
+
+	done = FALSE;
 
 	return 0;
 }

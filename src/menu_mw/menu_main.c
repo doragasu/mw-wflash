@@ -15,6 +15,9 @@
 #define NTP_SERV_MAXLEN 	32
 #define TIMEZONE_MAXLEN 	32
 
+static uint32_t flash_id[4];
+static int reboot = FALSE;
+
 /// Item offsets for the NTP configuration menu
 enum {
 	MENU_NTP_SERV1 = 1,
@@ -37,6 +40,14 @@ enum {
 	MENU_ADV_N_ENTRIES
 };
 
+void set_flash_id(uint8_t id[4])
+{
+	for (int i = 0; i < 4; i++) {
+		flash_id[i] = id[i];
+	}
+}
+
+ROM_TEXT(menu_on_off_set)
 static void menu_on_off_set(struct menu_item *item, int value)
 {
 	if (value) {
@@ -60,6 +71,18 @@ static void menu_reboot(void)
 	sf_boot(GL_BOOTLOADER_ADDR, TRUE);
 }
 
+static int reboot_check_cb(struct menu_entry_instance *instance)
+{
+	UNUSED_PARAM(instance);
+
+	if (reboot) {
+		menu_reboot();
+	}
+
+	return 0;
+}
+
+ROM_TEXT(menu_on_off_get)
 static int menu_on_off_get(struct menu_item *item)
 {
 	return 'N' == item->caption.str[item->offset];
@@ -83,7 +106,7 @@ static int menu_tz_validate(struct menu_entry_instance *instance)
 	int err = 0;
 
 	if (text->length < 3) {
-		menu_msg("INVALID TIMEZONE", "Must have at least 3 characters", 0, 5 * 60);
+		menu_msg("INVALID TIMEZONE", "Must have at least 3 characters", 0, 0);
 		err = 1;
 	}
 
@@ -95,8 +118,7 @@ static int menu_non_empty_validate(struct menu_entry_instance *instance)
 	int err = 0;
 
 	if ('\0' == *instance->entry->osk_entry->tmp.str) {
-		menu_msg("INVALID INPUT", "Input cannot be empty",
-				0, 5 * 60);
+		menu_msg("INVALID INPUT", "Input cannot be empty", 0, 0);
 		err = 1;
 	}
 
@@ -109,8 +131,7 @@ static int menu_domain_validate(struct menu_entry_instance *instance)
 	int err = 0;
 
 	if (menu_non_empty_validate(instance) || !strchr(text->str, '.')) {
-		menu_msg("INVALID SERVER", "Please enter a DNS server",
-				0, 5 * 60);
+		menu_msg("INVALID SERVER", "Please enter a DNS server", 0, 0);
 		err = 1;
 	}
 
@@ -154,7 +175,7 @@ static int menu_ntp_save(struct menu_entry_instance *instance)
 	tz_str = item[MENU_NTP_TIMEZONE].caption.str;
 	if (MW_ERR_NONE != mw_sntp_cfg_set(tz_str, servers) ||
 			MW_ERR_NONE != mw_cfg_save()) {
-		menu_msg("ERROR", "Failed to save configuration!", 0, 5 * 60);
+		menu_msg("ERROR", "Failed to save configuration!", 0, 0);
 		return 1;
 	}
 
@@ -249,9 +270,8 @@ static int default_cfg_cb(struct menu_entry_instance *instance)
 
 	err = mw_factory_settings();
 	if (MW_ERR_NONE == err) {
-		menu_msg("SUCCESS!", "Rebooting...", 0, 0);
-		mw_sleep(180);
-		menu_reboot();
+		menu_msg("SUCCESS!", "Press button to reboot", 0, 0);
+		reboot = TRUE;
 	} else {
 		menu_msg("ERROR!", "Factory restore failed", 0, 0);
 	}
@@ -264,6 +284,7 @@ const struct menu_entry defaults_menu = {
 	.margin = MENU_DEF_LEFT_MARGIN,
 	.title = MENU_STR_RO("CONFIRM FACTORY SETTINGS"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
+	.periodic_cb = reboot_check_cb,
 	.item_entry = MENU_ITEM_ENTRY(5, 2, MENU_H_ALIGN_CENTER, 1) {
 		{
 			.caption = MENU_STR_RO("THIS WILL DELETE ALL USER SETTINGS!"),
@@ -297,7 +318,7 @@ static int server_save_cb(struct menu_entry_instance *instance)
 
 	if (MW_ERR_NONE != mw_def_server_set(text->str) ||
 			MW_ERR_NONE != mw_cfg_save()) {
-		menu_msg("SERVER CONFIGURATION", "Server config failed!", 0, 300);
+		menu_msg("SERVER CONFIGURATION", "Server config failed!", 0, 0);
 		err = 1;
 	}
 
@@ -373,9 +394,8 @@ static int menu_adv_cfg_save(struct menu_entry_instance *instance)
 		goto err;
 	}
 
-	menu_msg("SUCCESS!", "Rebooting...", 0, 0);
-	mw_sleep(180);
-	menu_reboot();
+	menu_msg("SUCCESS!", "Press button to reboot", 0, 0);
+	reboot = TRUE;
 
 	return 0;
 
@@ -390,6 +410,7 @@ const struct menu_entry advanced_menu ROM_DATA(advanced_menu) = {
 	.title = MENU_STR_RO("ADVANCED CONFIGURATION"),
 	.left_context = MENU_STR_RO(ITEM_LEFT_CTX_STR),
 	.enter_cb = config_advanced_enter_cb,
+	.periodic_cb = reboot_check_cb,
 	.item_entry = MENU_ITEM_ENTRY(MENU_ADV_N_ENTRIES, 2, MENU_H_ALIGN_CENTER, 1) {
 		{
 			.caption = MENU_STR_RO("DEFAULT SERVER:"),
@@ -511,45 +532,59 @@ static int game_boot_cb(struct menu_entry_instance *instance)
 	return 0;
 }
 
-static int dl_menu_set_cb(struct menu_entry_instance *instance)
+static int id_get(char *id)
 {
-	int i;
-	char *ssid;
-	unsigned int configs = 0;
-	unsigned int last_valid_cfg;
-	struct menu_item *item =
-		&instance->entry->item_entry->item[instance->sel_item];
+	uint8_t *bssid;
+	int err = 0;
 
-	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
-		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL, NULL)) {
-			if (ssid[0]) {
-				configs++;
-				last_valid_cfg = i;
-			}
-		} else {
-			return 1;
+	bssid = mw_bssid_get(MW_IF_STATION);
+	if (bssid) {
+		for (int i = 0; i < 6; i++) {
+			uint8_to_hex_str(bssid[i], &id[i<<1]);
 		}
 	}
 
-	switch (configs) {
-	case 0:
-		item->next = NULL;
-		menu_msg("NOT CONFIGURED", "Configure a WiFi "
-				"and try again!", 0, 0);
-		break;
+	return err;
+}
 
-	case 1:
-		mw_log("ONE CONFIG");
-		instance->sel_item = last_valid_cfg;
-		item->next = (struct menu_entry*)&download_start_menu;
-		break;
+static void cart_get(char *cart)
+{
+	uint32_t dev = (flash_id[1]<<16) | (flash_id[2]<<8) | flash_id[3];
 
-	default:
-		item->next = (struct menu_entry*)&download_menu;
-		break;
+	uint8_to_hex_str(flash_id[0], cart);
+	cart[2] = ' ';
+	uint32_to_hex_str(dev, cart + 3, 6);
+}
+
+static int wifi_get(char *wifi)
+{
+	uint16_t dev;
+	uint8_t man;
+	int err = 0;
+
+	err = mw_flash_id_get(&man, &dev);
+	if (!err) {
+		uint8_to_hex_str(man, wifi);
+		wifi[2] = ' ';
+		uint32_to_hex_str(dev, wifi + 3, 4);
 	}
 
-	return 0;
+	return err;
+}
+
+static void fw_get(char *fw)
+{
+	char * variant = NULL;
+	uint8_t version[3];
+	int pos;
+
+	if (mw_version_get(version, &variant)) {
+		return;
+	}
+
+	pos = version_to_str(version, fw);
+	fw[pos++] = '-';
+	strlcpy(fw + pos, variant, 20 - pos);
 }
 
 static int main_menu_enter_cb(struct menu_entry_instance *instance)
@@ -571,32 +606,27 @@ out:
 	return 0;
 }
 
-static int id_get(char *id)
-{
-	uint8_t *bssid;
-	int err = 0;
-
-	bssid = mw_bssid_get(MW_IF_STATION);
-	if (bssid) {
-		for (int i = 0; i < 6; i++) {
-			uint8_to_hex_str(bssid[i], &id[i<<1]);
-		}
-	} else {
-		strcpy(id, "UNKNOWN");
-		err = 1;
-	}
-
-	return err;
-}
-
 static int about_menu_enter_cb(struct menu_entry_instance *instance)
 {
 	struct menu_item *item = instance->entry->item_entry->item;
-	struct menu_str *id_str = &item[2].caption;
-	char id[13] = "UNKNOWN";
+	struct menu_str *fw_str = &item[2].caption;
+	struct menu_str *id_str = &item[4].caption;
+	struct menu_str *cart_str = &item[5].caption;
+	struct menu_str *wifi_str = &item[6].caption;
 
+	char fw[20] = "UNKNOWN";
+	char id[14] = "UNKNOWN";
+	char cart[10];
+	char wifi[8] = "UNKNOWN";
+
+	fw_get(fw);
 	id_get(id);
+	cart_get(cart);
+	wifi_get(wifi);
+	menu_str_append(fw_str, fw);
 	menu_str_append(id_str, id);
+	menu_str_append(cart_str, cart);
+	menu_str_append(wifi_str, wifi);
 
 	return 0;
 }
@@ -607,11 +637,11 @@ const struct menu_entry about_menu = {
 	.title = MENU_STR_RO("ABOUT"),
 	.left_context = MENU_STR_RO(ITEM_BACK_STR),
 	.enter_cb = about_menu_enter_cb,
-	.item_entry = MENU_ITEM_ENTRY(15, 1, MENU_H_ALIGN_CENTER, 1) {
+	.item_entry = MENU_ITEM_ENTRY(19, 1, MENU_H_ALIGN_CENTER, 1) {
 		{
-			.caption = MENU_STR_RW("MegaWiFi loader "
-					STR(GL_VER_MAJOR) "." STR(GL_VER_MINOR),
-					40),
+			.caption = MENU_STR_RO("MegaWiFi loader v"
+					STR(GL_VER_MAJOR) "." STR(GL_VER_MINOR)
+					"." STR(GL_VER_MICRO)),
 			.alt_color = TRUE,
 			.not_selectable = TRUE
 		},
@@ -619,7 +649,23 @@ const struct menu_entry about_menu = {
 			.hidden = TRUE
 		},
 		{
-			.caption = MENU_STR_RW("Cart ID: ", 22),
+			.caption = MENU_STR_RW("Firmware version ", 40),
+			.not_selectable = TRUE
+		},
+		{
+			.hidden = TRUE,
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RW("Network ID: ", 26),
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RW("Cart Flash ID: ", 26),
+			.not_selectable = TRUE
+		},
+		{
+			.caption = MENU_STR_RW("WiFi Flash ID: ", 24),
 			.not_selectable = TRUE
 		},
 		{
@@ -672,6 +718,47 @@ const struct menu_entry about_menu = {
 		}
 	} MENU_ITEM_ENTRY_END
 };
+
+static int dl_menu_set_cb(struct menu_entry_instance *instance)
+{
+	int i;
+	char *ssid;
+	unsigned int configs = 0;
+	unsigned int last_valid_cfg;
+	struct menu_item *item =
+		&instance->entry->item_entry->item[instance->sel_item];
+
+	for (i = 0; i < MW_NUM_CFG_SLOTS; i++) {
+		if (MW_ERR_NONE == mw_ap_cfg_get(i, &ssid, NULL, NULL)) {
+			if (ssid[0]) {
+				configs++;
+				last_valid_cfg = i;
+			}
+		} else {
+			return 1;
+		}
+	}
+
+	switch (configs) {
+		case 0:
+			item->next = NULL;
+			menu_msg("NOT CONFIGURED", "Configure a WiFi "
+					"and try again!", 0, 0);
+			break;
+
+		case 1:
+			mw_log("ONE CONFIG");
+			instance->sel_item = last_valid_cfg;
+			item->next = (struct menu_entry*)&download_start_menu;
+			break;
+
+		default:
+			item->next = (struct menu_entry*)&download_menu;
+			break;
+	}
+
+	return 0;
+}
 
 const struct menu_entry main_menu = {
 	.type = MENU_TYPE_ITEM,

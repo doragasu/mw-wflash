@@ -18,6 +18,7 @@
 #include "sysfsm.h"
 #include "snd/sound.h"
 #include "gfx/background.h"
+#include "flash.h"
 
 /// TCP port to use (set to Megadrive release year ;-)
 #define MW_CH_PORT 	1985
@@ -94,9 +95,20 @@ static void main_loop_init(void)
 	loop_func_add(&megawifi_loop);
 }
 
+static void flash_id_init(void)
+{
+	uint8_t id[4];
+	id[0] = FlashGetManId();
+	FlashGetDevId(&id[1]);
+
+	set_flash_id(id);
+}
+
 /// Global initialization
 static void init(void)
 {
+	// Get flash ID early
+	flash_id_init();
 	// Initialize memory pool
 	mp_init(0);
 	// Initialize VDP

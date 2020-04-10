@@ -18,10 +18,13 @@
 #define GL_PROG_LEN_MAX		(4 * 1024 - 64) * 1024
 
 /// Major version
-#define GL_VER_MAJOR	0
+#define GL_VER_MAJOR	1
 
 /// Minor version
-#define GL_VER_MINOR	9
+#define GL_VER_MINOR	0
+
+/// Micro version
+#define GL_VER_MICRO	0
 
 /// Configuration to signal game wants to configure WiFi
 #define MAGIC_WIFI_CONFIG      0xA5A5A5A5

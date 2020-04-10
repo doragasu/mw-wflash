@@ -151,7 +151,7 @@ static int download_menu_enter_cb(struct menu_entry_instance *instance)
 	if (!configs) {
 		err = TRUE;
 		menu_msg("NO NETWORK CONFIGURED!", "Configure a network"
-				" and try again", 0, 60 * 5);
+				" and try again", 0, 0);
 	}
 
 out:
