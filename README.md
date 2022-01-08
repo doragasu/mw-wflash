@@ -1,3 +1,7 @@
+# WARNING: THIS PROJECT HAS MOVED
+
+You can find the most recent version at the [mw-wflash GitLab project page](https://gitlab.com/doragasu/mw-wflash). This repository will be kept as is, and will not be updated anymore.
+
 # mw-wflash
 
 WiFi bootloader for MegaWiFi cartridges. This is a tiny bootloader that enables MegaWiFi cartridges to be able do download and Flash ROMs remotely via WiFi. It has been created to ease developing games using MegaWiFi capabilities, but it also allows uploading commercial ROMs.
